@@ -1,0 +1,21 @@
+{
+  "name": "world-guard",
+  "private": true,
+  "version": "0.0.1",
+  "description": "World Guard — tower defense roguelite pe hexagoane (prototip)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc --noEmit && vite build",
+    "check": "npm run typecheck && npm run test && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  }
+}
