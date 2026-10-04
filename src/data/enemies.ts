@@ -12,18 +12,22 @@ export interface EnemyInfo {
   readonly viteza: number
   /** câte vieți ia bazei dacă ajunge la ea */
   readonly dauna: number
+  /** se scade din fiecare lovitură primită (minimum 1 daună trece mereu) */
+  readonly armura: number
+  /** aurul primit când e ucis */
+  readonly aur: number
   readonly culoare: string
   /** mărimea desenului, ca fracție din raza unui hexagon */
   readonly marime: number
 }
 
 export const ENEMIES: Readonly<Record<EnemyType, EnemyInfo>> = {
-  normal: { nume: 'Normal', viata: 100, viteza: 40, dauna: 1, culoare: '#e8e2d4', marime: 0.32 },
-  rapid: { nume: 'Rapid', viata: 60, viteza: 75, dauna: 1, culoare: '#f2c94c', marime: 0.26 },
-  blindat: { nume: 'Blindat', viata: 260, viteza: 24, dauna: 2, culoare: '#8a96a3', marime: 0.4 },
-  roi: { nume: 'Roi', viata: 30, viteza: 55, dauna: 1, culoare: '#c77dff', marime: 0.2 },
+  normal: { nume: 'Normal', viata: 100, viteza: 40, dauna: 1, armura: 0, aur: 6, culoare: '#e8e2d4', marime: 0.32 },
+  rapid: { nume: 'Rapid', viata: 60, viteza: 75, dauna: 1, armura: 0, aur: 5, culoare: '#f2c94c', marime: 0.26 },
+  blindat: { nume: 'Blindat', viata: 260, viteza: 24, dauna: 2, armura: 8, aur: 12, culoare: '#8a96a3', marime: 0.4 },
+  roi: { nume: 'Roi', viata: 30, viteza: 55, dauna: 1, armura: 0, aur: 2, culoare: '#c77dff', marime: 0.2 },
   // Deocamdată bossul e doar un inamic mare și lent; mecanica lui vine în felia „draft și boss”.
-  boss: { nume: 'Boss', viata: 2000, viteza: 18, dauna: 10, culoare: '#e5533d', marime: 0.6 },
+  boss: { nume: 'Boss', viata: 2000, viteza: 18, dauna: 10, armura: 5, aur: 100, culoare: '#e5533d', marime: 0.6 },
 }
 
 export interface WaveGroup {

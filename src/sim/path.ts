@@ -63,11 +63,22 @@ function remainingKeys(path: readonly Hex[], start: number, span: number): Set<s
   return out
 }
 
+/** Hexagoane pe care drumul nu are voie să treacă, în afară de teren (de exemplu, cele cu turnuri). */
+const NONE: ReadonlySet<string> = new Set()
+
 /** De ce nu poate intra hexagonul în ocolul dintre a și b? `undefined` = poate. */
-function whyNotHost(map: GameMap, h: Hex, kept: ReadonlySet<string>, a: Hex, b: Hex): string | undefined {
+function whyNotHost(
+  map: GameMap,
+  h: Hex,
+  kept: ReadonlySet<string>,
+  a: Hex,
+  b: Hex,
+  blocked: ReadonlySet<string>,
+): string | undefined {
   const t = map.terrain.get(key(h))
   if (t === undefined) return `${key(h)} e în afara hărții`
   if (!TERRAIN[t].permiteTraseu) return `pe ${TERRAIN[t].nume.toLowerCase()} nu se poate construi drum`
+  if (blocked.has(key(h))) return `pe ${key(h)} e un turn — drumul nu trece prin turnuri`
   if (kept.has(key(h))) return `${key(h)} e deja pe traseu`
   for (const n of neighbors(h)) {
     if (kept.has(key(n)) && !equals(n, a) && !equals(n, b)) return `drumul s-ar atinge singur lângă ${key(n)}`
@@ -85,6 +96,7 @@ export function detourOptions(
   start: number,
   span: number,
   extra: number,
+  blocked: ReadonlySet<string> = NONE,
 ): Hex[][] {
   const e = ends(path, start, span)
   if (!e || extra < INSERARE.minim || extra > INSERARE.maxim) return []
@@ -102,7 +114,7 @@ export function detourOptions(
     }
     for (const n of neighbors(from)) {
       if (used.has(key(n))) continue
-      if (whyNotHost(map, n, kept, a, b) !== undefined) continue
+      if (whyNotHost(map, n, kept, a, b, blocked) !== undefined) continue
       // Un hexagon din mijlocul ocolului nu poate fi vecin cu b (ar scurtcircuita ocolul).
       if (current.length + 1 < length && areNeighbors(n, b)) continue
       // …nici un hexagon de după primul nu poate fi vecin cu a…
@@ -127,6 +139,7 @@ export function insertDetour(
   start: number,
   span: number,
   hexes: readonly Hex[],
+  blocked: ReadonlySet<string> = NONE,
 ): Result<Hex[]> {
   const e = ends(path, start, span)
   if (!e) return fail(`porțiunea care începe la ${start} cu ${span} hexagoane nu există`)
@@ -139,7 +152,7 @@ export function insertDetour(
   const fresh = new Set<string>()
   let prev = a
   for (const [i, h] of hexes.entries()) {
-    const why = whyNotHost(map, h, kept, a, b)
+    const why = whyNotHost(map, h, kept, a, b, blocked)
     if (why) return fail(why)
     if (fresh.has(key(h))) return fail(`ocolul trece de două ori prin ${key(h)}`)
     if (!areNeighbors(prev, h)) return fail(`${key(prev)} și ${key(h)} nu sunt vecine`)
@@ -164,13 +177,19 @@ export interface DetourOption {
  * Porțiunile încearcă lungimi de la 1 la INSERARE.portiuneMaxima; capetele fixe nu se înlocuiesc.
  * Ordinea e deterministă: porțiune mai scurtă întâi, apoi start crescător, apoi ordinea căutării.
  */
-export function optionsAround(map: GameMap, path: readonly Hex[], index: number, extra: number): DetourOption[] {
+export function optionsAround(
+  map: GameMap,
+  path: readonly Hex[],
+  index: number,
+  extra: number,
+  blocked: ReadonlySet<string> = NONE,
+): DetourOption[] {
   const out: DetourOption[] = []
   if (index <= 0 || index >= path.length - 1) return out
   for (let span = 1; span <= INSERARE.portiuneMaxima; span++) {
     for (let start = index - span; start <= index - 1; start++) {
       if (start < 0 || start + span + 1 > path.length - 1) continue
-      for (const hexes of detourOptions(map, path, start, span, extra)) out.push({ start, span, hexes })
+      for (const hexes of detourOptions(map, path, start, span, extra, blocked)) out.push({ start, span, hexes })
     }
   }
   return out

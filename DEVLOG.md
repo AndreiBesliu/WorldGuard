@@ -134,3 +134,119 @@ inamicii care merg pe drum, pe o simulare cu tick fix, deterministă.
 
 **Rămâne:** felia 2 — turnurile de bază și țintirea. Restul listei din intrarea anterioară rămâne
 neschimbat.
+
+---
+
+## 04.10.2026 — Felia 2: turnurile de bază și țintirea
+
+**Cerut de owner:** „continua” — felia următoare din listă. Cele două întrebări de la felia 1 (bossul,
+limita de ocoluri) n-au primit încă răspuns; am păstrat ce era: boss la 5, 10 și 15, ocoluri nelimitate.
+
+**Făcut:**
+- `src/data/towers.ts`:
+  - 4 turnuri, fiecare cu un rol venit doar din cifre (stările lor vin în felia 3):
+
+    | turn | aur | daună | rază | lovește la | rol |
+    |---|---|---|---|---|---|
+    | Fizic | 55 | 40 | 2 | 1,5 s | lovitură grea, trece de armură |
+    | Foc | 60 | 9 | 2 | 0,25 s | lovituri dese, slab contra armurii |
+    | Frig | 55 | 12 | 1 | 0,4 s | toți inamicii de lângă el (zonă) |
+    | Fulger | 70 | 36 | 3 | 1,2 s | bătaie lungă |
+
+  - 4 moduri de țintire: primul, ultimul, cel mai puternic, cel mai slab;
+  - `AUR_START` = 120.
+- `src/data/enemies.ts`: `armura` (blindat 8, boss 5, restul 0) și `aur` la ucidere (2–12; bossul 100).
+- `src/data/terrain.ts`: `permiteTurn` (pe apă nu se construiește).
+- `src/sim/game.ts`:
+  - decizii noi:
+    - `turn`: doar în pregătire, costă aur;
+    - `tintire`: și în timpul valului, cu tick-ul ei în jurnal;
+  - `checkBuild` întoarce motivul refuzului; aceeași funcție alimentează previzualizarea;
+  - ordinea unui tick: mers → apariții → turnurile lovesc, în ordinea id-urilor (un inamic ucis nu mai
+    e țintă) → cei uciși lasă aur → sfârșitul valului;
+  - armura scade din fiecare lovitură, dar trece mereu cel puțin 1;
+  - turnurile încep fiecare val încărcate;
+  - raza = distanța pe grilă până la hexagonul de drum pe care stă inamicul;
+  - egalitățile la țintire se rup după progres, apoi după id.
+- `src/sim/path.ts`: drumul nu trece prin turnuri (parametrul `blocked`), cu motiv în refuz.
+- `src/render/canvas.ts`:
+  - turnurile, câte o formă pe tip;
+  - raza la hover;
+  - fantoma turnului, cu X când nu se poate construi;
+  - loviturile: o linie, sau un inel la turnul de zonă;
+  - bara de viață.
+- `src/main.ts`:
+  - mouse-ul face ce trebuie după ce e sub el: drum = ocol, hexagon liber = turn, turn = schimbă ținta;
+  - 4–7 aleg turnul;
+  - Z anulează orice decizie din pregătirea curentă;
+  - `window.wg.state` doar în `npm run dev`. Am verificat că lipsește din build.
+- 11 teste noi, 59 în total:
+  - construcția și refuzurile, fiecare cu motivul exact;
+  - drumul care nu trece prin turnuri;
+  - regula fiecărui mod de țintire și ruperea egalităților;
+  - raza egală cu distanța pe grilă;
+  - schimbarea țintei în timpul valului, reprodusă de replay;
+  - armura;
+  - cadența exactă a loviturilor;
+  - aurul egal cu recompensa celor uciși;
+  - turnul de zonă, cu mai multe ținte deodată;
+  - turnurile țin baza mai mult, iar partida iese identic de două ori.
+- Verificat în browser (Chromium headless), fără erori în consolă:
+  - fantoma și raza;
+  - refuzul pe apă;
+  - schimbarea țintei și anularea ei cu Z;
+  - valul 1 curățat (20/20 vieți, aurul 10 + 8 × 6 = 58);
+  - trei valuri jucate din clicuri, cu ocoluri și turnuri.
+
+**Măsurat — și a schimbat cifrele.**
+
+Botul folosit: pune turnuri pe hexagonul liber care acoperă cel mai mult drum, cheltuiește tot aurul,
+alternează tipurile (sau folosește unul singur). Când are voie la ocoluri, ia primul +3 găsit de la
+mijlocul drumului spre capete. 20 de hărți (seed 1–20).
+
+- **Prima trecere avea o strategie dominantă:** Fizic singur câștiga pe toate cele 20 de hărți **fără
+  niciun ocol**, iar Fulger singur cădea în valul 2 (Frig singur, la fel, pe 18 din 20). Am scumpit și
+  încetinit Fizicul și am întărit Fulgerul și Frigul (cifrele din tabelul de mai sus). Rezultatul, cu
+  cifrele finale:
+
+  | strategie | fără ocoluri | 1 ocol pe val | ocoluri nelimitate |
+  |---|---|---|---|
+  | doar Fizic | cade în valul 3–4 | câștigă 20/20 (6–20 vieți) | câștigă 20/20 (20 vieți) |
+  | doar Foc | cade în valul 4 | cade în valul 5–9 | — |
+  | doar Frig | cade în valul 7–10 | cade în valul 10 (bossul) | — |
+  | doar Fulger | cade în valul 3 | câștigă 20/20 (9–17 vieți) | — |
+  | Frig + Fulger | — | câștigă 20/20 (15–20 vieți) | — |
+  | toate, pe rând | cade în valul 4–5 | câștigă 19/20 (9–20 vieți) | câștigă 20/20 (20 vieți) |
+
+- **Ce spune tabelul:**
+  - **fără ocoluri nu se câștigă** cu nicio strategie: drumul e jumătate din apărare, cum cere pilonul 1;
+  - **cu ocoluri nelimitate, totul câștigă fără să piardă o viață.** E încă un argument pentru limita de
+    ocoluri;
+  - **cu un ocol pe val, Fizic și Fulger câștigă și singure.** Contracarările (stări, valuri cu trăsături)
+    vin din felia 3.
+- **Echilibrul e pe muchie de cuțit:**
+  - viață ×1,3 pe toate valurile → majoritatea partidelor cad la bossul din valul 5, chiar cu toate
+    turnurile și cu un ocol pe val;
+  - aurul vine doar din inamici uciși, deci o scăpare devreme se rostogolește;
+  - bossul din valul 5 e un zid.
+- **Durata, cu un ocol pe val:** 8–12 minute la 1×; cu ocoluri nelimitate, 9–25 de minute. Ținta din GDD
+  §4 e 20–30 de minute, deci valurile sunt prea scurte. Se reglează din compoziția valurilor, după draft și
+  economie.
+
+**Propuneri ale mele, nedecise:**
+- toate cifrele de mai sus;
+- armura ca valoare fixă scăzută din fiecare lovitură, cu minimum 1;
+- turnurile se construiesc doar între valuri; ținta se schimbă oricând;
+- drumul nu trece prin turnuri: un turn pus devreme îți blochează ocolurile de mai târziu;
+- pe filon se poate construi;
+- se pornește cu 120 de aur; turnurile încep fiecare val încărcate.
+
+**Întrebări pentru owner:**
+- Rămân cele două de la felia 1 (bossul la 5, 10 și 15 sau la 5 și 10; limita de ocoluri). Măsurătoarea de
+  acum le face mai urgente:
+  - fără limită de ocoluri, jocul nu se poate pierde cu turnuri puse cu cap;
+  - bossul din valul 5 decide singur majoritatea partidelor.
+- E bine ca drumul să nu poată trece prin turnuri? Alternativa: ocolul mută sau dărâmă turnul.
+
+**Rămâne:** felia 3 — stările și reacțiile (pe etichete), plus terenul în reacții, inclusiv dealul cu
+rază mai mare (GDD §5). Balansul serios vine după draft și economie.

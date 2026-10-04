@@ -20,13 +20,14 @@ npm run build
 ```
 
 ## Arhitectura
-- `src/sim/` — **nucleul de joc, determinist, fără DOM.** Hartă, traseu, decizii, valuri și inamici;
-  (mai târziu) turnuri, reacții. Tot ce contează pentru reguli stă aici.
-- `src/data/` — cifrele și regulile de conținut (teren, ocoluri, inamici și valuri, constantele partidei;
-  mai târziu turnuri).
+- `src/sim/` — **nucleul de joc, determinist, fără DOM.** Hartă, traseu, decizii, valuri și inamici,
+  turnuri și țintire; (mai târziu) reacții. Tot ce contează pentru reguli stă aici.
+- `src/data/` — cifrele și regulile de conținut (teren, ocoluri, inamici și valuri, turnuri, constantele
+  partidei).
   **Un număr de gameplay scris direct în cod e o greșeală**: îl muți în `src/data/`.
 - `src/render/` — desenarea pe Canvas 2D. Citește starea, nu o modifică.
-- `src/main.ts` — input și legătura dintre ele.
+- `src/main.ts` — input și legătura dintre ele. În `npm run dev` expune `window.wg.state` (doar citire),
+  pentru verificările în browser; blocul e sub `import.meta.env.DEV`, deci lipsește din build.
 
 ## Reguli dure în `src/sim/`
 Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
@@ -55,6 +56,15 @@ Măsurat: pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoan
 - Viteza din UI (1×/2×/4×) și pauza sunt **doar în `main.ts`**: rulează mai multe sau mai puține tick-uri
   pe cadru. Simularea nu știe de ele. Desenul interpolează între tick-uri (`Overlay.alpha`), starea nu.
 
+## Turnurile (implementat)
+- Se construiesc **doar în pregătire**, cu aur; ținta se schimbă **oricând** (decizia intră în jurnal cu
+  tick-ul ei). **Drumul nu trece prin turnuri.**
+- Ordinea unui tick: inamicii merg → apar cei noi → turnurile lovesc, în ordinea id-urilor (un inamic ucis nu
+  mai e țintă) → cei uciși lasă aur → sfârșitul valului sau al partidei.
+- Raza = distanța pe grilă până la hexagonul de drum pe care stă inamicul (cel mai apropiat centru).
+  Egalitățile la țintire se rup după progres, apoi după id. Armura scade din fiecare lovitură, minimum 1.
+- O verificare de construcție (`checkBuild`) dă motivul refuzului; aceeași funcție alimentează previzualizarea.
+
 ## Cum se lucrează
 - După fiecare felie: `npm run check` verde → intrare în `DEVLOG.md` → commit. Stagează explicit
   fișierele, **nu** `git add -A` (owner-ul rulează sesiuni paralele pe proiecte diferite).
@@ -71,4 +81,6 @@ Măsurat: pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoan
   33 de teste.
 - **Felia 1 (04.10.2026):** valurile și inamicii pe drum, pe tick fix: 15 valuri, 5 tipuri de inamici,
   vieți, faze (pregătire → val → pregătire / câștigat / pierdut), viteză și pauză în UI. 48 de teste.
-- **Următorul:** felia 2 — turnurile de bază și țintirea (vezi DEVLOG).
+- **Felia 2 (04.10.2026):** 4 turnuri de bază (fizic, foc, frig, fulger), 4 moduri de țintire, armură,
+  aur din inamicii uciși, drumul ocolește turnurile. Cifrele, măsurate cu un bot. 59 de teste.
+- **Următorul:** felia 3 — stările și reacțiile (pe etichete), plus terenul în reacții (vezi DEVLOG).
