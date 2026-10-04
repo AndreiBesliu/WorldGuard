@@ -1,5 +1,7 @@
 // Desenarea pe Canvas 2D. Citește starea, nu o modifică.
 
+import { ENEMIES } from '../data/enemies'
+import { MILI_HEX } from '../data/joc'
 import { TERRAIN } from '../data/terrain'
 import { type Hex } from '../sim/hex'
 import type { GameState } from '../sim/game'
@@ -67,6 +69,11 @@ export interface Overlay {
   readonly preview?: readonly Hex[]
   readonly lines: readonly string[]
   readonly message?: string
+  /**
+   * Cât din tick-ul următor a trecut deja (0..1). Doar desenul îl folosește, ca mișcarea să fie lină între
+   * două tick-uri; simularea rămâne pe pas fix.
+   */
+  readonly alpha?: number
 }
 
 export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: Overlay): void {
@@ -144,6 +151,29 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
       ctx.stroke()
       ctx.setLineDash([])
     }
+  }
+
+  // Inamicii: poziția se interpolează între centrele hexagoanelor de drum.
+  const lastProgress = (s.path.length - 1) * MILI_HEX
+  for (const e of s.inamici) {
+    const progres = Math.min(lastProgress, e.progres + ENEMIES[e.tip].viteza * (o.alpha ?? 0))
+    const idx = Math.floor(progres / MILI_HEX)
+    const frac = (progres % MILI_HEX) / MILI_HEX
+    const from = s.path[idx]
+    const to = s.path[idx + 1] ?? from
+    if (!from || !to) continue
+    const p0 = hexToPixel(from, l)
+    const p1 = hexToPixel(to, l)
+    const x = p0.x + (p1.x - p0.x) * frac
+    const y = p0.y + (p1.y - p0.y) * frac
+    const info = ENEMIES[e.tip]
+    ctx.beginPath()
+    ctx.arc(x, y, Math.max(3, l.size * info.marime), 0, Math.PI * 2)
+    ctx.fillStyle = info.culoare
+    ctx.fill()
+    ctx.strokeStyle = e.tip === 'boss' ? '#ffffff' : 'rgba(0, 0, 0, 0.55)'
+    ctx.lineWidth = e.tip === 'boss' ? 2 : 1
+    ctx.stroke()
   }
 
   // Capetele fixe

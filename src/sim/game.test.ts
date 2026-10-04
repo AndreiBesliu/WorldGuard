@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyDecision, fingerprint, newGame, replay, type Decision, type GameState } from './game'
+import { applyDecision, fingerprint, newGame, replay, type Decision, type GameState, type LoggedDecision } from './game'
 import { key } from './hex'
 import { optionsAround } from './path'
 import { createRng } from './rng'
@@ -34,7 +34,7 @@ describe('jurnalul deciziilor', () => {
 
   it('jurnalul trece prin JSON fără pierderi (se poate salva și trimite)', () => {
     const s = playRandom(5, 25)
-    const roundTrip = JSON.parse(JSON.stringify(s.jurnal)) as Decision[]
+    const roundTrip = JSON.parse(JSON.stringify(s.jurnal)) as LoggedDecision[]
     expect(fingerprint(replay(5, roundTrip))).toBe(fingerprint(s))
   })
 

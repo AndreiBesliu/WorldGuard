@@ -20,9 +20,10 @@ npm run build
 ```
 
 ## Arhitectura
-- `src/sim/` — **nucleul de joc, determinist, fără DOM.** Hartă, traseu, decizii, (mai târziu) valuri,
-  turnuri, reacții. Tot ce contează pentru reguli stă aici.
-- `src/data/` — cifrele și regulile de conținut (teren, ocoluri, mai târziu turnuri, inamici).
+- `src/sim/` — **nucleul de joc, determinist, fără DOM.** Hartă, traseu, decizii, valuri și inamici;
+  (mai târziu) turnuri, reacții. Tot ce contează pentru reguli stă aici.
+- `src/data/` — cifrele și regulile de conținut (teren, ocoluri, inamici și valuri, constantele partidei;
+  mai târziu turnuri).
   **Un număr de gameplay scris direct în cod e o greșeală**: îl muți în `src/data/`.
 - `src/render/` — desenarea pe Canvas 2D. Citește starea, nu o modifică.
 - `src/main.ts` — input și legătura dintre ele.
@@ -44,6 +45,16 @@ Capete fixe (intrare `I`, bază `B`). O bucată înlocuiește o porțiune de 1�
 cu +1..+3. Drumul nu are voie să se atingă singur (două hexagoane de drum neconsecutive nu pot fi vecine).
 Măsurat: pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoane — de aici `portiuneMaxima: 3`.
 
+## Timpul (implementat)
+- Simularea merge pe **tick fix** (`TICK_MS` = 50 ms, 20 pe secundă) și **doar în timpul unui val**. Între
+  valuri (faza `pregatire`) timpul stă pe loc: atunci se modelează drumul.
+- Pozițiile sunt **întregi**, în mili-hexagoane (`MILI_HEX` = 1000) de-a lungul drumului; vitezele sunt în
+  mili-hexagoane pe tick. Fără virgulă mobilă în stare, ca replay-ul să iasă identic pe orice mașină.
+- Fiecare decizie din jurnal are tick-ul ei (`LoggedDecision.la`). `replay(seed, jurnal, panaLaTick)`
+  rulează simularea până la fiecare decizie, o aplică, apoi continuă până la tick-ul cerut.
+- Viteza din UI (1×/2×/4×) și pauza sunt **doar în `main.ts`**: rulează mai multe sau mai puține tick-uri
+  pe cadru. Simularea nu știe de ele. Desenul interpolează între tick-uri (`Overlay.alpha`), starea nu.
+
 ## Cum se lucrează
 - După fiecare felie: `npm run check` verde → intrare în `DEVLOG.md` → commit. Stagează explicit
   fișierele, **nu** `git add -A` (owner-ul rulează sesiuni paralele pe proiecte diferite).
@@ -58,4 +69,6 @@ Măsurat: pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoan
 ## Stare
 - **v0.0.1 (04.10.2026):** schelet + harta pe hexagoane + traseul cu ocoluri + jurnalul deciziilor.
   33 de teste.
-- **Următorul:** prototipul 1 din GDD §10, felie cu felie (vezi DEVLOG).
+- **Felia 1 (04.10.2026):** valurile și inamicii pe drum, pe tick fix: 15 valuri, 5 tipuri de inamici,
+  vieți, faze (pregătire → val → pregătire / câștigat / pierdut), viteză și pauză în UI. 48 de teste.
+- **Următorul:** felia 2 — turnurile de bază și țintirea (vezi DEVLOG).
