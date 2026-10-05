@@ -119,6 +119,9 @@ comută **individual ↔ combinat**; combinat = **un singur turn**.
   tot grupul unit trece pe individual (nu rămâne combinat pe ascuns).
 - În `step`, grupul combinat trage o dată, la rândul liderului: o țintă din reuniunea razelor, lovită pe rând de
   atingerile din `combinedContacts` (cifrele în `COMBINARE`, `src/data/towers.ts`). Ținta se schimbă pentru tot grupul.
+- **Armura** (decis de owner, 05.10.2026): combinarea singură nu trece de ea. O atingere combinată poartă `lovituri`
+  (de câte ori ar fi lovit turnurile separat), iar armura se scade de atâtea ori. Doar combinațiile din
+  `COMBINARE.armura` o străpung (`penetrare`) sau o ignoră; dauna din reacții rămâne o lovitură separată.
 - UI-ul nu dublează regulile: previzualizarea „în ce grup intră turnul ăsta” aplică decizia pe o copie a stării.
 
 ## Cum se lucrează
@@ -146,5 +149,6 @@ comută **individual ↔ combinat**; combinat = **un singur turn**.
   Cifrele, măsurate cu botul. 86 de teste.
 - **Publicare (05.10.2026):** Firebase Hosting `worldguard-910f1` — previzualizare la fiecare PR, live la `main`.
 - **Felia 4 (05.10.2026):** grupurile de turnuri (individual sau combinat), bălțile de ulei pe hartă, interfața
-  HTML nouă (bare, panou, cărți, butoane pentru tot). 104 teste.
+  HTML nouă (bare, panou, cărți, butoane pentru tot). Armura la lovitura combinată: se scade pe lovituri, doar
+  unele combinații o străpung sau o ignoră. 107 teste.
 - **Următorul:** de ales cu owner-ul — draftul și bossul, sau economia (vezi DEVLOG).

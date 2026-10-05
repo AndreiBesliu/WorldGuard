@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { COMBINARE, TOWERS, TOWER_TYPES, type TowerType } from '../data/towers'
 import {
   applyDecision,
+  armorCombos,
   checkCombine,
   combinedContacts,
+  damageAfterArmor,
   fingerprint,
   groupOf,
   groupReload,
+  incompatiblePair,
   isCombined,
   newGame,
   step,
@@ -113,18 +116,63 @@ describe('lovitura combinată', () => {
       expect(TOWERS[a]).toBeDefined()
       expect(TOWERS[b]).toBeDefined()
     }
+    // Fiecare combinație de armură se poate face dintr-un grup care se poate combina: elementele ei vin de la
+    // turnuri, iar printre turnurile alea nu e o pereche incompatibilă.
+    for (const c of COMBINARE.armura) {
+      const tipuri = c.elemente.map((e) => TOWER_TYPES.find((t) => TOWERS[t].element === e))
+      expect(tipuri.every((t) => t !== undefined)).toBe(true)
+      expect(incompatiblePair(tipuri as TowerType[])).toBeUndefined()
+      expect(c.ignora === true || (c.penetrare ?? 0) > 0).toBe(true)
+    }
+  })
+
+  it('armura se scade o dată pe lovitură; o atingere care ține locul mai multor lovituri o scade de mai multe ori', () => {
+    // Blindatul are armura 8.
+    expect(damageAfterArmor(40, 'blindat')).toBe(32)
+    expect(damageAfterArmor(62, 'blindat', 6)).toBe(62 - 8 * 6)
+    expect(damageAfterArmor(10, 'blindat', 3)).toBe(3) // cel puțin 1 pe lovitură
+    expect(damageAfterArmor(40, 'blindat', 1, 5)).toBe(37)
+    expect(damageAfterArmor(40, 'blindat', 2, 99)).toBe(40)
+    expect(damageAfterArmor(40, 'blindat', 6, Infinity)).toBe(40)
+  })
+
+  it('combinarea singură nu trece de armură (decis de owner): doi Foc combinați fac blindatului cât doi Foc separați', () => {
+    const blindat = (id: number, i: number): Enemy => ({ ...foe(id, i), tip: 'blindat' })
+    const base = build(arena(), ['foc', '0,-1'], ['foc', '1,-1'])
+    const ind = step(inWave(base, [blindat(1, 9)]))
+    const comb = step(inWave(must(base, { tip: 'combina', turn: 1, activ: true }), [blindat(1, 9)]))
+    // Separat: 2 × (9 − 8). Combinat: 18 − 8 × 2.
+    expect(5000 - ind.inamici[0]!.viata).toBe(2)
+    expect(5000 - comb.inamici[0]!.viata).toBe(2)
+  })
+
+  it('unele combinații străpung armura sau o ignoră: Fier încins (Fizic + Foc), Metal fragil (Fizic + Frig)', () => {
+    expect(armorCombos(['fizic', 'foc']).map((c) => c.nume)).toEqual(['Fier încins'])
+    expect(armorCombos(['frig', 'fizic', 'fizic']).map((c) => c.nume)).toEqual(['Metal fragil'])
+    expect(armorCombos(['fizic', 'fulger'])).toEqual([])
+    const blindat: Enemy = { ...foe(1, 9), tip: 'blindat' }
+    // Fier încins: impact 46 + foc 62, fără armură = 108 (cu armură ar fi 38 + 14 = 52).
+    const fier = step(inWave(must(build(arena(), ['fizic', '0,-1'], ['foc', '1,-1']), { tip: 'combina', turn: 1, activ: true }), [blindat]))
+    expect(5000 - fier.inamici[0]!.viata).toBe(108)
+    // Metal fragil: armura 8 − 5 = 3. Frig 34 (de 4 ori) → 22, impact 46 → 43; total 65 (fără străpungere: 4 + 38 = 42).
+    const fragil = step(inWave(must(build(arena(), ['frig', '0,-1'], ['fizic', '1,-1']), { tip: 'combina', turn: 1, activ: true }), [blindat]))
+    expect(5000 - fragil.inamici[0]!.viata).toBe(65)
+    // Individual, combinațiile nu contează: aceleași turnuri, separate, fac cât fac singure.
+    const sep = step(inWave(build(arena(), ['fizic', '0,-1'], ['foc', '1,-1']), [blindat]))
+    expect(5000 - sep.inamici[0]!.viata).toBe(TOWERS.fizic.dauna - 8 + (TOWERS.foc.dauna - 8))
   })
 
   it('fiecare turn dă ce ar fi dat singur într-o reîncărcare a grupului, plus bonusul pe elemente; în ordinea fixă', () => {
     // Fizic 40 la 30 de tick-uri, Fulger 36 la 24: grupul trage la 30; Fulger ar fi dat 36 × 30/24 = 45.
     // Două elemente diferite: +15%. Fulgerul lovește întâi.
     expect(groupReload(['fizic', 'fulger'])).toBe(30)
+    // Fiecare atingere ține locul loviturilor de atunci: Fulger 30/24 = 1,25 → 1, Fizic 1.
     expect(combinedContacts(['fizic', 'fulger'])).toEqual([
-      { element: 'fulger', dauna: Math.floor((45 * 115) / 100), aplica: undefined },
-      { element: 'impact', dauna: Math.floor((40 * 115) / 100), aplica: undefined },
+      { element: 'fulger', dauna: Math.floor((45 * 115) / 100), aplica: undefined, lovituri: 1 },
+      { element: 'impact', dauna: Math.floor((40 * 115) / 100), aplica: undefined, lovituri: 1 },
     ])
     // Același element de două ori se adună, fără bonus; Foc lasă arsura.
-    expect(combinedContacts(['foc', 'foc'])).toEqual([{ element: 'foc', dauna: 18, aplica: 'arde' }])
+    expect(combinedContacts(['foc', 'foc'])).toEqual([{ element: 'foc', dauna: 18, aplica: 'arde', lovituri: 2 }])
     // Trei elemente: +30%; Foc cu reîncărcare 5 contribuie 9 × 30/5 = 54.
     expect(combinedContacts(['foc', 'fizic', 'fulger']).map((c) => [c.element, c.dauna])).toEqual([
       ['fulger', Math.floor((45 * 130) / 100)],

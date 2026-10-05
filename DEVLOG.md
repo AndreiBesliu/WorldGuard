@@ -721,3 +721,64 @@ Rezultatul se vede la primul run al PR-ului.
 2. **„Focul și frigul sunt incompatibile”**: am aplicat-o și la grupuri — un grup cu amândouă nu se combină.
    Corect?
 3. **Ce urmează:** draftul și bossul (GDD §10), sau economia (dobânda și pământul)?
+
+---
+
+## 05.10.2026 (6) — Răspunsurile owner-ului la felia 4: armura la lovitura combinată
+
+**Răspunsuri:**
+1. La „combinarea trece de armură, e dorit?”: **„unele combinații cresc armor piercing sau fac bypass”**. Deci
+   combinarea singură nu trece de armură; anumite combinații o străpung sau o ignoră.
+2. „Un grup cu Foc și Frig nu se combină”: **da**. E decis acum, nu mai e propunere.
+3. „Ce urmează: draftul și bossul, sau economia?”: „da”. Întrebarea era „sau-sau”, deci încă nu știu care
+   urmează. Am întrebat din nou.
+
+**Făcut:**
+- `Contact` are două câmpuri noi:
+  - `lovituri`: de câte ori se scade armura;
+  - `penetrare`: câtă armură nu contează (`Infinity` = deloc).
+  `damageAfterArmor` scade armura o dată pe lovitură, cu minimum 1 pe lovitură.
+- O atingere combinată poartă loviturile pe care le-ar fi dat turnurile ei separat într-o reîncărcare a grupului,
+  rotunjite la cel mai apropiat întreg (Fulger 30/24 → 1, Frig 30/8 → 4, Foc 30/5 → 6). Dauna din reacții
+  (explozia, lanțul electrocutării) rămâne o lovitură separată.
+- `COMBINARE.armura`, propunere: **Fizic + Foc = „Fier încins”**, ignoră armura; **Fizic + Frig = „Metal fragil”**,
+  străpunge 5. Pe elemente, nu pe tipuri, ca regulile reacțiilor. Mai multe combinații se adună, iar ignorarea
+  câștigă.
+- Panoul unui grup are rândul „Armura”: combinația care se aplică sau „se scade la fiecare lovitură (de n ori)”.
+  Ajutorul listează combinațiile.
+
+**Teste: 107** (3 noi, plus datele combinațiilor de armură):
+- armura pe lovituri și străpungerea, unitar;
+- doi Foc combinați fac unui blindat cât doi Foc separați (2 daune);
+- Fier încins: 108 daune unui blindat, față de 52 fără ea;
+- Metal fragil: 65, față de 42.
+
+Șapte mutații pe codul nou, toate prinse.
+
+**Măsurat — botul, strategiile combinate**, aceleași 20 de hărți. Câștiguri din 20:
+
+| strategie (lipite, combinat) | înainte (combinarea trecea de armură) | acum |
+|---|---|---|
+| doar Foc | 20 | **10** |
+| doar Frig | 7 | **0** |
+| doar Fizic | 8 | 8 |
+| doar Fulger | 20 | 20 |
+| Fizic + Foc (Fier încins) | 12 | 12 |
+| Frig + Fizic (Metal fragil) | 14 | 14 |
+| Frig + Fulger | 20 | 20 |
+| Fizic + Fulger | 16 | 16 |
+| doar Foc, cu ocol spre ulei | 19 | 19 |
+
+- Focul combinat nu mai câștigă orice: rămâne mai bun decât Focul individual (10 față de 6), dar armura
+  blindaților îl oprește.
+- Combinațiile de armură țin la nivel cele două amestecuri, Fizic + Foc și Fizic + Frig.
+- Uleiul rămâne drumul Focului: 19/20 cu un ocol spre baltă.
+
+**Verificat în browser** (fără erori în consolă):
+- grupul Foc + Fizic arată „Armura: Fier încins: ignoră armura”, înainte și după combinare;
+- ajutorul listează cele două combinații.
+
+**Propuneri ale mele, nedecise:** care combinații și cu cât (Fier încins, Metal fragil); rotunjirea loviturilor
+la cel mai apropiat întreg.
+
+**Întrebare pentru owner:** ce urmează, **draftul și bossul** (GDD §10) sau **economia** (dobânda și pământul)?

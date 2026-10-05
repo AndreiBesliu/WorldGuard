@@ -63,7 +63,8 @@ boss la valurile 5, 10 și 15 (în prototip)
 **Decis:** reacții pe inamic + **grupuri de turnuri** (05.10.2026; înlocuiește „bonusuri de vecinătate, fuziunea mai târziu”).
 - **Turnurile puse unul lângă altul fac un grup**, de orice tipuri. Grupul se comută (toggle) între **individual** (fiecare turn trage singur) și **combinat**: grupul se comportă ca **un singur turn** (owner-ul a ales „un singur turn” dintre variante).
 - **Un turn nou pus lângă un grup combinat intră în grup.**
-- **Focul și frigul sunt incompatibile** (decis 05.10.2026): pe inamic se anulează (dezgheț). Propunerea mea, din „incompatibile”: un grup cu Foc și Frig nu se poate combina.
+- **Focul și frigul sunt incompatibile** (decis 05.10.2026): pe inamic se anulează (dezgheț), iar un grup cu Foc și Frig nu se poate combina.
+- **Armura, la lovitura combinată** (decis 05.10.2026): combinarea singură nu trece de armură — armura se scade de câte ori ar fi lovit turnurile separat. **Unele combinații o străpung sau o ignoră.** Propunerea pentru prototip: Fizic + Foc = „Fier încins” (ignoră armura), Fizic + Frig = „Metal fragil” (străpunge 5).
 - **Propunerea pentru lovitura combinată** (prototip, felia 4): o singură țintă, aleasă din razele tuturor turnurilor; fiecare turn contribuie cu dauna pe care ar fi dat-o singur într-o reîncărcare a grupului (a celui mai lent turn), plus 15% pentru fiecare element diferit peste primul (cel mult 3); elementele lovesc pe rând, fulger → frig → impact → foc. Un turn nou care leagă grupul combinat de turnuri individuale, sau aduce o pereche incompatibilă, lasă grupul unit pe individual. Cifrele și botul: DEVLOG, felia 4.
 
 **Propunerea pentru prototip** (din cercetare):
@@ -251,4 +252,6 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | Bălțile de ulei: 2 × cel mult 3 hexagoane, la cel puțin 2 hexagoane de drumul inițial | propunere |
 | Apa de lângă drum: cantitatea de acum rămâne (05.10.2026) | decis |
 | Focul și frigul sunt incompatibile: se anulează pe inamic (05.10.2026) | decis |
-| …și nu se pot combina în același grup | propunere (din „incompatibile”) |
+| …și nu se pot combina în același grup (05.10.2026) | decis |
+| Combinarea singură nu trece de armură; unele combinații o străpung sau o ignoră (05.10.2026) | decis |
+| Care combinații: Fizic + Foc ignoră armura, Fizic + Frig străpunge 5 | propunere |

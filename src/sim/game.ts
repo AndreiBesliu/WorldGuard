@@ -15,7 +15,7 @@ import { ENEMIES, WAVES, type EnemyType } from '../data/enemies'
 import { MILI_HEX, VIETI_BAZA } from '../data/joc'
 import type { ReactionType } from '../data/reactions'
 import { INSERARE, TERRAIN, type Terrain } from '../data/terrain'
-import { AUR_START, COMBINARE, TARGET_MODES, TOWERS, type TargetMode, type TowerType } from '../data/towers'
+import { AUR_START, COMBINARE, TARGET_MODES, TOWERS, type ArmorCombo, type TargetMode, type TowerType } from '../data/towers'
 import { distance, fromKey, key, neighbors, type Hex } from './hex'
 import { generateMap, type GameMap } from './map'
 import { detourOptions, insertDetour } from './path'
@@ -281,22 +281,36 @@ export function incompatiblePair(tipuri: readonly TowerType[]): readonly [TowerT
 /** Reîncărcarea unui grup combinat: a celui mai lent turn. */
 export const groupReload = (tipuri: readonly TowerType[]): number => Math.max(...tipuri.map((t) => TOWERS[t].reincarcare))
 
+/** Combinațiile de elemente din grup care schimbă armura (`COMBINARE.armura`), în ordinea din date. */
+export function armorCombos(tipuri: readonly TowerType[]): ArmorCombo[] {
+  const elemente = new Set(tipuri.map((t) => TOWERS[t].element))
+  return COMBINARE.armura.filter((c) => c.elemente.every((e) => elemente.has(e)))
+}
+
 /**
  * Lovitura unui grup combinat, ca listă de atingeri în ordinea `COMBINARE.ordine`. Pentru fiecare element: suma
  * daunelor pe care turnurile lui le-ar fi dat singure într-o reîncărcare a grupului, plus `bonusPeElement`% pentru
  * fiecare element diferit din grup peste primul. Rotunjirile sunt în jos, pe întregi.
+ *
+ * Armura (decis de owner, 05.10.2026): se scade de câte ori ar fi lovit turnurile separat în timpul ăsta (rotunjit
+ * la cel mai apropiat întreg, cel puțin o dată pe turn), deci combinarea singură nu trece de ea. Doar combinațiile
+ * din `COMBINARE.armura` o străpung (`penetrare`) sau o ignoră.
  */
 export function combinedContacts(tipuri: readonly TowerType[]): Contact[] {
   const R = groupReload(tipuri)
   const elemente = new Set(tipuri.map((t) => TOWERS[t].element))
   const bonus = 100 + COMBINARE.bonusPeElement * Math.min(elemente.size - 1, COMBINARE.elementeInPlus)
+  const combos = armorCombos(tipuri)
+  const penetrare = combos.some((c) => c.ignora) ? Infinity : combos.reduce((n, c) => n + (c.penetrare ?? 0), 0)
   const out: Contact[] = []
   for (const element of COMBINARE.ordine) {
     const ale = tipuri.filter((t) => TOWERS[t].element === element)
     const prim = ale[0]
     if (prim === undefined) continue
     const baza = ale.reduce((sum, t) => sum + Math.floor((TOWERS[t].dauna * R) / TOWERS[t].reincarcare), 0)
-    out.push({ element, dauna: Math.floor((baza * bonus) / 100), aplica: TOWERS[prim].aplica })
+    // R / reîncărcare, rotunjit la cel mai apropiat întreg, pe întregi: ⌊(2R + r) / 2r⌋.
+    const lovituri = ale.reduce((sum, t) => sum + Math.max(1, Math.floor((2 * R + TOWERS[t].reincarcare) / (2 * TOWERS[t].reincarcare))), 0)
+    out.push({ element, dauna: Math.floor((baza * bonus) / 100), aplica: TOWERS[prim].aplica, lovituri, ...(penetrare > 0 ? { penetrare } : {}) })
   }
   return out
 }

@@ -16,10 +16,11 @@ import { ENEMIES, WAVES, type EnemyType } from './data/enemies'
 import { TICK_MS, VIETI_BAZA, VITEZE_UI } from './data/joc'
 import { ELEMENT_NAMES, REACTION_RULES, REACTIONS, STATES, TAG_NAMES, type ReactionType } from './data/reactions'
 import { TERRAIN } from './data/terrain'
-import { COMBINARE, TARGET_MODES, TARGET_NAMES, TOWERS, TOWER_TYPES, type TowerType } from './data/towers'
+import { COMBINARE, TARGET_MODES, TARGET_NAMES, TOWERS, TOWER_TYPES, type ArmorCombo, type TowerType } from './data/towers'
 import { draw, fitLayout, hexToPixel, pixelToHex, type Layout, type Overlay } from './render/canvas'
 import {
   applyDecision,
+  armorCombos,
   checkBuild,
   checkCombine,
   checkDetourAllowed,
@@ -167,7 +168,15 @@ function statRows(tip: TowerType, hex: string): Row[] {
 
 const perSecond = (dauna: number, ticks: number): string => ((dauna * 1000) / (ticks * TICK_MS)).toFixed(1).replace('.', ',')
 
-/** Cum ar trage grupul combinat: lovitura pe elemente, cadența, dauna pe secundă față de turnurile separate. */
+/** Numele unei combinații de armură, pe turnuri: „Fizic + Foc”. */
+const comboTowers = (c: ArmorCombo): string =>
+  TOWER_TYPES.filter((t) => c.elemente.includes(TOWERS[t].element))
+    .map((t) => TOWERS[t].nume)
+    .join(' + ')
+
+const comboEffect = (c: ArmorCombo): string => (c.ignora ? 'ignoră armura' : `străpunge ${c.penetrare} armură`)
+
+/** Cum ar trage grupul combinat: lovitura pe elemente, cadența, dauna pe secundă față de turnurile separate, armura. */
 function combinedRows(grup: readonly Tower[]): Row[] {
   const tipuri = grup.map((t) => t.tip)
   const lovitura = combinedContacts(tipuri)
@@ -176,11 +185,17 @@ function combinedRows(grup: readonly Tower[]): Row[] {
   const separat = tipuri.reduce((n, t) => n + TOWERS[t].dauna / TOWERS[t].reincarcare, 0)
   const elemente = new Set(tipuri.map((t) => TOWERS[t].element)).size
   const bonus = COMBINARE.bonusPeElement * Math.min(elemente - 1, COMBINARE.elementeInPlus)
+  const combos = armorCombos(tipuri)
+  const lovituri = lovitura.reduce((n, c) => n + (c.lovituri ?? 1), 0)
+  const armura: Row = combos.length
+    ? { k: 'Armura', v: combos.map((c) => `${c.nume}: ${comboEffect(c)}`).join(' · '), ton: 'up' }
+    : { k: 'Armura', v: `se scade la fiecare lovitură (de ${lovituri} ori)` }
   return [
     { k: 'Lovitura', v: lovitura.map((c) => `${ELEMENT_NAMES[c.element]} ${c.dauna}`).join(' → ') },
     { k: 'O lovitură la', v: `${seconds(R)} (cel mai lent)` },
     { k: 'Pe secundă', v: `${perSecond(total, R)} (separat: ${perSecond(separat, 1)})`, ton: total / R > separat ? 'up' : total / R < separat ? 'down' : undefined },
     ...(bonus > 0 ? [{ k: 'Bonus', v: `+${bonus}% (${elemente} elemente)`, ton: 'up' as const }] : []),
+    armura,
   ]
 }
 
@@ -318,6 +333,7 @@ function contextView(): { view: HudView['context']; overlay: Partial<Overlay> } 
         { k: 'Pe un loc liber', v: 'construiești turnul ales' },
         { k: 'Pe un turn', v: 'click = îl alegi; T = ținta' },
         { k: 'Turnuri lipite', v: 'fac un grup; C = combinat' },
+        ...COMBINARE.armura.map((c) => ({ k: `Combinat ${comboTowers(c)}`, v: `${c.nume}: ${comboEffect(c)}` })),
       ],
       nota:
         'Ocolul e obligatoriu înainte de fiecare val. Uleiul de pe hartă unge inamicii: du drumul pe lângă el cu un ocol, apoi aprinde-i cu Foc. Focul și Frigul sunt incompatibile — se anulează și nu se combină.',
