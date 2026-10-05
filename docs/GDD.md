@@ -288,3 +288,7 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | Scuturarea ecranului (la explozii și la baza lovită) rămâne (05.10.2026) | decis |
 | Prototipul e pentru desktop; telefonul nu se optimizează (05.10.2026) | decis |
 | Felia 8: sunetul (05.10.2026) | decis |
+| Sunetele sintetizate în browser, fără fișiere; stereo după hartă; volumul pe tasta S (tare, încet, oprit) | propunere |
+| Un fundal muzical discret (05.10.2026) | decis |
+| Fundalul: acorduri lungi sintetizate, calm în pregătire, tensionat în val, grav la boss; tasta B | propunere |
+| Felia 9: meta-progresia (05.10.2026) — începe cu stratul C (Lumea); înlocuiește, pentru ea, „nu intră” din §10 | decis |
