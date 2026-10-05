@@ -1140,3 +1140,15 @@ anunțul valului.
    - un playtest al tău pe previzualizare, cu criteriul din §10 („fiecare val pune o alegere reală”);
    - sunetul (lovituri, reacții, anunțul valului);
    - meta-progresia (stratul C, lumea care ține minte), care e în afara prototipului.
+
+---
+
+## 05.10.2026 (12) — Răspunsurile owner-ului la felia 7
+
+**Răspunsuri:**
+1. „Scuturarea ecranului rămâne, o facem mai slabă sau o scoatem?”: **rămâne**.
+2. „Telefonul contează pentru prototip?”: **desktop**. Interfața de jos nu se regândește pentru ecrane înguste, iar
+   harta de ~70 px de pe telefon, cu draftul deschis, nu mai e o restanță.
+3. „Ce urmează?”: **sunetul**. E felia 8, în PR-ul ei.
+
+Nicio schimbare de cod: răspunsurile intră în GDD §14 și în `CLAUDE.md` (ținta prototipului e desktopul).

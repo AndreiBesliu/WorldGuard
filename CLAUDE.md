@@ -5,7 +5,7 @@ Faptele stabile și regulile proiectului. Se încarcă la fiecare sesiune.
 ## Ce e
 **World Guard** (nume de lucru; jucătorii sunt **Guardians**) — un tower defense roguelite pe hexagoane,
 în care modelezi pământul unor planete vii, iar ele țin minte ce le-ai făcut. Țintă: joc comercial
-pe Steam; acum, **prototip în browser**.
+pe Steam; acum, **prototip în browser, pentru desktop** (decis 05.10.2026: telefonul nu se optimizează).
 
 - Designul complet: [`docs/GDD.md`](docs/GDD.md), inclusiv registrul deciziilor (§14).
 - Tabla de design (FigJam): https://www.figma.com/board/OKHd5kH7tHWGhDcRH7GQP5

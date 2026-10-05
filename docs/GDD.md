@@ -285,3 +285,6 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | Terraformarea rămâne cum e (05.10.2026) | decis |
 | Felia 7: finisarea vizuală (05.10.2026) | decis |
 | Cum arată: decorul terenului, formele inamicilor, efectele reacțiilor, scuturarea ecranului, anunțul valului | propunere |
+| Scuturarea ecranului (la explozii și la baza lovită) rămâne (05.10.2026) | decis |
+| Prototipul e pentru desktop; telefonul nu se optimizează (05.10.2026) | decis |
+| Felia 8: sunetul (05.10.2026) | decis |
