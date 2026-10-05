@@ -124,6 +124,24 @@ comută **individual ↔ combinat**; combinat = **un singur turn**.
   `COMBINARE.armura` o străpung (`penetrare`) sau o ignoră; dauna din reacții rămâne o lovitură separată.
 - UI-ul nu dublează regulile: previzualizarea „în ce grup intră turnul ăsta” aplică decizia pe o copie a stării.
 
+## Draftul și bossul (implementat)
+Felia 5, aleasă de owner (05.10.2026). Cărțile sunt date (`src/data/draft.ts`), efectele lor le aplică `applyDecision`.
+- **Oferta** (`draftOffer`) se face în `step`, când se încheie un val, pe fluxul `draft/<val>`: `DRAFT.marime` cărți,
+  dintre care `DRAFT.dinAfara` pentru tipuri de turn pe care jucătorul nu le are. Relicvele luate nu mai apar.
+  Stă în stare (`GameState.oferta`); valul nu pornește până nu e aleasă una (`checkStartWave`).
+- **Decizia `alege`** (`checkPick` dă motivul refuzului). Efectele: turn gratuit (`gratuite`, `towerCost` = 0, se
+  consumă la construcție); îmbunătățiri pe tip (`imbunatatiri`, procente adunate → `towerDamage`, `towerReload`; le
+  folosesc și turnul singur, și `combinedContacts`); relicve (`ocoluriPeVal`, `vieti`); traseu (`ocoluriBonus`, doar în
+  pregătirea curentă). Limita de ocoluri e `detourLimit` = `ocoluriPeVal + ocoluriBonus`.
+- **„Trage cu p% mai des”** = cadența × (100 + p)/100, deci reîncărcarea × 100/(100 + p): cărțile se adună fără să
+  ajungă vreodată la zero.
+- **Dificultatea crește cu draftul:** viața unui inamic e `enemyHealth(tip, val)` = a tipului × multiplicatorul
+  valului × (1 + `CRESTERE_VIATA` × val / 100), pe întregi. Simularea, bara de viață și previzualizarea o folosesc pe
+  aceeași; nu înmulți `WAVES[i].viata` direct.
+- **Trăsăturile** (`TRAITS`, `src/data/enemies.ts`) stau pe grupurile din valuri și trec pe inamic la apariție
+  (`Enemy.trasaturi`). Imunitatea e în motorul reacțiilor: `applyState` nu aplică o stare la care inamicul e imun, deci
+  nici reacțiile care pornesc de la ea nu mai au loc.
+
 ## Cum se lucrează
 - După fiecare felie: `npm run check` verde → intrare în `DEVLOG.md` → commit. Stagează explicit
   fișierele, **nu** `git add -A` (owner-ul rulează sesiuni paralele pe proiecte diferite).
@@ -151,4 +169,6 @@ comută **individual ↔ combinat**; combinat = **un singur turn**.
 - **Felia 4 (05.10.2026):** grupurile de turnuri (individual sau combinat), bălțile de ulei pe hartă, interfața
   HTML nouă (bare, panou, cărți, butoane pentru tot). Armura la lovitura combinată: se scade pe lovituri, doar
   unele combinații o străpung sau o ignoră. 107 teste.
-- **Următorul:** de ales cu owner-ul — draftul și bossul, sau economia (vezi DEVLOG).
+- **Felia 5 (05.10.2026):** draftul 1 din 3 după fiecare val (turn gratuit, îmbunătățiri, relicve, traseu) și bossul
+  cu trăsături (uscat, neclintit, ignifug); viața crește cu 20% pe val, Fulger 36 → 30 (măsurat). 123 de teste.
+- **Următorul:** economia (dobânda și pământul), dacă owner-ul nu decide altfel (vezi DEVLOG).

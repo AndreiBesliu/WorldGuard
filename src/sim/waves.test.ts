@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { ENEMIES, WAVES, describeWave } from '../data/enemies'
+import { CRESTERE_VIATA, ENEMIES, WAVES, describeWave } from '../data/enemies'
 import { MILI_HEX, VIETI_BAZA } from '../data/joc'
 import {
   applyDecision,
+  enemyHealth,
   fingerprint,
   newGame,
   pathLength,
@@ -28,6 +29,21 @@ describe('datele valurilor', () => {
         expect(Number.isInteger(g.intarziere) && g.intarziere >= 0).toBe(true)
       }
     }
+  })
+
+  it('viața crește cu fiecare val: multiplicatorul valului × (1 + CRESTERE_VIATA × i / 100), pe întregi', () => {
+    expect(enemyHealth('normal', 0)).toBe(ENEMIES.normal.viata)
+    // Valul 2 (i = 1): 100 × 1,0 × 1,2.
+    expect(enemyHealth('normal', 1)).toBe(Math.round((ENEMIES.normal.viata * 100 * (100 + CRESTERE_VIATA)) / 10_000))
+    // Ultimul boss: 2000 × 2,6 × (1 + 0,2 × 14) = 19.760 cu creșterea de 20% măsurată în felia 5.
+    if (CRESTERE_VIATA === 20) expect(enemyHealth('boss', 14)).toBe(19_760)
+    // Nicio scădere de la un val la altul, la niciun tip.
+    for (const tip of Object.keys(ENEMIES) as (keyof typeof ENEMIES)[]) {
+      for (let i = 1; i < WAVES.length; i++) expect(enemyHealth(tip, i)).toBeGreaterThanOrEqual(enemyHealth(tip, i - 1))
+    }
+    // Inamicii apar cu viața asta.
+    const s = step({ ...newGame(3), faza: 'val', val: 3, deGenerat: [{ tick: 1, tip: 'blindat' }, { tick: 1e6, tip: 'normal' }] })
+    expect(s.inamici[0]!.viata).toBe(enemyHealth('blindat', 3))
   })
 
   it('bossul apare la valurile 5, 10 și 15', () => {

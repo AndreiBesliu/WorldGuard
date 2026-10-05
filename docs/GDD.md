@@ -40,6 +40,12 @@ boss la valurile 5, 10 și 15 (în prototip)
 
 **Cărțile din draft:** o bucată de traseu, un turn, o îmbunătățire sau o relicvă.
 
+**În prototip (felia 5, 05.10.2026; detaliile sunt propuneri):**
+- draftul vine după fiecare val, iar valul următor nu pornește până nu alegi;
+- 15 cărți: un turn gratuit pentru fiecare tip; două îmbunătățiri pe tip (+25% daună, trage cu 20% mai des), care se adună; două relicve, câte o dată pe partidă (Cartograful: +1 ocol în fiecare pregătire, adică upgrade-ul de ocoluri decis pe 05.10; Bastionul: +5 vieți); o bucată de traseu (un ocol în plus, doar în pregătirea aceea);
+- din cele 3 cărți, 2 sunt din stilul tău (tipurile pe care le ai, relicvele, traseul) și 1 din afara lui (§6);
+- cărțile cresc puterea cu fiecare val, deci și valurile cresc: viața inamicilor crește cu 20% pe val, peste multiplicatorul fiecărui val. Măsurat cu botul: cu cărțile alese bine, combinațiile bune câștigă aproape mereu; cu cărțile alese la întâmplare, majoritatea strategiilor pierd. Alegerea din draft contează.
+
 ## 5. Harta în partidă — decis
 
 - **Grilă de hexagoane.**
@@ -92,6 +98,10 @@ boss la valurile 5, 10 și 15 (în prototip)
 ## 8. Inamicii
 
 - **Prototip:** normal, rapid, blindat, roi, plus boss.
+- **Trăsături** (felia 5, propunere): un grup de inamici poate fi imun la anumite stări, ca un val să contracareze o combinație (§6). În prototip le au bossii:
+  - valul 5: **uscat** (nu poate fi udat, deci nici înghețat de apă, nici electrocutat);
+  - valul 10: **neclintit** (frigul nu-l încetinește și nu-l îngheață);
+  - valul 15: doi bossi, unul **ignifug** (nu ia foc, nu se unge) și unul uscat și neclintit.
 - **Manifestările zeului căzut** diferă după tipul de planetă.
 - **Previzualizarea valului următor** e obligatorie; lipsa ei e o reclamație frecventă în gen.
 
@@ -255,3 +265,9 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | …și nu se pot combina în același grup (05.10.2026) | decis |
 | Combinarea singură nu trece de armură; unele combinații o străpung sau o ignoră (05.10.2026) | decis |
 | Care combinații: Fizic + Foc ignoră armura, Fizic + Frig străpunge 5 | propunere |
+| Felia 5: draftul și bossul (05.10.2026) | decis |
+| Draftul după fiecare val, obligatoriu înainte de val; 2 cărți din stil + 1 din afară; cărțile din prototip | propunere |
+| Relicva Cartograful = upgrade-ul „+1 ocol pe val” | propunere |
+| Bossul: trăsături care îl fac imun la stări (uscat, neclintit, ignifug) | propunere |
+| Viața inamicilor crește cu 20% pe val, peste multiplicatorul valului (compensează draftul) | propunere |
+| Fulger: daună 36 → 30 (era strategia dominantă cu draftul) | propunere |

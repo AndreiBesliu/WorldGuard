@@ -20,6 +20,8 @@ export interface HudActions {
   nextVariant(): void
   /** Un buton din panoul unui turn: ținta, comutarea grupului, sau renunțarea la alegere. */
   towerAction(a: TowerAction, id?: number): void
+  /** O carte din draft. */
+  pickCard(id: string): void
 }
 
 export type TowerAction = 'tinta' | 'combina' | 'deselecteaza'
@@ -48,6 +50,8 @@ export interface HudView {
     readonly tip: TowerType
     readonly nume: string
     readonly cost: number
+    /** Câte turnuri gratuite de tipul ăsta ai (din draft). */
+    readonly gratuit: number
     readonly culoare: string
     readonly forma: TowerShape
     readonly tasta: string
@@ -55,7 +59,18 @@ export interface HudView {
     readonly accesibil: boolean
   }[]
   readonly ocol: { readonly stare: string; readonly extra: number; readonly variante: string; readonly activ: boolean }
-  readonly wave: { readonly titlu: string; readonly randuri: readonly { readonly nume: string; readonly culoare: string; readonly numar: number; readonly boss: boolean }[]; readonly nota: string }
+  readonly wave: {
+    readonly titlu: string
+    readonly randuri: readonly { readonly nume: string; readonly culoare: string; readonly numar: number; readonly boss: boolean; readonly trasaturi?: string }[]
+    readonly nota: string
+  }
+  /** Oferta draftului, dacă e o carte de ales acum. */
+  readonly draft?: {
+    readonly titlu: string
+    readonly carti: readonly { readonly id: string; readonly nume: string; readonly fel: string; readonly descriere: string; readonly tasta: string; readonly dinAfara: boolean }[]
+  }
+  /** Cărțile alese până acum, cu de câte ori. */
+  readonly carti: readonly { readonly nume: string; readonly fel: string; readonly numar: number }[]
   readonly context: {
     readonly titlu: string
     readonly randuri: readonly Row[]
@@ -151,6 +166,14 @@ export function createHud(actions: HudActions): Hud {
     else if (b.dataset.variant !== undefined) actions.nextVariant()
   })
 
+  // Draftul: banda cu cărți, sub bara de sus, cât e o carte de ales.
+  const draftBox = el('section', 'draft', root)
+  const draftSlot = slot(draftBox)
+  draftBox.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-card]')
+    if (b?.dataset.card) actions.pickCard(b.dataset.card)
+  })
+
   // Panoul din dreapta.
   const panel = el('aside', 'panou', root)
   const waveSlot = slot(el('section', 'sectiune', panel))
@@ -160,6 +183,8 @@ export function createHud(actions: HudActions): Hud {
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-act]')
     if (b && !b.disabled) actions.towerAction(b.dataset.act as TowerAction, b.dataset.id ? Number(b.dataset.id) : undefined)
   })
+  const cartiBox = el('section', 'sectiune', panel)
+  const cartiSlot = slot(cartiBox)
   const codexSlot = slot(el('section', 'sectiune', panel))
   const debugSlot = slot(el('div', 'debug', panel))
 
@@ -177,7 +202,8 @@ export function createHud(actions: HudActions): Hud {
 
   return {
     mapArea() {
-      const t = top.getBoundingClientRect()
+      // Banda draftului, când e vizibilă, face parte din „sus”: harta începe sub ea.
+      const t = draftBox.classList.contains('vizibil') ? draftBox.getBoundingClientRect() : top.getBoundingClientRect()
       const b = bottom.getBoundingClientRect()
       // Pe ecrane late panoul stă fixat în dreapta, deci harta îi lasă loc; pe cele înguste e ascuns (CSS).
       const docked = getComputedStyle(panel).display !== 'none'
@@ -207,7 +233,9 @@ export function createHud(actions: HudActions): Hud {
           .map(
             (t) =>
               `<button class="card ${t.ales ? 'ales' : ''} ${t.accesibil ? '' : 'scump'}" data-tip="${t.tip}" title="${esc(t.nume)} — tasta ${t.tasta}">` +
-              `${towerIcon(t.forma, t.culoare)}<span class="nume">${esc(t.nume)}</span><span class="cost">◆ ${t.cost}</span><kbd>${t.tasta}</kbd></button>`,
+              `${towerIcon(t.forma, t.culoare)}<span class="nume">${esc(t.nume)}</span>` +
+              (t.gratuit > 0 ? `<span class="cost gratuit">gratuit${t.gratuit > 1 ? ` ×${t.gratuit}` : ''}</span>` : `<span class="cost">◆ ${t.cost}</span>`) +
+              `<kbd>${t.tasta}</kbd></button>`,
           )
           .join(''),
       )
@@ -221,7 +249,12 @@ export function createHud(actions: HudActions): Hud {
       waveSlot(
         `<h3>${esc(v.wave.titlu)}</h3>` +
           `<ul class="val">${v.wave.randuri
-            .map((r) => `<li><span class="punct" style="background:${r.culoare}"></span>${esc(r.nume)}${r.boss ? ' <span class="boss">boss</span>' : ''}<span class="nr">×${r.numar}</span></li>`)
+            .map(
+              (r) =>
+                `<li><span class="punct" style="background:${r.culoare}"></span>${esc(r.nume)}${r.boss ? ' <span class="boss">boss</span>' : ''}<span class="nr">×${r.numar}</span>` +
+                (r.trasaturi ? `<span class="trasaturi">${esc(r.trasaturi)}</span>` : '') +
+                `</li>`,
+            )
             .join('')}</ul>` +
           (v.wave.nota ? `<p class="nota">${esc(v.wave.nota)}</p>` : ''),
       )
@@ -239,6 +272,26 @@ export function createHud(actions: HudActions): Hud {
               (v.context.butoane.find((b) => b.act === 'combina' && b.motiv) ? `<p class="nota motiv">${esc(v.context.butoane.find((b) => b.act === 'combina')?.motiv ?? '')}</p>` : '')
             : ''),
       )
+      draftSlot(
+        v.draft
+          ? `<h3>${esc(v.draft.titlu)}</h3><div class="carti">${v.draft.carti
+              .map(
+                (c) =>
+                  `<button class="carte ${c.dinAfara ? 'afara' : ''}" data-card="${esc(c.id)}"><span class="fel">${esc(c.fel)}${c.dinAfara ? ' · din afara stilului tău' : ''}</span>` +
+                  `<span class="nume">${esc(c.nume)}</span><span class="descriere">${esc(c.descriere)}</span><kbd>${esc(c.tasta)}</kbd></button>`,
+              )
+              .join('')}</div>`
+          : '',
+      )
+      draftBox.classList.toggle('vizibil', v.draft !== undefined)
+      cartiSlot(
+        v.carti.length
+          ? `<h3>Cărțile tale</h3><ul class="carti-alese">${v.carti
+              .map((c) => `<li><span class="nume">${esc(c.nume)}</span><span class="nr">${c.numar > 1 ? `×${c.numar}` : ''}</span><span class="fel">${esc(c.fel)}</span></li>`)
+              .join('')}</ul>`
+          : '',
+      )
+      cartiBox.style.display = v.carti.length ? '' : 'none'
       codexSlot(
         `<h3>Reacții descoperite <span class="mic">${v.codex.filter((c) => c.numar > 0).length}/${v.codex.length}</span></h3>` +
           `<ul class="codex">${v.codex

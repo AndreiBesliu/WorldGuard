@@ -6,13 +6,15 @@
 //   - un hexagon liber = turnul ales (cărțile de jos sau tastele 4–7), click = îl construiești (doar în pregătire);
 //   - un turn = cifrele lui și ale grupului din care face parte; click = îl alegi. Pentru turnul de sub mouse (sau
 //     cel ales): T = schimbă ținta, C = combină grupul / îl separă (și în timpul valului). Esc = renunți la alegere.
+// După fiecare val: draftul, 1 carte din 3 (click pe ea sau 8 / 9 / 0); valul următor pornește abia după alegere.
 // Tot ce se face din taste se face și din butoanele interfeței (src/ui/hud.ts).
 // Seed-ul se poate da în URL: ?seed=123
 //
 // Bucla: requestAnimationFrame adună timp real și rulează câte tick-uri fixe (TICK_MS) încap. Viteza din UI
 // doar înmulțește timpul adunat — simularea nu știe de ea, deci un replay iese identic la orice viteză.
 
-import { ENEMIES, WAVES, type EnemyType } from './data/enemies'
+import { CARDS, cardTower, type CardEffect, type CardId } from './data/draft'
+import { ENEMIES, TRAITS, WAVES } from './data/enemies'
 import { TICK_MS, VIETI_BAZA, VITEZE_UI } from './data/joc'
 import { ELEMENT_NAMES, REACTION_RULES, REACTIONS, STATES, TAG_NAMES, type ReactionType } from './data/reactions'
 import { TERRAIN } from './data/terrain'
@@ -26,6 +28,7 @@ import {
   checkDetourAllowed,
   checkStartWave,
   combinedContacts,
+  detourLimit,
   detourPossible,
   fingerprint,
   groupOf,
@@ -36,8 +39,11 @@ import {
   replay,
   step,
   towerCost,
+  towerDamage,
   towerKeys,
   towerRange,
+  towerReload,
+  waveHealth,
   type Decision,
   type GameState,
   type Tower,
@@ -62,6 +68,10 @@ let options: DetourOption[] = []
 /** Turnul ales cu click (id), ca butoanele lui din panou să rămână la îndemână când mouse-ul pleacă de pe hartă. */
 let selected: number | undefined
 
+/** Tastele cărților din draft, în ordinea ofertei. */
+const CARD_KEYS = ['8', '9', '0']
+let lastDraftShown = false
+
 let vitezaIndex = 0
 let paused = false
 let acumulat = 0
@@ -85,6 +95,7 @@ const hud = createHud({
   setExtra: (n) => act(() => setExtra(n)),
   nextVariant: () => act(nextVariant),
   towerAction: (a, id) => act(() => towerAction(a, id)),
+  pickCard: (id) => act(() => decide({ tip: 'alege', carte: id as CardId })),
 })
 let layout: Layout = fitLayout(state.map.radius, hud.mapArea())
 
@@ -155,14 +166,20 @@ function reactionsOf(tip: TowerType): Row[] {
   return rows
 }
 
-/** Rândurile cu cifrele unui turn: ale tipului, și cum le schimbă terenul (dealul). */
+/** Rândurile cu cifrele unui turn: ale tipului, și cum le schimbă terenul (dealul) și cărțile din draft. */
 function statRows(tip: TowerType, hex: string): Row[] {
   const info = TOWERS[tip]
   const raza = towerRange(state, tip, hex)
+  const dauna = towerDamage(state, tip)
+  const reincarcare = towerReload(state, tip)
   return [
-    { k: 'Daună', v: `${info.dauna}` },
+    { k: 'Daună', v: dauna === info.dauna ? `${info.dauna}` : `${info.dauna} → ${dauna} (cărți)`, ton: dauna > info.dauna ? 'up' : undefined },
     { k: 'Rază', v: raza === info.raza ? `${info.raza}` : `${info.raza} → ${raza} (deal)`, ton: raza > info.raza ? 'up' : undefined },
-    { k: 'O lovitură la', v: seconds(info.reincarcare) },
+    {
+      k: 'O lovitură la',
+      v: reincarcare === info.reincarcare ? seconds(info.reincarcare) : `${seconds(info.reincarcare)} → ${seconds(reincarcare)} (cărți)`,
+      ton: reincarcare < info.reincarcare ? 'up' : undefined,
+    },
   ]
 }
 
@@ -179,10 +196,10 @@ const comboEffect = (c: ArmorCombo): string => (c.ignora ? 'ignoră armura' : `s
 /** Cum ar trage grupul combinat: lovitura pe elemente, cadența, dauna pe secundă față de turnurile separate, armura. */
 function combinedRows(grup: readonly Tower[]): Row[] {
   const tipuri = grup.map((t) => t.tip)
-  const lovitura = combinedContacts(tipuri)
-  const R = groupReload(tipuri)
+  const lovitura = combinedContacts(tipuri, state.imbunatatiri)
+  const R = groupReload(tipuri, state.imbunatatiri)
   const total = lovitura.reduce((n, c) => n + c.dauna, 0)
-  const separat = tipuri.reduce((n, t) => n + TOWERS[t].dauna / TOWERS[t].reincarcare, 0)
+  const separat = tipuri.reduce((n, t) => n + towerDamage(state, t) / towerReload(state, t), 0)
   const elemente = new Set(tipuri.map((t) => TOWERS[t].element)).size
   const bonus = COMBINARE.bonusPeElement * Math.min(elemente - 1, COMBINARE.elementeInPlus)
   const combos = armorCombos(tipuri)
@@ -333,6 +350,7 @@ function contextView(): { view: HudView['context']; overlay: Partial<Overlay> } 
         { k: 'Pe un loc liber', v: 'construiești turnul ales' },
         { k: 'Pe un turn', v: 'click = îl alegi; T = ținta' },
         { k: 'Turnuri lipite', v: 'fac un grup; C = combinat' },
+        { k: 'După fiecare val', v: 'alegi 1 carte din 3 (8 / 9 / 0)' },
         ...COMBINARE.armura.map((c) => ({ k: `Combinat ${comboTowers(c)}`, v: `${c.nume}: ${comboEffect(c)}` })),
       ],
       nota:
@@ -345,10 +363,26 @@ function contextView(): { view: HudView['context']; overlay: Partial<Overlay> } 
 function waveView(): HudView['wave'] {
   const w = WAVES[state.val]
   if (state.faza === 'castigat' || state.faza === 'pierdut' || !w) return { titlu: 'Partida s-a încheiat', randuri: [], nota: '' }
-  const counts = new Map<EnemyType, number>()
-  for (const g of w.grupuri) counts.set(g.tip, (counts.get(g.tip) ?? 0) + g.numar)
-  const randuri = [...counts].map(([tip, numar]) => ({ nume: ENEMIES[tip].nume, culoare: ENEMIES[tip].culoare, numar, boss: tip === 'boss' }))
-  const viata = w.viata === 1 ? '' : `viață ×${String(w.viata).replace('.', ',')}`
+  // Un rând pe tip și trăsături: bossii cu trăsături diferite apar separat, cu ce-i face imuni.
+  const rows = new Map<string, { nume: string; culoare: string; numar: number; boss: boolean; trasaturi?: string }>()
+  for (const g of w.grupuri) {
+    const k = `${g.tip}|${(g.trasaturi ?? []).join('+')}`
+    const prev = rows.get(k)
+    if (prev) prev.numar += g.numar
+    else {
+      const names = (g.trasaturi ?? []).map((t) => TRAITS[t].nume).join(', ')
+      rows.set(k, {
+        nume: names ? `${ENEMIES[g.tip].nume} · ${names}` : ENEMIES[g.tip].nume,
+        culoare: ENEMIES[g.tip].culoare,
+        numar: g.numar,
+        boss: g.tip === 'boss',
+        trasaturi: g.trasaturi?.map((t) => TRAITS[t].descriere).join('; '),
+      })
+    }
+  }
+  const randuri = [...rows.values()]
+  const hp = waveHealth(state.val)
+  const viata = hp === 1 ? '' : `viață ×${String(Math.round(hp * 100) / 100).replace('.', ',')}`
   if (state.faza === 'val') {
     return { titlu: `Valul ${state.val + 1} e pe drum`, randuri, nota: [`${state.inamici.length} pe hartă, ${state.deGenerat.length} mai vin`, viata].filter(Boolean).join(' · ') }
   }
@@ -365,8 +399,36 @@ function codexView(): HudView['codex'] {
   }))
 }
 
+/** Cum se numește felul unei cărți în interfață. */
+const cardKind = (e: CardEffect): string => ({ turn: 'Turn', imbunatatire: 'Îmbunătățire', relicva: 'Relicvă', traseu: 'Traseu' })[e.tip]
+
+function draftView(): HudView['draft'] {
+  if (state.faza !== 'pregatire' || state.oferta.length === 0) return undefined
+  const owned = new Set(state.turnuri.map((t) => t.tip))
+  return {
+    titlu: `Alege o carte — 1 din ${state.oferta.length}. Valul ${state.val + 1} pornește după alegere.`,
+    carti: state.oferta.map((id, i) => {
+      const t = cardTower(id)
+      return {
+        id,
+        nume: CARDS[id].nume,
+        fel: cardKind(CARDS[id].efect),
+        descriere: CARDS[id].descriere,
+        tasta: CARD_KEYS[i] ?? '',
+        dinAfara: t !== undefined && owned.size > 0 && !owned.has(t),
+      }
+    }),
+  }
+}
+
+function cartiView(): HudView['carti'] {
+  const counts = new Map<CardId, number>()
+  for (const id of state.carti) counts.set(id, (counts.get(id) ?? 0) + 1)
+  return [...counts].map(([id, numar]) => ({ nume: CARDS[id].nume, fel: `${cardKind(CARDS[id].efect)}: ${CARDS[id].descriere}`, numar }))
+}
+
 function ocolView(): HudView['ocol'] {
-  const done = `${state.ocoluriFolosite}/${state.ocoluriPeVal}`
+  const done = `${state.ocoluriFolosite}/${detourLimit(state)}`
   const variante = options.length > 0 && checkDetourAllowed(state).ok ? `${optionIndex + 1}/${options.length}` : '—'
   if (state.faza !== 'pregatire') return { stare: 'doar între valuri', extra, variante: '—', activ: false }
   if (!checkDetourAllowed(state).ok) return { stare: `pus (${done})`, extra, variante: '—', activ: false }
@@ -394,7 +456,7 @@ function render(): void {
     val: `Val ${Math.min(state.val + 1, WAVES.length)}/${WAVES.length}`,
     boss: (WAVES[state.val]?.grupuri ?? []).some((g) => g.tip === 'boss'),
     vieti: state.vieti,
-    vietiMax: VIETI_BAZA,
+    vietiMax: Math.max(VIETI_BAZA, state.vieti),
     aur: state.aur,
     drum: state.path.length,
     faza: state.faza,
@@ -407,19 +469,28 @@ function render(): void {
       tip,
       nume: TOWERS[tip].nume,
       cost: TOWERS[tip].cost,
+      gratuit: state.gratuite[tip] ?? 0,
       culoare: TOWERS[tip].culoare,
       forma: TOWERS[tip].forma,
       tasta: String(i + 4),
       ales: tip === turnAles,
-      accesibil: state.aur >= TOWERS[tip].cost,
+      accesibil: (state.gratuite[tip] ?? 0) > 0 || state.aur >= TOWERS[tip].cost,
     })),
     ocol: ocolView(),
     wave: waveView(),
+    draft: draftView(),
+    carti: cartiView(),
     context: context.view,
     codex: codexView(),
     debug: `seed ${seed} · tick ${state.tick} · ${state.jurnal.length} decizii · amprentă ${fingerprint(state)}`,
     final: finalView(),
   })
+  // Banda draftului apare și dispare: harta își recalculează locul.
+  const draftShown = state.faza === 'pregatire' && state.oferta.length > 0
+  if (draftShown !== lastDraftShown) {
+    lastDraftShown = draftShown
+    relayout()
+  }
   draw(ctx, state, layout, {
     start: chosen?.start,
     span: chosen?.span,
@@ -584,6 +655,10 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 't' || e.key === 'T') fn = () => towerAction('tinta')
   else if (e.key === 'c' || e.key === 'C') fn = () => towerAction('combina')
   else if (e.key === 'Escape') fn = () => towerAction('deselecteaza')
+  else if (CARD_KEYS.includes(e.key)) {
+    const carte = state.oferta[CARD_KEYS.indexOf(e.key)]
+    fn = () => (carte !== undefined ? decide({ tip: 'alege', carte }) : hud.toast('Nu e nicio carte de ales acum — draftul vine după fiecare val.'))
+  }
   if (!fn) return
   e.preventDefault()
   act(fn)

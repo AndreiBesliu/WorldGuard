@@ -5,7 +5,7 @@
 // regulile se verifică în ordinea din date, vecinii vin în ordinea listei de inamici, stările în ordinea
 // din `STATES`.
 
-import { ENEMIES, type EnemyType } from '../data/enemies'
+import { ENEMIES, TRAITS, type EnemyType, type Trait } from '../data/enemies'
 import { REACTION_RULES, STATES, type Element, type ReactionType, type StateType, type Tag } from '../data/reactions'
 
 /** Stările unui inamic: câte tick-uri mai ține fiecare. */
@@ -20,6 +20,8 @@ export interface Victim {
   readonly tip: EnemyType
   viata: number
   stari: States
+  /** Trăsăturile lui: stările la care e imun nu se prind (vezi `TRAITS`). */
+  readonly trasaturi?: readonly Trait[]
 }
 
 export interface Contact {
@@ -59,8 +61,12 @@ function removeTag(v: Victim, tag: Tag): void {
   for (const s of STATE_ORDER) if (v.stari[s] !== undefined && STATES[s].etichete.includes(tag)) delete v.stari[s]
 }
 
-/** Aplică (sau reîmprospătează) o stare: durata ei pornește de la capăt; nu se adună. */
+/** Inamicul e imun la starea `s` (o trăsătură a lui o oprește)? */
+export const isImmune = (v: Pick<Victim, 'trasaturi'>, s: StateType): boolean => (v.trasaturi ?? []).some((t) => TRAITS[t].imun.includes(s))
+
+/** Aplică (sau reîmprospătează) o stare: durata ei pornește de la capăt; nu se adună. Imunitatea o oprește. */
 function applyState(v: Victim, s: StateType): void {
+  if (isImmune(v, s)) return
   v.stari[s] = STATES[s].durata
 }
 

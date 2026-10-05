@@ -1,11 +1,11 @@
 // Desenarea pe Canvas 2D. Citește starea, nu o modifică.
 
-import { ENEMIES, WAVES } from '../data/enemies'
+import { ENEMIES, TRAITS } from '../data/enemies'
 import { MILI_HEX } from '../data/joc'
 import { STATES } from '../data/reactions'
 import { TERRAIN } from '../data/terrain'
 import { TOWERS, type TowerInfo, type TowerType } from '../data/towers'
-import { enemySpeed, isCombined, pathContacts, towerGroups, type Enemy, type GameState } from '../sim/game'
+import { enemyHealth, enemySpeed, isCombined, pathContacts, towerGroups, type Enemy, type GameState } from '../sim/game'
 import { distance, fromKey, type Hex } from '../sim/hex'
 import { STATE_ORDER } from '../sim/reactions'
 
@@ -319,7 +319,6 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     const p1 = hexToPixel(to, l)
     return { x: p0.x + (p1.x - p0.x) * frac, y: p0.y + (p1.y - p0.y) * frac }
   }
-  const waveHp = WAVES[s.val]?.viata ?? 1
   for (const e of s.inamici) {
     const p = enemyPos(e)
     if (!p) continue
@@ -348,8 +347,16 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
       ctx.fillStyle = STATES[st].culoare
       ctx.fill()
     })
+    // Trăsăturile (bossii): inițialele lor deasupra, ca imunitățile să se vadă pe hartă.
+    if (e.trasaturi?.length) {
+      ctx.font = `bold ${Math.max(9, l.size * 0.38)}px system-ui, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'bottom'
+      ctx.fillStyle = '#ffd0c8'
+      ctx.fillText(e.trasaturi.map((t) => TRAITS[t].nume).join(' · '), p.x, p.y - radius - 11)
+    }
     // Bara de viață, doar după prima lovitură.
-    const max = Math.round(info.viata * waveHp)
+    const max = enemyHealth(e.tip, s.val)
     if (e.viata < max) {
       const w = Math.max(14, radius * 2.2)
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'

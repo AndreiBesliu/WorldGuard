@@ -1,7 +1,7 @@
 // Ajutoare pentru teste. Nu fac parte din joc (nimic din `src/` nu le importă în afara testelor), dar stau
 // lângă nucleu ca să treacă prin aceeași disciplină (fără ceas, fără aleator global).
 
-import { applyDecision, checkStartWave, step, towerKeys, type Decision, type GameState } from './game'
+import { applyDecision, checkStartWave, detourLimit, step, towerKeys, type Decision, type GameState } from './game'
 import { key } from './hex'
 import { optionsAround } from './path'
 
@@ -24,10 +24,15 @@ export function firstDetour(s: GameState, extras: readonly number[] = [1, 2, 3])
   return undefined
 }
 
-/** Pornește valul; dacă ocolul pregătirii e obligatoriu și n-a fost pus, pune întâi primul ocol posibil. */
+/**
+ * Pornește valul. Dacă draftul așteaptă o alegere, ia prima carte din ofertă; dacă ocolul pregătirii e obligatoriu și
+ * n-a fost pus, pune întâi primul ocol posibil.
+ */
 export function startWave(s: GameState): GameState {
   let cur = s
-  while (!checkStartWave(cur).ok && cur.faza === 'pregatire' && cur.ocoluriFolosite < cur.ocoluriPeVal) {
+  const carte = cur.oferta[0]
+  if (carte !== undefined) cur = must(cur, { tip: 'alege', carte })
+  while (!checkStartWave(cur).ok && cur.faza === 'pregatire' && cur.ocoluriFolosite < detourLimit(cur)) {
     const d = firstDetour(cur)
     if (!d) break
     cur = must(cur, d)

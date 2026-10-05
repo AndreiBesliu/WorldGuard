@@ -4,7 +4,9 @@ import {
   applyDecision,
   checkBuild,
   checkCombine,
+  checkStartWave,
   coverage,
+  detourLimit,
   detourPossible,
   fingerprint,
   groupOf,
@@ -50,6 +52,8 @@ function playRandom(seed: number): { s: GameState; blocked: number } {
   let s = newGame(seed)
   let blocked = 0
   while (s.faza === 'pregatire') {
+    // Draftul (după fiecare val): o carte la întâmplare din ofertă.
+    if (s.oferta.length > 0) s = apply(s, { tip: 'alege', carte: pick.pick(s.oferta) })
     const index = 1 + pick.int(s.path.length - 2)
     const extra = 1 + pick.int(3)
     const opts = optionsAround(s.map, s.path, index, extra, towerKeys(s))
@@ -68,6 +72,12 @@ function playRandom(seed: number): { s: GameState; blocked: number } {
       const lipite = good.filter((k) => s.turnuri.some((t) => distance(fromKey(t.hex), fromKey(k)) === 1))
       s = apply(s, { tip: 'turn', turn: tip, hex: pick.pick(lipite.length > 0 && pick.int(2) === 0 ? lipite : good) })
     }
+    // Cărțile „Ocol în plus” și „Cartograful” cer mai multe ocoluri: restul, primele care încap.
+    while (!checkStartWave(s).ok && s.ocoluriFolosite < detourLimit(s)) {
+      const more = firstDetour(s)
+      if (!more) break
+      s = apply(s, more)
+    }
     s = toggleSome(s)
     s = apply(s, { tip: 'pornesteVal' })
     const switchAt = s.tick + 1 + pick.int(150)
@@ -83,7 +93,7 @@ function playRandom(seed: number): { s: GameState; blocked: number } {
 }
 
 describe('jurnalul deciziilor', () => {
-  it('replay(seed, jurnal) reconstruiește exact aceeași stare — ocoluri, turnuri, grupuri, ținte schimbate în val, reacții', () => {
+  it('replay(seed, jurnal) reconstruiește exact aceeași stare — ocoluri, turnuri, grupuri, cărți, ținte schimbate în val, reacții', () => {
     let blocked = 0
     let combined = 0
     const reactions = new Set<string>()
@@ -93,7 +103,7 @@ describe('jurnalul deciziilor', () => {
       blocked += game.blocked
       combined += s.jurnal.filter((l) => l.d.tip === 'combina' && l.d.activ).length
       for (const [r, n] of Object.entries(s.reactii)) if ((n ?? 0) > 0) reactions.add(r)
-      expect([...new Set(s.jurnal.map((l) => l.d.tip))].sort()).toEqual(['combina', 'ocol', 'pornesteVal', 'tintire', 'turn'])
+      expect([...new Set(s.jurnal.map((l) => l.d.tip))].sort()).toEqual(['alege', 'combina', 'ocol', 'pornesteVal', 'tintire', 'turn'])
       // Regula grupurilor ține pe tot parcursul: un grup are un singur mod, un turn singur nu e combinat, iar un
       // grup combinat nu are o pereche incompatibilă.
       for (const g of towerGroups(s.turnuri)) {
@@ -112,7 +122,9 @@ describe('jurnalul deciziilor', () => {
     expect(combined).toBeGreaterThan(0)
     // …iar partidele au avut reacții de mai multe feluri (stări, lanțuri, teren), reproduse identic.
     expect(reactions.size).toBeGreaterThanOrEqual(3)
-  })
+    // Trei partide întregi, plus replay-ul lor: ~1–2,5 s pe mașina asta, mai mult pe un runner încărcat. Limita
+    // implicită de 5 s a picat o dată sub încărcare (05.10.2026), deci testul are limita lui.
+  }, 30_000)
 
   it('jurnalul trece prin JSON fără pierderi (se poate salva și trimite)', () => {
     const { s } = playRandom(5)
