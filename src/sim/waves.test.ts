@@ -104,7 +104,8 @@ describe('deplasarea și baza', () => {
 
   it('un drum mai lung ține inamicii mai mult pe hartă — rostul ocolurilor', () => {
     const shortRun = runWave(must(newGame(9), { tip: 'pornesteVal' }))
-    let long = newGame(9)
+    // Șase ocoluri într-o singură pregătire: ca după un upgrade al limitei (`ocoluriPeVal`).
+    let long: GameState = { ...newGame(9), ocoluriPeVal: 6 }
     for (let k = 0; k < 6; k++) {
       const opts = optionsAround(long.map, long.path, Math.floor(long.path.length / 2), 3)
       if (opts.length === 0) break

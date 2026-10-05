@@ -11,7 +11,8 @@ import {
   pickTarget,
   replay,
   step,
-  towerKeys,
+  towerRefund,
+  towersOnHexes,
   type Decision,
   type GameState,
 } from './game'
@@ -77,19 +78,63 @@ describe('construcția', () => {
     })
   })
 
-  it('drumul nu trece prin turnuri: ocolul e refuzat cu motiv și nu mai apare printre variante', () => {
+  it('turnul nu blochează drumul: ocolul îl ridică și dă aurul înapoi, iar celelalte turnuri rămân', () => {
     let s = newGame(11)
     let index = 1
     while (optionsAround(s.map, s.path, index, 2).length === 0) index++
     const options = optionsAround(s.map, s.path, index, 2)
     const o = options[0]!
-    const blockedHex = key(o.hexes[0]!)
-    s = must(s, { tip: 'turn', turn: 'fizic', hex: blockedHex })
-    const r = applyDecision(s, { tip: 'ocol', start: o.start, span: o.span, hexuri: o.hexes.map(key) })
-    expect(r).toEqual({ ok: false, reason: `pe ${blockedHex} e un turn — drumul nu trece prin turnuri` })
-    const after = optionsAround(s.map, s.path, index, 2, towerKeys(s))
-    expect(after.some((x) => x.hexes.some((h) => key(h) === blockedHex))).toBe(false)
-    expect(after.length).toBeLessThan(options.length)
+    const inTheWay = key(o.hexes[0]!)
+    s = must(s, { tip: 'turn', turn: 'fizic', hex: inTheWay })
+    s = build(s, 'fizic') // al doilea turn, în afara ocolului
+    const other = s.turnuri[1]!
+    expect(o.hexes.some((h) => key(h) === other.hex)).toBe(false)
+    // Turnul din cale apare și printre variante (nu le mai filtrează nimic), și în previzualizare.
+    expect(optionsAround(s.map, s.path, index, 2)).toEqual(options)
+    expect(towersOnHexes(s, o.hexes).map((t) => t.id)).toEqual([1])
+    const before = s.aur
+    s = must(s, { tip: 'ocol', start: o.start, span: o.span, hexuri: o.hexes.map(key) })
+    expect(s.path.some((h) => key(h) === inTheWay)).toBe(true)
+    expect(s.turnuri.map((t) => t.id)).toEqual([other.id])
+    expect(s.aur).toBe(before + towerRefund('fizic'))
+    expect(towerRefund('fizic')).toBe(TOWERS.fizic.cost) // propunerea: tot aurul înapoi
+    // …și replay-ul ajunge la aceeași stare.
+    expect(fingerprint(replay(11, s.jurnal))).toBe(fingerprint(s))
+  })
+
+  it('un ocol peste mai multe turnuri de tipuri diferite le ridică pe toate și dă înapoi aurul fiecăruia', () => {
+    const base: GameState = { ...newGame(11), aur: 1000 }
+    let index = 1
+    const long = () => optionsAround(base.map, base.path, index, 3).find((o) => o.hexes.length >= 2)
+    while (!long()) index++
+    const o = long()!
+    // Un Fizic în afara ocolului e primul în listă; Fulger și Foc stau pe hexagoanele ocolului.
+    let s = build(base, 'fizic')
+    expect(o.hexes.some((h) => key(h) === s.turnuri[0]!.hex)).toBe(false)
+    s = must(s, { tip: 'turn', turn: 'fulger', hex: key(o.hexes[0]!) })
+    s = must(s, { tip: 'turn', turn: 'foc', hex: key(o.hexes[1]!) })
+    expect(towersOnHexes(s, o.hexes).map((t) => t.tip)).toEqual(['fulger', 'foc'])
+    const before = s.aur
+    s = must(s, { tip: 'ocol', start: o.start, span: o.span, hexuri: o.hexes.map(key) })
+    expect(s.turnuri.map((t) => t.tip)).toEqual(['fizic'])
+    expect(s.aur).toBe(before + towerRefund('fulger') + towerRefund('foc'))
+    expect(towerRefund('fulger') + towerRefund('foc')).toBe(TOWERS.fulger.cost + TOWERS.foc.cost)
+    // Niciun turn nu rămâne pe drum.
+    expect(s.turnuri.some((t) => s.path.some((h) => key(h) === t.hex))).toBe(false)
+  })
+
+  it('amprenta deosebește două stări care diferă doar prin contorul de turnuri, după o ridicare', () => {
+    const s0 = newGame(11)
+    let index = 1
+    while (optionsAround(s0.map, s0.path, index, 2).length === 0) index++
+    const o = optionsAround(s0.map, s0.path, index, 2)[0]!
+    const ocol: Decision = { tip: 'ocol', start: o.start, span: o.span, hexuri: o.hexes.map(key) }
+    const a = must(must(s0, { tip: 'turn', turn: 'fizic', hex: key(o.hexes[0]!) }), ocol) // turn ridicat
+    const b = must(s0, ocol)
+    expect(a.aur).toBe(b.aur)
+    expect(a.turnuri).toEqual(b.turnuri)
+    expect(a.urmatorulTurn).not.toBe(b.urmatorulTurn)
+    expect(fingerprint(a)).not.toBe(fingerprint(b))
   })
 })
 

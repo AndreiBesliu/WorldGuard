@@ -46,6 +46,8 @@ boss la valurile 5, 10 și 15 (în prototip)
 - **Traseu cu capete fixe:** intrarea inamicilor și baza nu se mută. Pornești cu un drum drept între ele, iar la fiecare val aplici o bucată aleasă din trei: un **ocol** care **înlocuiește o porțiune de 1–3 hexagoane** cu un drum mai lung cu +1, +2 sau +3. Drumul se lungește ca o sfoară; puzzle-ul e *cât drum încape între două puncte fixe, și pe unde*.
   - **Drumul nu are voie să se atingă singur:** două hexagoane de drum neconsecutive nu pot fi vecine.
   - **Măsurat în prototip:** pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoane. Prima variantă, inserția între doi vecini, nu permitea nimic peste +1.
+  - **Un ocol pe val** (decis 05.10.2026). Upgrade-urile de mai târziu (din draft sau relicve) pot da mai multe.
+  - **Turnurile nu blochează drumul** (decis 05.10.2026). Ce se întâmplă cu turnul din calea ocolului e încă propunere: în prototip, ocolul îl ridică și îi dă aurul înapoi integral; alternativa e ca turnul să fie mutat.
 - **Bucățile se aleg, nu se trag la noroc.** E răspunsul direct la reclamația numărul 1 din gen („când am nevoie de turn, primesc drum”).
 - **Ramificații deterministe și lizibile.** Inamicii nu aleg o ramură la întâmplare; regula se vede pe ecran.
 - **Terenul participă la reacții:**
@@ -156,7 +158,7 @@ Fapte notabile deblochează conținut (de exemplu, 200 de păduri arse dau doctr
 - grila hex, traseul cu inserții (3 variante pe val), 4 tipuri de teren care participă la reacții;
 - terraformare: canal, deal, arde;
 - 4 turnuri de bază (fizic, foc, frig, fulger), ~6 reacții și bonusuri de vecinătate;
-- 4 inamici + boss la valurile 5 și 10, 15 valuri, draft 1 din 3;
+- 4 inamici + boss la valurile 5, 10 și 15 (decis 05.10.2026), 15 valuri, draft 1 din 3;
 - aur cu dobândă și pământ;
 - **jurnalul deciziilor din prima zi**: e baza meta-progresiei, a verificării pe server și a datelor de playtest.
 
@@ -208,7 +210,7 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 - Câte regiuni are o planetă; ce înseamnă „curățată”.
 - Modelul de preț și eventualul DLC (nediscutat).
 
-## 14. Registrul deciziilor (04.10.2026)
+## 14. Registrul deciziilor (04–05.10.2026)
 
 | Decizie | Stare |
 |---|---|
@@ -231,3 +233,7 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | Războiul galactic comun ca strat opțional, după ce bucla e dovedită | decis |
 | Sezoane automate + Inițiativele zeului create de owner | decis |
 | Numele de lucru: World Guard; jucătorii sunt Guardians | decis |
+| Prototip: boss la valurile 5, 10 și 15 (05.10.2026) | decis |
+| Un ocol pe val; upgrade-urile de mai târziu pot da mai multe (05.10.2026) | decis |
+| Turnurile nu blochează drumul (05.10.2026) | decis |
+| Turnul din calea ocolului se ridică, cu tot aurul înapoi (alternativa: se mută) | propunere |

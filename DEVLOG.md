@@ -250,3 +250,91 @@ mijlocul drumului spre capete. 20 de hărți (seed 1–20).
 
 **Rămâne:** felia 3 — stările și reacțiile (pe etichete), plus terenul în reacții, inclusiv dealul cu
 rază mai mare (GDD §5). Balansul serios vine după draft și economie.
+
+---
+
+## 05.10.2026 — Deciziile owner-ului: un ocol pe val, turnul nu blochează, bossul la 5, 10 și 15
+
+**Decis de owner** (răspunsuri la întrebările din feliile 1 și 2):
+- „1 ocol pe val, cu posibilitatea de upgrade mai târziu”;
+- „Bossul vine la valurile 5, 10 și 15” — e așa din felia 1; am corectat contradicția din GDD §10;
+- „turnul nu blochează”.
+
+**Făcut:**
+- **Un ocol pe val:**
+  - `INSERARE.peVal` = 1, dar limita stă în stare (`GameState.ocoluriPeVal`): acolo o vor crește
+    upgrade-urile de mai târziu;
+  - `ocoluriFolosite` se golește când pornește valul;
+  - `checkDetourAllowed` dă motivul refuzului („ocolul acestui val e deja pus — următorul vine după val”),
+    același în simulare și în UI;
+  - Z redă dreptul la ocol, prin replay.
+- **Turnul nu blochează:**
+  - `path.ts` revine la forma din felia 1 (fără hexagoane blocate);
+  - ce se întâmplă cu turnul din cale n-a fost decis. Propunerea mea: ocolul îl ridică și dă aurul înapoi
+    (`RAMBURSARE_OCOL` = 1). Alternativa din întrebarea pusă era mutarea lui;
+  - previzualizarea pune un X pe turnurile care s-ar ridica și scrie cât aur se întoarce.
+- `docs/GDD.md` (§5, §10, §14) și `CLAUDE.md`, cu deciziile.
+- Teste: 65.
+  - Noi: 4 pentru limită (al doilea ocol refuzat, dreptul revine după val, Z îl redă, limita din stare
+    poate fi crescută și rămâne după val). Testul cu blocarea a devenit testul ridicării cu aur înapoi.
+    Plus două, după recenzie (vezi mai jos): un ocol peste mai multe turnuri de tipuri diferite, și amprenta
+    care deosebește stările după o ridicare.
+  - Jocul aleator din `game.test.ts` joacă acum **partide întregi**: un ocol pe pregătire, turnuri care
+    acoperă drumul, o schimbare de țintă la un tick oarecare în fiecare val. Replay-ul trebuie să iasă
+    identic, cu toate cele patru tipuri de decizii, iar măcar un ocol trebuie să fi ridicat un turn.
+  - Testul „jurnal de pe alt seed” construiește acum precis un ocol valid pe harta 11 care trece prin apă
+    pe harta 12, cu mesajul exact. Vechiul test depindea de unde cădea jocul aleator: o variantă
+    intermediară a jocului aleator, din timpul rescrierii, a produs un jurnal care se aplica întreg și pe
+    harta 12, iar testul a picat. Cu varianta finală, vechiul test ar fi trecut din nou, dar tot din noroc.
+- Verificat în browser, fără erori în consolă:
+  - previzualizarea cu turnul ridicat;
+  - ridicarea, cu aurul înapoi (65 → 120);
+  - refuzul celui de-al doilea ocol, cu motiv;
+  - Z readuce și drumul și turnul;
+  - după val, dreptul la ocol revine.
+
+**Măsurat** — botul din felia 2, pe regulile noi (un ocol pe val e impus acum de joc), 20 de hărți:
+
+| strategie | rezultat |
+|---|---|
+| toate turnurile, pe rând | câștigă 20/20 (1–20 vieți) |
+| doar Fizic | câștigă 20/20 (8–20 vieți) |
+| doar Fulger | câștigă 20/20 (7–17 vieți) |
+| Frig + Fulger | câștigă 20/20 (15–20 vieți) |
+| Fizic + Foc | câștigă 17/20; 3 cad în valul 5 |
+| doar Frig | cade în valul 10 |
+| doar Foc | cade în valul 5–7 |
+| toate, fără ocoluri | cade în valul 4–5 |
+
+- Față de felia 2, unde drumul ocolea turnurile, rezultatele sunt aproape identice; amestecul trece de la
+  19/20 la 20/20.
+- **Ocolurile botului au ridicat multe turnuri:** până la 78 în 20 de partide (doar Fizic), fiindcă botul
+  pune turnurile exact pe unde trece drumul. Cu aurul dat înapoi integral, un ocol e și o mutare gratuită
+  de turn.
+- Durata: 8–14 minute la 1×.
+
+**Recenzie adversarială** (4 recenzori pe dimensiuni diferite, apoi câte un sceptic pe fiecare constatare):
+8 constatări, 6 confirmate, toate reparate înainte de commit:
+- amprenta nu includea `urmatorulTurn`: după o ridicare, două stări cu viitor diferit aveau aceeași amprentă.
+  Acum intră și `urmatorulTurn`, și `urmatorulId`;
+- UI: după Z, Spațiu, R sau N, previzualizarea de sub mouse dispărea, iar un clic putea pune ocolul și ridica
+  turnuri nevăzute. Acum `syncHover` recalculează ce e sub mouse după orice schimbare;
+- niciun test nu acoperea un ocol peste mai multe turnuri sau rambursarea pentru alt tip decât primul turn din
+  listă — testul nou le acoperă;
+- documentația trecea „ocolul ridică turnul” drept decizia owner-ului; e propunere;
+- o justificare falsă în intrarea asta (corectată mai sus).
+
+Am reintrodus pe rând, într-o copie, defectele găsite (plus „turnul blochează din nou” și „fără limită”):
+toate cele 7 sunt prinse de teste.
+
+**Propuneri ale mele, nedecise:**
+- turnul din calea ocolului se ridică (nu se mută);
+- tot aurul înapoi pentru turnul ridicat;
+- ocolul nefolosit nu se păstrează pentru valul următor.
+
+**Întrebări pentru owner:**
+- Turnul din calea ocolului: se ridică, cu aurul înapoi (acum), sau se mută?
+- Dacă se ridică: tot aurul (acum) sau o parte, ca ocolul să nu fie o mutare gratuită de turn?
+- Ocolul nefolosit: se pierde (acum) sau se adună de la un val la altul?
+
+**Rămâne:** felia 3 — stările și reacțiile (pe etichete), plus terenul în reacții.

@@ -2,7 +2,7 @@
 //
 // Mouse-ul face lucruri diferite după ce e sub el:
 //   - un hexagon de drum (în pregătire) = ocol: 1/2/3 = cu cât se lungește drumul, Tab = următoarea variantă,
-//     Click = aplici ocolul;
+//     Click = aplici ocolul. Un ocol pe val; un turn aflat în calea lui se ridică și își dă aurul înapoi;
 //   - un hexagon liber = turn: 4/5/6/7 = alegi turnul, Click = îl construiești (doar în pregătire);
 //   - un turn = îi vezi raza și ținta, Click = schimbi ținta (și în timpul valului).
 // Z = anulezi ultima decizie din pregătirea curentă (timpul care a trecut nu se dă înapoi).
@@ -16,8 +16,20 @@ import { WAVES, describeWave } from './data/enemies'
 import { TICK_MS, VIETI_BAZA, VITEZE_UI } from './data/joc'
 import { TARGET_MODES, TARGET_NAMES, TOWERS, TOWER_TYPES, type TowerType } from './data/towers'
 import { draw, fitLayout, pixelToHex, type Layout, type Overlay } from './render/canvas'
-import { applyDecision, checkBuild, fingerprint, newGame, replay, step, towerKeys, type GameState, type Tower } from './sim/game'
-import { key, type Hex } from './sim/hex'
+import {
+  applyDecision,
+  checkBuild,
+  checkDetourAllowed,
+  fingerprint,
+  newGame,
+  replay,
+  step,
+  towerRefund,
+  towersOnHexes,
+  type GameState,
+  type Tower,
+} from './sim/game'
+import { fromKey, key, type Hex } from './sim/hex'
 import { optionsAround, type DetourOption } from './sim/path'
 
 const TOP_RESERVE = 140
@@ -53,8 +65,24 @@ function resize(): void {
 }
 
 function refreshOptions(): void {
-  options = hovered === undefined ? [] : optionsAround(state.map, state.path, hovered, extra, towerKeys(state))
+  options = hovered === undefined ? [] : optionsAround(state.map, state.path, hovered, extra)
   if (optionIndex >= options.length) optionIndex = 0
+}
+
+/**
+ * Recalculează ce e sub mouse după orice schimbare (mișcare, decizie, Z, hartă nouă) și variantele de ocol.
+ * Ecranul trebuie să arate mereu exact ce ar face un clic acolo — inclusiv turnurile pe care le-ar ridica.
+ * Întoarce `true` dacă s-a schimbat hexagonul de drum de sub mouse.
+ */
+function syncHover(): boolean {
+  const idx = hoverHex === undefined ? -1 : state.path.findIndex((p) => key(p) === key(hoverHex as Hex))
+  // Hexagonul de sub mouse face parte din porțiunea înlocuită; capetele fixe nu se pot înlocui.
+  const next = idx > 0 && idx < state.path.length - 1 ? idx : undefined
+  const changed = next !== hovered
+  if (changed) optionIndex = 0
+  hovered = next
+  refreshOptions()
+  return changed
 }
 
 const towerAt = (h: Hex | undefined): Tower | undefined =>
@@ -65,8 +93,12 @@ const seconds = (ticks: number): string => `${((ticks * TICK_MS) / 1000).toFixed
 function phaseLine(): string {
   const next = WAVES[state.val]
   switch (state.faza) {
-    case 'pregatire':
-      return `Urmează valul ${state.val + 1}: ${next ? describeWave(next) : '—'} · Spațiu = pornește valul · ocol +${extra} (1/2/3) · ${options.length} variante (Tab) · Z = anulează`
+    case 'pregatire': {
+      const ocol = checkDetourAllowed(state).ok
+        ? `ocol ${state.ocoluriFolosite}/${state.ocoluriPeVal}: +${extra} (1/2/3) · ${options.length} variante (Tab)`
+        : `ocolul acestui val e pus (${state.ocoluriFolosite}/${state.ocoluriPeVal})`
+      return `Urmează valul ${state.val + 1}: ${next ? describeWave(next) : '—'} · Spațiu = pornește valul · ${ocol} · Z = anulează`
+    }
     case 'val':
       return `Valul ${state.val + 1} e pe drum: ${state.inamici.length} pe hartă, ${state.deGenerat.length} mai vin · F = viteză · P = pauză · Click pe turn = schimbă ținta`
     case 'castigat':
@@ -91,7 +123,18 @@ function hoverLine(): { text: string; overlay: Partial<Overlay> } {
       overlay: { range: { hex: hoverHex as Hex, raza: info.raza, culoare: info.culoare } },
     }
   }
-  if (hoverHex === undefined || hovered !== undefined || !state.map.terrain.has(key(hoverHex))) return { text: '', overlay: {} }
+  if (hovered !== undefined) {
+    // Pe drum: ce turnuri ar ridica ocolul ales (turnurile nu blochează drumul).
+    const chosen = shownDetour()
+    const lifted = chosen ? towersOnHexes(state, chosen.hexes) : []
+    return {
+      text: lifted.length
+        ? `Ocolul ridică ${lifted.map((t) => `${TOWERS[t.tip].nume} #${t.id}`).join(', ')} și îți dă înapoi ${lifted.reduce((n, t) => n + towerRefund(t.tip), 0)} aur`
+        : '',
+      overlay: { removes: lifted.map((t) => fromKey(t.hex)) },
+    }
+  }
+  if (hoverHex === undefined || !state.map.terrain.has(key(hoverHex))) return { text: '', overlay: {} }
   if (state.path.some((h) => key(h) === key(hoverHex as Hex))) return { text: '', overlay: {} }
   const info = TOWERS[turnAles]
   const r = checkBuild(state, turnAles, key(hoverHex))
@@ -106,8 +149,11 @@ function hoverLine(): { text: string; overlay: Partial<Overlay> } {
   }
 }
 
+/** Ocolul previzualizat: doar când se poate pune unul acum (în pregătire, sub limita pe val). */
+const shownDetour = (): DetourOption | undefined => (checkDetourAllowed(state).ok ? options[optionIndex] : undefined)
+
 function render(): void {
-  const chosen = state.faza === 'pregatire' ? options[optionIndex] : undefined
+  const chosen = shownDetour()
   const speed = VITEZE_UI[vitezaIndex] ?? 1
   const hover = hoverLine()
   draw(ctx, state, layout, {
@@ -130,10 +176,9 @@ function render(): void {
 function restart(newSeed: number): void {
   seed = newSeed
   state = newGame(seed)
-  hovered = undefined
   acumulat = 0
   paused = false
-  refreshOptions()
+  syncHover()
 }
 
 function frame(now: number): void {
@@ -150,7 +195,7 @@ function frame(now: number): void {
       // Un mesaj rămas din timpul valului nu mai e adevărat în faza nouă.
       acumulat = 0
       message = undefined
-      refreshOptions()
+      syncHover()
     }
     render()
   }
@@ -171,17 +216,12 @@ function decide(d: Parameters<typeof applyDecision>[1]): boolean {
 
 canvas.addEventListener('mousemove', (e) => {
   const h = pixelToHex(e.clientX, e.clientY, layout)
-  const idx = state.path.findIndex((p) => key(p) === key(h))
-  // Hexagonul de sub mouse face parte din porțiunea înlocuită; capetele fixe nu se pot înlocui.
-  const next = idx > 0 && idx < state.path.length - 1 ? idx : undefined
   const moved = hoverHex === undefined || key(hoverHex) !== key(h)
   hoverHex = h
-  if (next !== hovered) {
-    hovered = next
-    optionIndex = 0
-    refreshOptions()
+  if (moved) {
+    syncHover()
+    render()
   }
-  if (moved) render()
 })
 
 canvas.addEventListener('click', () => {
@@ -190,16 +230,19 @@ canvas.addEventListener('click', () => {
     const i = TARGET_MODES.indexOf(t.tintire)
     decide({ tip: 'tintire', turn: t.id, mod: TARGET_MODES[(i + 1) % TARGET_MODES.length] ?? 'primul' })
   } else if (hovered !== undefined) {
+    const allowed = checkDetourAllowed(state)
     const chosen = options[optionIndex]
-    if (!chosen) {
-      message = `Nu există ocol de +${extra} aici (apă, filon, un turn, marginea hărții, sau drumul s-ar atinge singur). Încearcă alt număr sau alt loc.`
-    } else if (decide({ tip: 'ocol', start: chosen.start, span: chosen.span, hexuri: chosen.hexes.map(key) })) {
-      hovered = undefined
+    if (!allowed.ok) {
+      message = `Nu se poate: ${allowed.reason}`
+    } else if (!chosen) {
+      message = `Nu există ocol de +${extra} aici (apă, filon, marginea hărții, sau drumul s-ar atinge singur). Încearcă alt număr sau alt loc.`
+    } else {
+      decide({ tip: 'ocol', start: chosen.start, span: chosen.span, hexuri: chosen.hexes.map(key) })
     }
   } else if (hoverHex !== undefined && state.map.terrain.has(key(hoverHex))) {
     decide({ tip: 'turn', turn: turnAles, hex: key(hoverHex) })
   }
-  refreshOptions()
+  syncHover()
   render()
 })
 
@@ -208,11 +251,7 @@ window.addEventListener('keydown', (e) => {
   const towerKey = ['4', '5', '6', '7'].indexOf(e.key)
   if (e.key === ' ') {
     e.preventDefault()
-    if (decide({ tip: 'pornesteVal' })) {
-      hovered = undefined
-      acumulat = 0
-      refreshOptions()
-    }
+    if (decide({ tip: 'pornesteVal' })) acumulat = 0
   } else if (e.key === 'f' || e.key === 'F') {
     vitezaIndex = (vitezaIndex + 1) % VITEZE_UI.length
   } else if (e.key === 'p' || e.key === 'P') {
@@ -220,7 +259,6 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === '1' || e.key === '2' || e.key === '3') {
     extra = Number(e.key)
     optionIndex = 0
-    refreshOptions()
   } else if (towerKey >= 0) {
     turnAles = TOWER_TYPES[towerKey] ?? turnAles
   } else if (e.key === 'Tab') {
@@ -231,8 +269,6 @@ window.addEventListener('keydown', (e) => {
     const lastDecision = state.jurnal.at(-1)
     if (state.faza === 'pregatire' && lastDecision !== undefined && lastDecision.la === state.tick) {
       state = replay(seed, state.jurnal.slice(0, -1), state.tick)
-      hovered = undefined
-      refreshOptions()
     } else {
       message = 'Nu e nimic de anulat: se anulează doar deciziile din pregătirea curentă — un val jucat nu se dă înapoi.'
     }
@@ -243,6 +279,8 @@ window.addEventListener('keydown', (e) => {
   } else {
     return
   }
+  // După orice tastă (Z, Spațiu, R, N, 1/2/3), ce e sub mouse se recalculează pe starea nouă.
+  syncHover()
   render()
 })
 

@@ -40,4 +40,9 @@ export const INSERARE = {
    * vecine între ele. Porțiune 1: doar +1; porțiune 2: +1, +2; porțiune 3: +1, +2, +3.
    */
   portiuneMaxima: 3,
+  /**
+   * Câte ocoluri se pot pune într-o pregătire (decis de owner, 05.10.2026: unul pe val). Upgrade-urile de mai
+   * târziu (draft, relicve) cresc valoarea din stare — `GameState.ocoluriPeVal` — nu pe cea de aici.
+   */
+  peVal: 1,
 } as const
