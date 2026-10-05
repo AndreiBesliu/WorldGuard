@@ -134,3 +134,278 @@ inamicii care merg pe drum, pe o simulare cu tick fix, deterministă.
 
 **Rămâne:** felia 2 — turnurile de bază și țintirea. Restul listei din intrarea anterioară rămâne
 neschimbat.
+
+---
+
+## 04.10.2026 — Felia 2: turnurile de bază și țintirea
+
+**Cerut de owner:** „continua” — felia următoare din listă. Cele două întrebări de la felia 1 (bossul,
+limita de ocoluri) n-au primit încă răspuns; am păstrat ce era: boss la 5, 10 și 15, ocoluri nelimitate.
+
+**Făcut:**
+- `src/data/towers.ts`:
+  - 4 turnuri, fiecare cu un rol venit doar din cifre (stările lor vin în felia 3):
+
+    | turn | aur | daună | rază | lovește la | rol |
+    |---|---|---|---|---|---|
+    | Fizic | 55 | 40 | 2 | 1,5 s | lovitură grea, trece de armură |
+    | Foc | 60 | 9 | 2 | 0,25 s | lovituri dese, slab contra armurii |
+    | Frig | 55 | 12 | 1 | 0,4 s | toți inamicii de lângă el (zonă) |
+    | Fulger | 70 | 36 | 3 | 1,2 s | bătaie lungă |
+
+  - 4 moduri de țintire: primul, ultimul, cel mai puternic, cel mai slab;
+  - `AUR_START` = 120.
+- `src/data/enemies.ts`: `armura` (blindat 8, boss 5, restul 0) și `aur` la ucidere (2–12; bossul 100).
+- `src/data/terrain.ts`: `permiteTurn` (pe apă nu se construiește).
+- `src/sim/game.ts`:
+  - decizii noi:
+    - `turn`: doar în pregătire, costă aur;
+    - `tintire`: și în timpul valului, cu tick-ul ei în jurnal;
+  - `checkBuild` întoarce motivul refuzului; aceeași funcție alimentează previzualizarea;
+  - ordinea unui tick: mers → apariții → turnurile lovesc, în ordinea id-urilor (un inamic ucis nu mai
+    e țintă) → cei uciși lasă aur → sfârșitul valului;
+  - armura scade din fiecare lovitură, dar trece mereu cel puțin 1;
+  - turnurile încep fiecare val încărcate;
+  - raza = distanța pe grilă până la hexagonul de drum pe care stă inamicul;
+  - egalitățile la țintire se rup după progres, apoi după id.
+- `src/sim/path.ts`: drumul nu trece prin turnuri (parametrul `blocked`), cu motiv în refuz.
+- `src/render/canvas.ts`:
+  - turnurile, câte o formă pe tip;
+  - raza la hover;
+  - fantoma turnului, cu X când nu se poate construi;
+  - loviturile: o linie, sau un inel la turnul de zonă;
+  - bara de viață.
+- `src/main.ts`:
+  - mouse-ul face ce trebuie după ce e sub el: drum = ocol, hexagon liber = turn, turn = schimbă ținta;
+  - 4–7 aleg turnul;
+  - Z anulează orice decizie din pregătirea curentă;
+  - `window.wg.state` doar în `npm run dev`. Am verificat că lipsește din build.
+- 11 teste noi, 59 în total:
+  - construcția și refuzurile, fiecare cu motivul exact;
+  - drumul care nu trece prin turnuri;
+  - regula fiecărui mod de țintire și ruperea egalităților;
+  - raza egală cu distanța pe grilă;
+  - schimbarea țintei în timpul valului, reprodusă de replay;
+  - armura;
+  - cadența exactă a loviturilor;
+  - aurul egal cu recompensa celor uciși;
+  - turnul de zonă, cu mai multe ținte deodată;
+  - turnurile țin baza mai mult, iar partida iese identic de două ori.
+- Verificat în browser (Chromium headless), fără erori în consolă:
+  - fantoma și raza;
+  - refuzul pe apă;
+  - schimbarea țintei și anularea ei cu Z;
+  - valul 1 curățat (20/20 vieți, aurul 10 + 8 × 6 = 58);
+  - trei valuri jucate din clicuri, cu ocoluri și turnuri.
+
+**Măsurat — și a schimbat cifrele.**
+
+Botul folosit: pune turnuri pe hexagonul liber care acoperă cel mai mult drum, cheltuiește tot aurul,
+alternează tipurile (sau folosește unul singur). Când are voie la ocoluri, ia primul +3 găsit de la
+mijlocul drumului spre capete. 20 de hărți (seed 1–20).
+
+- **Prima trecere avea o strategie dominantă:** Fizic singur câștiga pe toate cele 20 de hărți **fără
+  niciun ocol**, iar Fulger singur cădea în valul 2 (Frig singur, la fel, pe 18 din 20). Am scumpit și
+  încetinit Fizicul și am întărit Fulgerul și Frigul (cifrele din tabelul de mai sus). Rezultatul, cu
+  cifrele finale:
+
+  | strategie | fără ocoluri | 1 ocol pe val | ocoluri nelimitate |
+  |---|---|---|---|
+  | doar Fizic | cade în valul 3–4 | câștigă 20/20 (6–20 vieți) | câștigă 20/20 (20 vieți) |
+  | doar Foc | cade în valul 4 | cade în valul 5–9 | — |
+  | doar Frig | cade în valul 7–10 | cade în valul 10 (bossul) | — |
+  | doar Fulger | cade în valul 3 | câștigă 20/20 (9–17 vieți) | — |
+  | Frig + Fulger | — | câștigă 20/20 (15–20 vieți) | — |
+  | toate, pe rând | cade în valul 4–5 | câștigă 19/20 (9–20 vieți) | câștigă 20/20 (20 vieți) |
+
+- **Ce spune tabelul:**
+  - **fără ocoluri nu se câștigă** cu nicio strategie: drumul e jumătate din apărare, cum cere pilonul 1;
+  - **cu ocoluri nelimitate, totul câștigă fără să piardă o viață.** E încă un argument pentru limita de
+    ocoluri;
+  - **cu un ocol pe val, Fizic și Fulger câștigă și singure.** Contracarările (stări, valuri cu trăsături)
+    vin din felia 3.
+- **Echilibrul e pe muchie de cuțit:**
+  - viață ×1,3 pe toate valurile → majoritatea partidelor cad la bossul din valul 5, chiar cu toate
+    turnurile și cu un ocol pe val;
+  - aurul vine doar din inamici uciși, deci o scăpare devreme se rostogolește;
+  - bossul din valul 5 e un zid.
+- **Durata, cu un ocol pe val:** 8–12 minute la 1×; cu ocoluri nelimitate, 9–25 de minute. Ținta din GDD
+  §4 e 20–30 de minute, deci valurile sunt prea scurte. Se reglează din compoziția valurilor, după draft și
+  economie.
+
+**Propuneri ale mele, nedecise:**
+- toate cifrele de mai sus;
+- armura ca valoare fixă scăzută din fiecare lovitură, cu minimum 1;
+- turnurile se construiesc doar între valuri; ținta se schimbă oricând;
+- drumul nu trece prin turnuri: un turn pus devreme îți blochează ocolurile de mai târziu;
+- pe filon se poate construi;
+- se pornește cu 120 de aur; turnurile încep fiecare val încărcate.
+
+**Întrebări pentru owner:**
+- Rămân cele două de la felia 1 (bossul la 5, 10 și 15 sau la 5 și 10; limita de ocoluri). Măsurătoarea de
+  acum le face mai urgente:
+  - fără limită de ocoluri, jocul nu se poate pierde cu turnuri puse cu cap;
+  - bossul din valul 5 decide singur majoritatea partidelor.
+- E bine ca drumul să nu poată trece prin turnuri? Alternativa: ocolul mută sau dărâmă turnul.
+
+**Rămâne:** felia 3 — stările și reacțiile (pe etichete), plus terenul în reacții, inclusiv dealul cu
+rază mai mare (GDD §5). Balansul serios vine după draft și economie.
+
+---
+
+## 05.10.2026 — Deciziile owner-ului: un ocol pe val, turnul nu blochează, bossul la 5, 10 și 15
+
+**Decis de owner** (răspunsuri la întrebările din feliile 1 și 2):
+- „1 ocol pe val, cu posibilitatea de upgrade mai târziu”;
+- „Bossul vine la valurile 5, 10 și 15” — e așa din felia 1; am corectat contradicția din GDD §10;
+- „turnul nu blochează”.
+
+**Făcut:**
+- **Un ocol pe val:**
+  - `INSERARE.peVal` = 1, dar limita stă în stare (`GameState.ocoluriPeVal`): acolo o vor crește
+    upgrade-urile de mai târziu;
+  - `ocoluriFolosite` se golește când pornește valul;
+  - `checkDetourAllowed` dă motivul refuzului („ocolul acestui val e deja pus — următorul vine după val”),
+    același în simulare și în UI;
+  - Z redă dreptul la ocol, prin replay.
+- **Turnul nu blochează:**
+  - `path.ts` revine la forma din felia 1 (fără hexagoane blocate);
+  - ce se întâmplă cu turnul din cale n-a fost decis. Propunerea mea: ocolul îl ridică și dă aurul înapoi
+    (`RAMBURSARE_OCOL` = 1). Alternativa din întrebarea pusă era mutarea lui;
+  - previzualizarea pune un X pe turnurile care s-ar ridica și scrie cât aur se întoarce.
+- `docs/GDD.md` (§5, §10, §14) și `CLAUDE.md`, cu deciziile.
+- Teste: 65.
+  - Noi: 4 pentru limită (al doilea ocol refuzat, dreptul revine după val, Z îl redă, limita din stare
+    poate fi crescută și rămâne după val). Testul cu blocarea a devenit testul ridicării cu aur înapoi.
+    Plus două, după recenzie (vezi mai jos): un ocol peste mai multe turnuri de tipuri diferite, și amprenta
+    care deosebește stările după o ridicare.
+  - Jocul aleator din `game.test.ts` joacă acum **partide întregi**: un ocol pe pregătire, turnuri care
+    acoperă drumul, o schimbare de țintă la un tick oarecare în fiecare val. Replay-ul trebuie să iasă
+    identic, cu toate cele patru tipuri de decizii, iar măcar un ocol trebuie să fi ridicat un turn.
+  - Testul „jurnal de pe alt seed” construiește acum precis un ocol valid pe harta 11 care trece prin apă
+    pe harta 12, cu mesajul exact. Vechiul test depindea de unde cădea jocul aleator: o variantă
+    intermediară a jocului aleator, din timpul rescrierii, a produs un jurnal care se aplica întreg și pe
+    harta 12, iar testul a picat. Cu varianta finală, vechiul test ar fi trecut din nou, dar tot din noroc.
+- Verificat în browser, fără erori în consolă:
+  - previzualizarea cu turnul ridicat;
+  - ridicarea, cu aurul înapoi (65 → 120);
+  - refuzul celui de-al doilea ocol, cu motiv;
+  - Z readuce și drumul și turnul;
+  - după val, dreptul la ocol revine.
+
+**Măsurat** — botul din felia 2, pe regulile noi (un ocol pe val e impus acum de joc), 20 de hărți:
+
+| strategie | rezultat |
+|---|---|
+| toate turnurile, pe rând | câștigă 20/20 (1–20 vieți) |
+| doar Fizic | câștigă 20/20 (8–20 vieți) |
+| doar Fulger | câștigă 20/20 (7–17 vieți) |
+| Frig + Fulger | câștigă 20/20 (15–20 vieți) |
+| Fizic + Foc | câștigă 17/20; 3 cad în valul 5 |
+| doar Frig | cade în valul 10 |
+| doar Foc | cade în valul 5–7 |
+| toate, fără ocoluri | cade în valul 4–5 |
+
+- Față de felia 2, unde drumul ocolea turnurile, rezultatele sunt aproape identice; amestecul trece de la
+  19/20 la 20/20.
+- **Ocolurile botului au ridicat multe turnuri:** până la 78 în 20 de partide (doar Fizic), fiindcă botul
+  pune turnurile exact pe unde trece drumul. Cu aurul dat înapoi integral, un ocol e și o mutare gratuită
+  de turn.
+- Durata: 8–14 minute la 1×.
+
+**Recenzie adversarială** (4 recenzori pe dimensiuni diferite, apoi câte un sceptic pe fiecare constatare):
+8 constatări, 6 confirmate, toate reparate înainte de commit:
+- amprenta nu includea `urmatorulTurn`: după o ridicare, două stări cu viitor diferit aveau aceeași amprentă.
+  Acum intră și `urmatorulTurn`, și `urmatorulId`;
+- UI: după Z, Spațiu, R sau N, previzualizarea de sub mouse dispărea, iar un clic putea pune ocolul și ridica
+  turnuri nevăzute. Acum `syncHover` recalculează ce e sub mouse după orice schimbare;
+- niciun test nu acoperea un ocol peste mai multe turnuri sau rambursarea pentru alt tip decât primul turn din
+  listă — testul nou le acoperă;
+- documentația trecea „ocolul ridică turnul” drept decizia owner-ului; e propunere;
+- o justificare falsă în intrarea asta (corectată mai sus).
+
+Am reintrodus pe rând, într-o copie, defectele găsite (plus „turnul blochează din nou” și „fără limită”):
+toate cele 7 sunt prinse de teste.
+
+**Propuneri ale mele, nedecise:**
+- turnul din calea ocolului se ridică (nu se mută);
+- tot aurul înapoi pentru turnul ridicat;
+- ocolul nefolosit nu se păstrează pentru valul următor.
+
+**Întrebări pentru owner:**
+- Turnul din calea ocolului: se ridică, cu aurul înapoi (acum), sau se mută?
+- Dacă se ridică: tot aurul (acum) sau o parte, ca ocolul să nu fie o mutare gratuită de turn?
+- Ocolul nefolosit: se pierde (acum) sau se adună de la un val la altul?
+
+**Rămâne:** felia 3 — stările și reacțiile (pe etichete), plus terenul în reacții.
+
+---
+
+## 05.10.2026 (2) — Ocolul e obligatoriu, iar jocul refuză ocolul peste un turn
+
+**Decis de owner** (răspunsuri la întrebările din intrarea anterioară):
+1. Turnul din calea ocolului: „jocul refuză plasarea pe traseu”.
+2. Rambursarea: fără răspuns. Nu mai contează: nu se ridică nimic, deci nu e nimic de rambursat.
+3. Ocolul nefolosit: „ocolul se folosește obligatoriu”.
+
+**Cum am înțeles primul răspuns:** un ocol care ar trece peste un turn e refuzat, cu motiv, cum era în felia 2.
+Owner-ul răspunsese înainte „turnul nu blochează”, pe care îl aplicasem ca „ocolul trece și ridică turnul”;
+răspunsul nou îl precizează, iar ridicarea cu aurul înapoi dispare. Dacă owner-ul a vrut altceva, se schimbă
+ușor înapoi.
+
+**Făcut:**
+- **Turnul blochează ocolul:**
+  - `path.ts` revine la forma din felia 2 (hexagoane blocate în căutarea și validarea ocolurilor);
+  - `towerKeys` intră ca hexagoane blocate în `insertDetour`, `optionsAround` și `detourPossible`;
+  - variantele de ocol care ar trece peste un turn nici nu mai apar în previzualizare;
+  - s-au scos ridicarea, rambursarea (`RAMBURSARE_OCOL`) și X-urile din previzualizare.
+- **Ocolul e obligatoriu:**
+  - `checkStartWave` refuză pornirea valului cât timp ocolul pregătirii n-a fost pus: „pune întâi ocolul
+    acestui val — e obligatoriu”;
+  - excepția (propunere): dacă pe drum nu mai încape niciun ocol (`detourPossible`), valul pornește fără el,
+    altfel partida s-ar bloca. Se poate ajunge acolo prin teren sau prin turnuri care blochează tot;
+  - cu un upgrade de mai multe ocoluri, toate sunt obligatorii (propunere);
+  - rândul de sus spune „valul pornește după ocol” și „ocol obligatoriu 0/1”.
+- `src/sim/testkit.ts`: ajutoare pentru teste (`must`, `firstDetour`, `startWave`, `runWave`). Cu ocolul
+  obligatoriu, testele care porneau valul direct pun acum întâi ocolul.
+- `docs/GDD.md` (§5, §14) și `CLAUDE.md`, cu deciziile.
+- Teste: 68.
+  - **Noi:**
+    - valul nu pornește fără ocol, cu motivul exact;
+    - pe o hartă fără loc de ocol, valul pornește;
+    - când turnurile blochează toate ocolurile rămase, valul pornește;
+    - cu limita crescută, toate ocolurile sunt obligatorii.
+  - **Testul ocolului prin turn** cere refuzul cu motiv. Refuzul nu consumă ocolul pregătirii, iar varianta
+    nu mai apare.
+  - **Jocul aleator** pune ocolul obligatoriu ocolind turnurile și numără de câte ori turnurile i-au luat o
+    variantă; testul de replay cere ca asta să se fi întâmplat.
+- **Mutații reintroduse într-o copie** — toate prinse de teste:
+  - turnul nu mai blochează;
+  - ocolul nu mai e obligatoriu;
+  - fără ieșire când nu încape niciun ocol;
+  - `detourPossible` ignoră turnurile (prins doar după testul nou cu turnurile care blochează tot);
+  - fără limita de un ocol;
+  - valul resetează limita crescută.
+- **Verificat în browser**, fără erori în consolă:
+  - Spațiu fără ocol arată refuzul cu motiv;
+  - un turn lângă drum scade variantele de ocol de acolo de la 7 la 5, fără niciuna prin turn;
+  - după ocol, valul pornește.
+
+**Măsurat** — botul din felia 2, pe regulile finale, 20 de hărți. Rezultatele sunt identice cu coloana
+„1 ocol pe val” din felia 2, fiindcă botul punea deja un ocol ori de câte ori se putea:
+
+| strategie | rezultat |
+|---|---|
+| toate turnurile, pe rând | câștigă 19/20 (9–20 vieți); una cade în valul 5 |
+| doar Fizic | câștigă 20/20 (6–20 vieți) |
+| doar Fulger | câștigă 20/20 (9–17 vieți) |
+| Frig + Fulger | câștigă 20/20 (15–20 vieți) |
+| Fizic + Foc | câștigă 16/20; 4 cad în valul 5 |
+| doar Frig | cade în valul 10 |
+| doar Foc | cade în valul 5–9 |
+
+- Pregătiri în care nu mai încăpea niciun ocol: 0–3 la 20 de partide (din circa 300 de pregătiri) — rare,
+  spre final.
+- Durata: 8–14 minute la 1×.
+
+**Rămâne:** felia 3 — stările și reacțiile (pe etichete), plus terenul în reacții.

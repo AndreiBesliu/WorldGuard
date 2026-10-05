@@ -7,14 +7,16 @@ export interface TerrainInfo {
   readonly culoare: string
   /** Poate trece traseul peste acest teren? */
   readonly permiteTraseu: boolean
+  /** Se poate construi un turn pe acest teren? */
+  readonly permiteTurn: boolean
 }
 
 export const TERRAIN: Readonly<Record<Terrain, TerrainInfo>> = {
-  campie: { nume: 'Câmpie', culoare: '#8f9d6a', permiteTraseu: true },
-  apa: { nume: 'Apă', culoare: '#3f6f9e', permiteTraseu: false },
-  padure: { nume: 'Pădure', culoare: '#2f5a37', permiteTraseu: true },
-  deal: { nume: 'Deal', culoare: '#9a7f5a', permiteTraseu: true },
-  filon: { nume: 'Filon', culoare: '#7d5f8f', permiteTraseu: false },
+  campie: { nume: 'Câmpie', culoare: '#8f9d6a', permiteTraseu: true, permiteTurn: true },
+  apa: { nume: 'Apă', culoare: '#3f6f9e', permiteTraseu: false, permiteTurn: false },
+  padure: { nume: 'Pădure', culoare: '#2f5a37', permiteTraseu: true, permiteTurn: true },
+  deal: { nume: 'Deal', culoare: '#9a7f5a', permiteTraseu: true, permiteTurn: true },
+  filon: { nume: 'Filon', culoare: '#7d5f8f', permiteTraseu: false, permiteTurn: true },
 }
 
 /** Parametrii generatorului de hartă. */
@@ -38,4 +40,9 @@ export const INSERARE = {
    * vecine între ele. Porțiune 1: doar +1; porțiune 2: +1, +2; porțiune 3: +1, +2, +3.
    */
   portiuneMaxima: 3,
+  /**
+   * Câte ocoluri se pun într-o pregătire (decis de owner, 05.10.2026: unul pe val, obligatoriu). Upgrade-urile
+   * de mai târziu (draft, relicve) cresc valoarea din stare — `GameState.ocoluriPeVal` — nu pe cea de aici.
+   */
+  peVal: 1,
 } as const

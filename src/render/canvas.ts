@@ -1,10 +1,11 @@
 // Desenarea pe Canvas 2D. Citește starea, nu o modifică.
 
-import { ENEMIES } from '../data/enemies'
+import { ENEMIES, WAVES } from '../data/enemies'
 import { MILI_HEX } from '../data/joc'
 import { TERRAIN } from '../data/terrain'
-import { type Hex } from '../sim/hex'
-import type { GameState } from '../sim/game'
+import { TOWERS, type TowerInfo, type TowerType } from '../data/towers'
+import { distance, fromKey, type Hex } from '../sim/hex'
+import type { Enemy, GameState } from '../sim/game'
 
 const SQRT3 = Math.sqrt(3)
 
@@ -74,6 +75,54 @@ export interface Overlay {
    * două tick-uri; simularea rămâne pe pas fix.
    */
   readonly alpha?: number
+  /** Raza unui turn (cel de sub mouse sau cel care urmează să fie construit). */
+  readonly range?: { readonly hex: Hex; readonly raza: number; readonly culoare: string }
+  /** Turnul care s-ar construi aici, ca fantomă; `ok: false` = nu se poate (motivul e în text). */
+  readonly ghost?: { readonly hex: Hex; readonly tip: TowerType; readonly ok: boolean }
+}
+
+function drawCross(ctx: CanvasRenderingContext2D, x: number, y: number, size: number): void {
+  ctx.beginPath()
+  ctx.moveTo(x - size * 0.4, y - size * 0.4)
+  ctx.lineTo(x + size * 0.4, y + size * 0.4)
+  ctx.moveTo(x + size * 0.4, y - size * 0.4)
+  ctx.lineTo(x - size * 0.4, y + size * 0.4)
+  ctx.strokeStyle = '#f0a35e'
+  ctx.lineWidth = 3
+  ctx.stroke()
+}
+
+function drawTower(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, info: TowerInfo, alpha = 1): void {
+  const r = size * 0.62
+  ctx.globalAlpha = alpha
+  ctx.beginPath()
+  switch (info.forma) {
+    case 'patrat':
+      ctx.rect(x - r * 0.8, y - r * 0.8, r * 1.6, r * 1.6)
+      break
+    case 'triunghi':
+      ctx.moveTo(x, y - r)
+      ctx.lineTo(x + r * 0.9, y + r * 0.7)
+      ctx.lineTo(x - r * 0.9, y + r * 0.7)
+      ctx.closePath()
+      break
+    case 'cerc':
+      ctx.arc(x, y, r * 0.85, 0, Math.PI * 2)
+      break
+    case 'romb':
+      ctx.moveTo(x, y - r)
+      ctx.lineTo(x + r * 0.8, y)
+      ctx.lineTo(x, y + r)
+      ctx.lineTo(x - r * 0.8, y)
+      ctx.closePath()
+      break
+  }
+  ctx.fillStyle = info.culoare
+  ctx.fill()
+  ctx.strokeStyle = '#12161c'
+  ctx.lineWidth = 2
+  ctx.stroke()
+  ctx.globalAlpha = 1
 }
 
 export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: Overlay): void {
@@ -153,27 +202,93 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     }
   }
 
+  // Raza turnului de sub mouse (sau a celui de construit): hexagoanele acoperite, ușor luminate.
+  if (o.range) {
+    for (const k of s.map.terrain.keys()) {
+      const h = fromKey(k)
+      if (distance(h, o.range.hex) > o.range.raza) continue
+      const { x, y } = hexToPixel(h, l)
+      hexPath(ctx, x, y, l.size * 0.97)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.24)'
+      ctx.fill()
+      ctx.strokeStyle = o.range.culoare
+      ctx.lineWidth = 2
+      ctx.stroke()
+    }
+  }
+
+  // Turnurile
+  for (const t of s.turnuri) {
+    const { x, y } = hexToPixel(fromKey(t.hex), l)
+    drawTower(ctx, x, y, l.size, TOWERS[t.tip])
+  }
+  if (o.ghost) {
+    const { x, y } = hexToPixel(o.ghost.hex, l)
+    drawTower(ctx, x, y, l.size, TOWERS[o.ghost.tip], o.ghost.ok ? 0.8 : 0.3)
+    if (!o.ghost.ok) drawCross(ctx, x, y, l.size)
+  }
+
   // Inamicii: poziția se interpolează între centrele hexagoanelor de drum.
   const lastProgress = (s.path.length - 1) * MILI_HEX
-  for (const e of s.inamici) {
+  const pos = new Map<number, { x: number; y: number }>()
+  const enemyPos = (e: Enemy): { x: number; y: number } | undefined => {
     const progres = Math.min(lastProgress, e.progres + ENEMIES[e.tip].viteza * (o.alpha ?? 0))
     const idx = Math.floor(progres / MILI_HEX)
     const frac = (progres % MILI_HEX) / MILI_HEX
     const from = s.path[idx]
     const to = s.path[idx + 1] ?? from
-    if (!from || !to) continue
+    if (!from || !to) return undefined
     const p0 = hexToPixel(from, l)
     const p1 = hexToPixel(to, l)
-    const x = p0.x + (p1.x - p0.x) * frac
-    const y = p0.y + (p1.y - p0.y) * frac
+    return { x: p0.x + (p1.x - p0.x) * frac, y: p0.y + (p1.y - p0.y) * frac }
+  }
+  const waveHp = WAVES[s.val]?.viata ?? 1
+  for (const e of s.inamici) {
+    const p = enemyPos(e)
+    if (!p) continue
+    pos.set(e.id, p)
     const info = ENEMIES[e.tip]
+    const radius = Math.max(3, l.size * info.marime)
     ctx.beginPath()
-    ctx.arc(x, y, Math.max(3, l.size * info.marime), 0, Math.PI * 2)
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
     ctx.fillStyle = info.culoare
     ctx.fill()
     ctx.strokeStyle = e.tip === 'boss' ? '#ffffff' : 'rgba(0, 0, 0, 0.55)'
     ctx.lineWidth = e.tip === 'boss' ? 2 : 1
     ctx.stroke()
+    // Bara de viață, doar după prima lovitură.
+    const max = Math.round(info.viata * waveHp)
+    if (e.viata < max) {
+      const w = Math.max(14, radius * 2.2)
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
+      ctx.fillRect(p.x - w / 2, p.y - radius - 6, w, 3)
+      ctx.fillStyle = '#7bd389'
+      ctx.fillRect(p.x - w / 2, p.y - radius - 6, (w * Math.max(0, e.viata)) / max, 3)
+    }
+  }
+
+  // Loviturile din ultimele două tick-uri: o linie spre țintă, sau un inel pentru turnul de zonă.
+  for (const t of s.turnuri) {
+    if (s.faza !== 'val' || !t.lovitura || s.tick - t.lovitura.tick > 1) continue
+    const info = TOWERS[t.tip]
+    const from = hexToPixel(fromKey(t.hex), l)
+    ctx.strokeStyle = info.culoare
+    if (info.zona) {
+      ctx.beginPath()
+      ctx.arc(from.x, from.y, l.size * (0.9 + info.raza * 1.2), 0, Math.PI * 2)
+      ctx.lineWidth = 2
+      ctx.stroke()
+      continue
+    }
+    for (const id of t.lovitura.tinte) {
+      const to = pos.get(id)
+      if (!to) continue
+      ctx.beginPath()
+      ctx.moveTo(from.x, from.y)
+      ctx.lineTo(to.x, to.y)
+      ctx.lineWidth = 2
+      ctx.stroke()
+    }
   }
 
   // Capetele fixe

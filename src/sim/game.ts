@@ -9,13 +9,15 @@
 // Regula: nicio schimbare de stare în afara lui `applyDecision` și `step`.
 //
 // Timpul: simularea avansează doar în timpul unui val, câte un tick (TICK_MS) pe rând. Între valuri
-// timpul stă pe loc: acolo jucătorul modelează drumul și (mai târziu) alege din draft.
+// timpul stă pe loc: acolo jucătorul modelează drumul, construiește turnuri și (mai târziu) alege din draft.
 
 import { ENEMIES, WAVES, type EnemyType } from '../data/enemies'
 import { MILI_HEX, VIETI_BAZA } from '../data/joc'
-import { fromKey, key, type Hex } from './hex'
+import { INSERARE, TERRAIN } from '../data/terrain'
+import { AUR_START, TARGET_MODES, TOWERS, type TargetMode, type TowerType } from '../data/towers'
+import { distance, fromKey, key, type Hex } from './hex'
 import { generateMap, type GameMap } from './map'
-import { insertDetour } from './path'
+import { detourOptions, insertDetour } from './path'
 import { fail, ok, type Result } from './result'
 
 export type Decision =
@@ -29,6 +31,18 @@ export type Decision =
       readonly hexuri: readonly string[]
     }
   | { readonly tip: 'pornesteVal' }
+  | {
+      readonly tip: 'turn'
+      readonly turn: TowerType
+      /** Hexagonul turnului, ca cheie „q,r”. */
+      readonly hex: string
+    }
+  | {
+      readonly tip: 'tintire'
+      /** Id-ul turnului. */
+      readonly turn: number
+      readonly mod: TargetMode
+    }
 
 /** O decizie, cu tick-ul la care a fost luată. */
 export interface LoggedDecision {
@@ -51,6 +65,18 @@ export interface Spawn {
   readonly tip: EnemyType
 }
 
+export interface Tower {
+  readonly id: number
+  readonly tip: TowerType
+  /** Hexagonul turnului, ca cheie „q,r”. */
+  readonly hex: string
+  readonly tintire: TargetMode
+  /** Câte tick-uri mai sunt până poate lovi din nou (0 = gata). */
+  readonly reincarcare: number
+  /** Ultima lovitură: tick-ul și pe cine a lovit. Doar desenul o folosește. */
+  readonly lovitura?: { readonly tick: number; readonly tinte: readonly number[] }
+}
+
 export interface GameState {
   readonly seed: number
   readonly map: GameMap
@@ -61,6 +87,13 @@ export interface GameState {
   /** Indicele valului curent (în faza „val”) sau al următorului (în „pregătire”). */
   readonly val: number
   readonly vieti: number
+  readonly aur: number
+  readonly turnuri: readonly Tower[]
+  readonly urmatorulTurn: number
+  /** Câte ocoluri se pot pune într-o pregătire. Pornește de la `INSERARE.peVal`; upgrade-urile îl vor crește. */
+  readonly ocoluriPeVal: number
+  /** Câte ocoluri s-au pus în pregătirea curentă. Se golește când pornește valul. */
+  readonly ocoluriFolosite: number
   readonly inamici: readonly Enemy[]
   /** Inamicii care urmează să apară în valul curent, în ordinea tick-ului. */
   readonly deGenerat: readonly Spawn[]
@@ -78,6 +111,11 @@ export function newGame(seed: number): GameState {
     faza: 'pregatire',
     val: 0,
     vieti: VIETI_BAZA,
+    aur: AUR_START,
+    turnuri: [],
+    urmatorulTurn: 1,
+    ocoluriPeVal: INSERARE.peVal,
+    ocoluriFolosite: 0,
     inamici: [],
     deGenerat: [],
     urmatorulId: 1,
@@ -102,22 +140,167 @@ export function spawnSchedule(valIndex: number, startTick: number): Spawn[] {
   return out.map(({ tick, tip }) => ({ tick, tip }))
 }
 
+/** Se poate pune un ocol acum (faza, limita pe val)? Dacă nu, de ce. Folosit și de UI. */
+export function checkDetourAllowed(state: GameState): Result<true> {
+  if (state.faza !== 'pregatire') return fail('drumul se modelează doar între valuri')
+  if (state.ocoluriFolosite >= state.ocoluriPeVal) {
+    const n = state.ocoluriPeVal
+    return fail(n === 1 ? 'ocolul acestui val e deja pus — următorul vine după val' : `ai pus deja cele ${n} ocoluri ale acestui val — următoarele vin după val`)
+  }
+  return ok(true)
+}
+
+/**
+ * Hexagoanele ocupate de turnuri. Jocul refuză un ocol care ar trece peste ele (decis de owner, 05.10.2026),
+ * deci ele intră ca hexagoane blocate în căutarea și în validarea ocolurilor.
+ */
+export function towerKeys(state: GameState): Set<string> {
+  return new Set(state.turnuri.map((t) => t.hex))
+}
+
+// Memorare pentru `detourPossible`: e o funcție pură de stare, iar UI-ul o întreabă la fiecare desen.
+const possibleCache = new WeakMap<GameState, boolean>()
+
+/** Mai încape vreun ocol pe drum acum (teren, turnuri, regula „drumul nu se atinge singur”)? */
+export function detourPossible(state: GameState): boolean {
+  const cached = possibleCache.get(state)
+  if (cached !== undefined) return cached
+  const blocked = towerKeys(state)
+  let found = false
+  for (let span = 1; span <= INSERARE.portiuneMaxima && !found; span++) {
+    for (let start = 0; start + span + 1 <= state.path.length - 1 && !found; start++) {
+      for (let extra = INSERARE.minim; extra <= INSERARE.maxim && !found; extra++) {
+        found = detourOptions(state.map, state.path, start, span, extra, blocked).length > 0
+      }
+    }
+  }
+  possibleCache.set(state, found)
+  return found
+}
+
+/**
+ * Poate porni valul? Ocolul pregătirii e obligatoriu (decis de owner, 05.10.2026): cât timp mai e de pus
+ * și încape vreunul pe drum, valul așteaptă. Dacă pe drum nu mai încape niciun ocol, valul pornește —
+ * altfel partida s-ar bloca.
+ */
+export function checkStartWave(state: GameState): Result<true> {
+  if (state.faza !== 'pregatire') return fail('un val e deja în desfășurare sau partida s-a încheiat')
+  if (!WAVES[state.val]) return fail('nu mai există valuri')
+  const rest = state.ocoluriPeVal - state.ocoluriFolosite
+  if (rest > 0 && detourPossible(state)) {
+    if (state.ocoluriPeVal === 1) return fail('pune întâi ocolul acestui val — e obligatoriu')
+    return fail(rest === 1 ? 'mai ai de pus un ocol în pregătirea asta — e obligatoriu' : `mai ai de pus ${rest} ocoluri în pregătirea asta — sunt obligatorii`)
+  }
+  return ok(true)
+}
+
+/** Se poate construi turnul `tip` pe hexagonul `hex` acum? Dacă nu, de ce. Folosit și de previzualizare. */
+export function checkBuild(state: GameState, tip: TowerType, hex: string): Result<true> {
+  if (state.faza !== 'pregatire') return fail('turnurile se construiesc doar între valuri')
+  const t = state.map.terrain.get(hex)
+  if (t === undefined) return fail(`${hex} e în afara hărții`)
+  if (state.path.some((h) => key(h) === hex)) return fail('pe drum nu se construiește')
+  if (!TERRAIN[t].permiteTurn) return fail(`pe ${TERRAIN[t].nume.toLowerCase()} nu se construiește`)
+  if (state.turnuri.some((x) => x.hex === hex)) return fail('aici e deja un turn')
+  const info = TOWERS[tip]
+  if (state.aur < info.cost) return fail(`nu ajunge aurul: turnul ${info.nume} costă ${info.cost}, ai ${state.aur}`)
+  return ok(true)
+}
+
 export function applyDecision(state: GameState, d: Decision): Result<GameState> {
   const logged = (next: GameState): GameState => ({ ...next, jurnal: [...state.jurnal, { la: state.tick, d }] })
   switch (d.tip) {
     case 'ocol': {
-      if (state.faza !== 'pregatire') return fail('drumul se modelează doar între valuri')
-      const r = insertDetour(state.map, state.path, d.start, d.span, d.hexuri.map(fromKey))
+      const allowed = checkDetourAllowed(state)
+      if (!allowed.ok) return fail(allowed.reason)
+      const r = insertDetour(state.map, state.path, d.start, d.span, d.hexuri.map(fromKey), towerKeys(state))
       if (!r.ok) return fail(r.reason)
-      return ok(logged({ ...state, path: r.value }))
+      return ok(logged({ ...state, path: r.value, ocoluriFolosite: state.ocoluriFolosite + 1 }))
     }
     case 'pornesteVal': {
-      if (state.faza !== 'pregatire') return fail('un val e deja în desfășurare sau partida s-a încheiat')
-      if (!WAVES[state.val]) return fail('nu mai există valuri')
-      return ok(logged({ ...state, faza: 'val', deGenerat: spawnSchedule(state.val, state.tick) }))
+      const allowed = checkStartWave(state)
+      if (!allowed.ok) return fail(allowed.reason)
+      // Turnurile încep fiecare val încărcate.
+      const turnuri = state.turnuri.map((t) => (t.reincarcare === 0 ? t : { ...t, reincarcare: 0 }))
+      return ok(logged({ ...state, faza: 'val', turnuri, ocoluriFolosite: 0, deGenerat: spawnSchedule(state.val, state.tick) }))
+    }
+    case 'turn': {
+      const r = checkBuild(state, d.turn, d.hex)
+      if (!r.ok) return fail(r.reason)
+      const tower: Tower = { id: state.urmatorulTurn, tip: d.turn, hex: d.hex, tintire: 'primul', reincarcare: 0 }
+      return ok(
+        logged({
+          ...state,
+          aur: state.aur - TOWERS[d.turn].cost,
+          turnuri: [...state.turnuri, tower],
+          urmatorulTurn: state.urmatorulTurn + 1,
+        }),
+      )
+    }
+    case 'tintire': {
+      // Ținta se poate schimba și în timpul valului: decizia intră în jurnal cu tick-ul ei.
+      if (state.faza === 'castigat' || state.faza === 'pierdut') return fail('partida s-a încheiat')
+      const t = state.turnuri.find((x) => x.id === d.turn)
+      if (!t) return fail(`nu există turnul ${d.turn}`)
+      const info = TOWERS[t.tip]
+      if (info.zona) return fail(`turnul ${info.nume} lovește toți inamicii din rază — nu are țintă de ales`)
+      if (!TARGET_MODES.includes(d.mod)) return fail(`mod de țintire necunoscut: ${d.mod}`)
+      if (t.tintire === d.mod) return fail('turnul țintește deja așa')
+      return ok(logged({ ...state, turnuri: state.turnuri.map((x) => (x === t ? { ...x, tintire: d.mod } : x)) }))
     }
   }
 }
+
+/** Hexagonul de drum pe care stă inamicul acum: cel mai apropiat centru. */
+export const enemyPathIndex = (s: GameState, e: Enemy): number =>
+  Math.min(s.path.length - 1, Math.floor((e.progres + MILI_HEX / 2) / MILI_HEX))
+
+// Ce indici de drum acoperă un turn. Drumul nu se schimbă în timpul valului, deci se calculează o dată pe
+// (drum, hexagon, rază). Cache-ul e doar o memorare a unei funcții pure — nu schimbă rezultatul.
+const coverageCache = new WeakMap<readonly Hex[], Map<string, readonly boolean[]>>()
+export function coverage(path: readonly Hex[], hex: string, raza: number): readonly boolean[] {
+  let perPath = coverageCache.get(path)
+  if (!perPath) {
+    perPath = new Map()
+    coverageCache.set(path, perPath)
+  }
+  const k = `${hex}/${raza}`
+  let c = perPath.get(k)
+  if (!c) {
+    const at = fromKey(hex)
+    c = path.map((h) => distance(at, h) <= raza)
+    perPath.set(k, c)
+  }
+  return c
+}
+
+/**
+ * Ținta unui turn cu țintă unică. Egalitățile se rup mereu la fel: după progres (mai aproape de bază
+ * întâi), apoi după id (cel apărut primul). `undefined` dacă lista e goală.
+ */
+export function pickTarget<E extends Pick<Enemy, 'id' | 'viata' | 'progres'>>(candidates: readonly E[], mode: TargetMode): E | undefined {
+  const byProgressThenId = (a: E, b: E): boolean => (a.progres !== b.progres ? a.progres > b.progres : a.id < b.id)
+  const better = (a: E, b: E): boolean => {
+    switch (mode) {
+      case 'primul':
+        return byProgressThenId(a, b)
+      case 'ultimul':
+        return a.progres !== b.progres ? a.progres < b.progres : a.id < b.id
+      case 'puternic':
+        return a.viata !== b.viata ? a.viata > b.viata : byProgressThenId(a, b)
+      case 'slab':
+        return a.viata !== b.viata ? a.viata < b.viata : byProgressThenId(a, b)
+    }
+  }
+  let best: E | undefined
+  for (const c of candidates) if (!best || better(c, best)) best = c
+  return best
+}
+
+/** Dauna care trece de armură. Minimum 1: orice lovitură contează. */
+export const damageAfterArmor = (dauna: number, tip: EnemyType): number => Math.max(1, dauna - ENEMIES[tip].armura)
+
+type LiveEnemy = { -readonly [K in keyof Enemy]: Enemy[K] }
 
 /** Un pas de simulare. În afara unui val, starea rămâne neschimbată (timpul stă pe loc). */
 export function step(state: GameState): GameState {
@@ -128,12 +311,13 @@ export function step(state: GameState): GameState {
   const multiplier = WAVES[valIndex]?.viata ?? 1
 
   // 1. Inamicii existenți merg înainte; cei care ajung la bază îi iau vieți.
+  //    (Obiectele de aici sunt noi, deci se pot modifica până la sfârșitul pasului.)
   let vieti = state.vieti
-  const inamici: Enemy[] = []
+  const live: LiveEnemy[] = []
   for (const e of state.inamici) {
     const progres = e.progres + ENEMIES[e.tip].viteza
     if (progres >= end) vieti -= ENEMIES[e.tip].dauna
-    else inamici.push({ ...e, progres })
+    else live.push({ ...e, progres })
   }
 
   // 2. Apar inamicii programați pentru tick-ul ăsta (pornesc de la intrare, se mișcă de la tick-ul următor).
@@ -141,20 +325,48 @@ export function step(state: GameState): GameState {
   let urmatorulId = state.urmatorulId
   while (i < state.deGenerat.length && (state.deGenerat[i] as Spawn).tick <= tick) {
     const sp = state.deGenerat[i] as Spawn
-    inamici.push({ id: urmatorulId++, tip: sp.tip, viata: Math.round(ENEMIES[sp.tip].viata * multiplier), progres: 0 })
+    live.push({ id: urmatorulId++, tip: sp.tip, viata: Math.round(ENEMIES[sp.tip].viata * multiplier), progres: 0 })
     i++
   }
   const deGenerat = state.deGenerat.slice(i)
 
-  // 3. Sfârșitul valului sau al partidei.
-  if (vieti <= 0) {
-    return { ...state, tick, vieti: 0, inamici, deGenerat, urmatorulId, faza: 'pierdut' }
+  // 3. Turnurile lovesc, în ordinea id-urilor. Un inamic ucis de un turn nu mai e țintă pentru următorul.
+  const turnuri: Tower[] = []
+  for (const t of state.turnuri) {
+    const info = TOWERS[t.tip]
+    const reincarcare = Math.max(0, t.reincarcare - 1)
+    if (reincarcare > 0) {
+      turnuri.push({ ...t, reincarcare })
+      continue
+    }
+    const cover = coverage(state.path, t.hex, info.raza)
+    const inRange = live.filter((e) => e.viata > 0 && cover[enemyPathIndex(state, e)] === true)
+    const target = info.zona ? undefined : pickTarget(inRange, t.tintire)
+    const tinte = info.zona ? inRange : target ? [target] : []
+    if (tinte.length === 0) {
+      turnuri.push(t.reincarcare === 0 ? t : { ...t, reincarcare: 0 })
+      continue
+    }
+    for (const e of tinte) e.viata -= damageAfterArmor(info.dauna, e.tip)
+    turnuri.push({ ...t, reincarcare: info.reincarcare, lovitura: { tick, tinte: tinte.map((e) => e.id) } })
   }
+
+  // 4. Cei uciși dispar și lasă aur.
+  let aur = state.aur
+  const inamici: Enemy[] = []
+  for (const e of live) {
+    if (e.viata <= 0) aur += ENEMIES[e.tip].aur
+    else inamici.push(e)
+  }
+
+  // 5. Sfârșitul valului sau al partidei.
+  const next = { ...state, tick, vieti, aur, turnuri, inamici, deGenerat, urmatorulId }
+  if (vieti <= 0) return { ...next, vieti: 0, faza: 'pierdut' }
   if (deGenerat.length === 0 && inamici.length === 0) {
     const val = valIndex + 1
-    return { ...state, tick, vieti, inamici, deGenerat, urmatorulId, val, faza: val >= WAVES.length ? 'castigat' : 'pregatire' }
+    return { ...next, val, faza: val >= WAVES.length ? 'castigat' : 'pregatire' }
   }
-  return { ...state, tick, vieti, inamici, deGenerat, urmatorulId }
+  return next
 }
 
 /**
@@ -182,11 +394,24 @@ export function replay(seed: number, jurnal: readonly LoggedDecision[], panaLaTi
 
 /** Amprentă stabilă a stării — aceeași stare dă mereu același șir, pe orice mașină. */
 export function fingerprint(state: GameState): string {
-  const parts: string[] = [`seed=${state.seed}`, `tick=${state.tick}`, `faza=${state.faza}`, `val=${state.val}`, `vieti=${state.vieti}`]
+  const parts: string[] = [
+    `seed=${state.seed}`,
+    `tick=${state.tick}`,
+    `faza=${state.faza}`,
+    `val=${state.val}`,
+    `vieti=${state.vieti}`,
+    `aur=${state.aur}`,
+    `ocoluri=${state.ocoluriFolosite}/${state.ocoluriPeVal}`,
+    // Contoarele de id sunt stare cu viitor: de îndată ce un turn va putea dispărea (vânzare, de exemplu),
+    // `urmatorulTurn` nu mai e „numărul de turnuri + 1”, deci intră separat în amprentă.
+    `urmatorulTurn=${state.urmatorulTurn}`,
+    `urmatorulId=${state.urmatorulId}`,
+  ]
   for (const [k, t] of state.map.terrain) parts.push(`${k}:${t}`)
   parts.push(`path=${state.path.map(key).join(';')}`)
   parts.push(`inamici=${state.inamici.map((e) => `${e.id}/${e.tip}/${e.viata}/${e.progres}`).join(';')}`)
   parts.push(`deGenerat=${state.deGenerat.length}`)
+  parts.push(`turnuri=${state.turnuri.map((t) => `${t.id}/${t.tip}/${t.hex}/${t.tintire}/${t.reincarcare}`).join(';')}`)
   let h = 0x811c9dc5
   const s = parts.join('|')
   for (let i = 0; i < s.length; i++) {
