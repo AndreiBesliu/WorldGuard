@@ -1,8 +1,8 @@
 # World Guard
 
 Tower defense roguelite pe hexagoane: modelezi pământul unor planete vii, iar ele țin minte ce le-ai făcut.
-**Stare:** prototip în browser, pentru desktop — feliile 1–8: valuri, turnuri, reacții, grupuri de turnuri, draftul și
-bossul, economia, finisarea vizuală, sunetul.
+**Stare:** prototip în browser, pentru desktop — feliile 1–9: valuri, turnuri, reacții, grupuri de turnuri, draftul și
+bossul, economia, finisarea vizuală, sunetul, planeta cu terenul care ține minte.
 Fiecare PR are un link de previzualizare; `main` se publică pe Firebase Hosting.
 
 ```bash
@@ -10,6 +10,12 @@ npm install
 npm run dev      # http://localhost:5180
 npm run check    # typecheck + teste + build
 ```
+
+**Planeta:** jocul pornește pe o planetă de 7 regiuni; fiecare regiune e o partidă. Salvezi o regiune ca să le deschizi
+pe vecinele ei, iar după 5 se deschide inima planetei. **Terenul ține minte:** canalele, dealurile și pădurile arse
+rămân pe regiune de la o partidă la alta și se schimbă cu timpul jucat (cenușa devine puieți, apoi pădure; canalele se
+colmatează). Pe o regiune, `N` te duce înapoi pe planetă, iar `R` o reia. Cu `?seed=123` în URL joci o partidă liberă,
+fără planetă.
 
 **Cum se joacă:** apără baza `B` de inamicii care pleacă din `I`. Înainte de fiecare val pui **un ocol**
 (obligatoriu), construiești turnuri și pornești valul.
@@ -20,7 +26,7 @@ npm run check    # typecheck + teste + build
 - **După fiecare val:** alegi 1 carte din 3 (click sau `8` / `9` / `0`): un turn gratuit, o îmbunătățire, o relicvă
   sau un ocol în plus. Valul următor pornește abia după alegere.
 - `Spațiu` pornește valul, `P` pauză, `F` viteza, `S` sunetul (tare, încet, oprit), `B` fundalul muzical, `Z` anulezi ultima decizie din
-  pregătire, `R` de la capăt, `N` hartă nouă. Seed fix: `?seed=123` în URL.
+  pregătire, `R` de la capăt, `N` hartă nouă (pe o regiune: înapoi pe planetă). Seed fix: `?seed=123` în URL.
 - **Economia:** după fiecare val primești dobândă (10% din aur, cel mult 30) și pământ. Cu pământul modelezi terenul:
   `Q` canal, `W` deal, `E` arzi pădurea (inamicii de pe drumul vecin iau foc). `M` sapă o mină pe un filon (40 de aur):
   pământ în plus la fiecare val.

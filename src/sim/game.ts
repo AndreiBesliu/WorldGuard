@@ -18,7 +18,7 @@ import { MILI_HEX, VIETI_BAZA } from '../data/joc'
 import type { ReactionType } from '../data/reactions'
 import { INSERARE, TERRAIN, type Terrain } from '../data/terrain'
 import { AUR_START, COMBINARE, TARGET_MODES, TOWERS, type ArmorCombo, type TargetMode, type TowerType } from '../data/towers'
-import { distance, fromKey, key, neighbors, type Hex } from './hex'
+import { distance, fromKey, key, lineBetween, neighbors, type Hex } from './hex'
 import { generateMap, type GameMap } from './map'
 import { detourOptions, insertDetour } from './path'
 import { applyContact, enemySpeed, STATE_ORDER, tickStates, type Contact, type ReactionContext, type States } from './reactions'
@@ -177,8 +177,21 @@ export interface Improvement {
 
 export type Improvements = Readonly<Partial<Record<TowerType, Improvement>>>
 
-export function newGame(seed: number): GameState {
-  const { map, path } = generateMap(seed)
+/**
+ * O partidă nouă pe harta generată din `seed`. `teren` = terenul pe care o regiune îl are deja de la partidele
+ * dinainte (lumea care ține minte, `lume.ts`): înlocuiește, hexagon cu hexagon, terenul generat. Drumul inițial rămâne
+ * legal: unde trece și terenul nu-l ține, devine câmpie, ca la generare (cu regula „drumul vechi”, nu se ajunge aici).
+ */
+export function newGame(seed: number, teren?: ReadonlyMap<string, Terrain>): GameState {
+  const gen = generateMap(seed)
+  let map = gen.map
+  const path = gen.path
+  if (teren && teren.size > 0) {
+    const t = new Map(map.terrain)
+    for (const [k, v] of teren) if (t.has(k)) t.set(k, v)
+    for (const h of path) if (!TERRAIN[t.get(key(h)) ?? 'campie'].permiteTraseu) t.set(key(h), 'campie')
+    map = { ...map, terrain: t }
+  }
   return {
     seed,
     map,
@@ -497,6 +510,11 @@ export function checkBuild(state: GameState, tip: TowerType, hex: string): Resul
   return ok(true)
 }
 
+/** Drumul vechi: linia dreaptă de la intrare la bază, pe care pornește drumul la începutul fiecărei partide. */
+export function isOldRoad(map: GameMap, hex: string): boolean {
+  return lineBetween(map.spawn, map.base).some((h) => key(h) === hex)
+}
+
 /** Ce nu se poate terraforma și nu se poate săpa: drumul, turnurile, minele. Motivul, sau `undefined` dacă e liber. */
 function occupied(state: GameState, hex: string): string | undefined {
   if (state.path.some((h) => key(h) === hex)) return 'pe drum nu se poate'
@@ -513,8 +531,12 @@ export function checkTerraform(state: GameState, actiune: Terraform, hex: string
   if (t === undefined) return fail(`${hex} e în afara hărții`)
   const busy = occupied(state, hex)
   if (busy) return fail(busy)
+  // Terenul unei regiuni rămâne de la o partidă la alta, dar drumul se reface la fiecare partidă pe linia dreaptă de la
+  // intrare la bază. O terraformare pe linia aia, făcută după ce un ocol a mutat drumul, n-ar avea cum să rămână.
+  if (isOldRoad(state.map, hex)) return fail('pe drumul vechi nu se poate: drumul se reface pe aici la fiecare partidă')
   if (!info.din.includes(t)) {
-    const unde = info.din.map((x) => TERRAIN[x].nume.toLowerCase()).join(' sau ')
+    const nume = info.din.map((x) => TERRAIN[x].nume.toLowerCase())
+    const unde = nume.length > 1 ? `${nume.slice(0, -1).join(', ')} sau ${nume.at(-1)}` : (nume[0] ?? '')
     return fail(`${info.verb} se poate doar pe ${unde}, nu pe ${TERRAIN[t].nume.toLowerCase()}`)
   }
   if (state.pamant < info.costPamant) return fail(`nu ajunge pământul: ${info.nume.toLowerCase()} costă ${info.costPamant}, ai ${state.pamant}`)
@@ -828,8 +850,8 @@ export function step(state: GameState): GameState {
  * Reconstruiește starea din seed și jurnal: rulează simularea până la tick-ul fiecărei decizii, o aplică,
  * apoi continuă până la `panaLaTick` (dacă e dat). Aruncă eroare dacă o decizie nu mai e validă.
  */
-export function replay(seed: number, jurnal: readonly LoggedDecision[], panaLaTick?: number): GameState {
-  let state = newGame(seed)
+export function replay(seed: number, jurnal: readonly LoggedDecision[], panaLaTick?: number, teren?: ReadonlyMap<string, Terrain>): GameState {
+  let state = newGame(seed, teren)
   const advanceTo = (target: number): void => {
     while (state.tick < target) {
       const next = step(state)

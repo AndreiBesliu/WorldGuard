@@ -292,3 +292,7 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | Un fundal muzical discret (05.10.2026) | decis |
 | Fundalul: acorduri lungi sintetizate, calm în pregătire, tensionat în val, grav la boss; tasta B | propunere |
 | Felia 9: meta-progresia (05.10.2026) — începe cu stratul C (Lumea); înlocuiește, pentru ea, „nu intră” din §10 | decis |
+| Planeta: 7 regiuni (inima în centru, 6 în jur), pornire din vest, o regiune salvată deschide vecinele, inima după 5 salvate | propunere |
+| Evoluția terenului după ceasul lumii (timpul jucat): pădurea arsă → cenușă (partida următoare) → puieți (40 min) → pădure (80 min); canalul se colmatează (60 min) | propunere |
+| Drumul vechi (linia dreaptă intrare–bază) nu se terraformează: drumul se reface pe el la fiecare partidă | propunere |
+| O partidă părăsită sau pierdută se socotește jucată: ce i-ai făcut terenului rămâne | propunere |

@@ -40,6 +40,8 @@ export interface Row {
 }
 
 export interface HudView {
+  /** Regiunea planetei pe care se joacă partida (lipsește în partida liberă, cu `?seed=`). */
+  readonly regiune?: string
   readonly val: string
   readonly boss: boolean
   readonly vieti: number
@@ -101,7 +103,13 @@ export interface HudView {
   }
   readonly codex: readonly { readonly nume: string; readonly reteta: string; readonly efect: string; readonly numar: number; readonly culoare: string }[]
   readonly debug: string
-  readonly final?: { readonly titlu: string; readonly text: string; readonly castigat: boolean }
+  readonly final?: {
+    readonly titlu: string
+    readonly text: string
+    readonly castigat: boolean
+    /** Butoanele ecranului de final: ce face fiecare (aceleași acțiuni ca tastele R și N). */
+    readonly butoane: readonly { readonly act: 'restart' | 'new'; readonly text: string; readonly tasta: string; readonly primar?: boolean }[]
+  }
 }
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string)
@@ -176,8 +184,8 @@ export function createHud(actions: HudActions): Hud {
   const soundBtn = btn('🔊 <kbd>S</kbd>', 'Sunetul: tare, încet, oprit', actions.cycleSound)
   const fundalBtn = btn('♪ <kbd>B</kbd>', 'Fundalul muzical: pornit sau oprit', actions.toggleFundal)
   const undoBtn = btn('↶ <kbd>Z</kbd>', 'Anulează ultima decizie din pregătirea asta', actions.undo)
-  btn('⟳ <kbd>R</kbd>', 'Aceeași hartă, de la capăt', actions.restart)
-  btn('Hartă nouă <kbd>N</kbd>', 'Altă hartă', actions.newMap)
+  const restartBtn = btn('⟳ <kbd>R</kbd>', 'Aceeași hartă, de la capăt', actions.restart)
+  const newBtn = btn('Hartă nouă <kbd>N</kbd>', 'Altă hartă', actions.newMap)
 
   // Bara de jos: turnurile și ocolul.
   const bottom = el('footer', 'bar jos', root)
@@ -269,6 +277,7 @@ export function createHud(actions: HudActions): Hud {
       const hearts = Math.round((v.vieti / v.vietiMax) * 100)
       stats(
         `<span class="titlu">World Guard</span>` +
+          (v.regiune ? `<span class="regiune-nume">${esc(v.regiune)}</span>` : '') +
           `<span class="pill ${v.boss ? 'boss' : ''}">${esc(v.val)}${v.boss ? ' · boss' : ''}</span>` +
           `<span class="stat" title="Vieți"><span class="ico vieti">♥</span>${v.vieti}<span class="bara"><span style="width:${hearts}%"></span></span></span>` +
           `<span class="stat" title="Aur"><span class="ico aur">◆</span>${v.aur}</span>` +
@@ -288,6 +297,10 @@ export function createHud(actions: HudActions): Hud {
       fundalBtn.innerHTML = `${v.fundal ? '♪' : '♪̸'} <kbd>B</kbd>`
       fundalBtn.classList.toggle('activ', !v.fundal)
       undoBtn.disabled = !v.canUndo
+      // Pe o regiune a planetei, N duce înapoi pe planetă, iar R reia regiunea; partida de acum se socotește jucată.
+      newBtn.innerHTML = v.regiune ? 'Planeta <kbd>N</kbd>' : 'Hartă nouă <kbd>N</kbd>'
+      newBtn.title = v.regiune ? 'Înapoi pe planetă (ce ai făcut terenului rămâne)' : 'Altă hartă'
+      restartBtn.title = v.regiune ? 'Reia regiunea (ce ai făcut terenului până acum rămâne)' : 'Aceeași hartă, de la capăt'
 
       towerSlot(
         v.towers
@@ -376,7 +389,7 @@ export function createHud(actions: HudActions): Hud {
       endSlot(
         v.final
           ? `<div class="card-final ${v.final.castigat ? 'castigat' : 'pierdut'}"><h2>${esc(v.final.titlu)}</h2><p>${esc(v.final.text)}</p>` +
-              `<div class="grup"><button class="btn primar" data-act="restart">⟳ Aceeași hartă <kbd>R</kbd></button><button class="btn" data-act="new">Hartă nouă <kbd>N</kbd></button></div></div>`
+              `<div class="grup">${v.final.butoane.map((b) => `<button class="btn${b.primar ? ' primar' : ''}" data-act="${b.act}">${esc(b.text)} <kbd>${b.tasta}</kbd></button>`).join('')}</div></div>`
           : '',
       )
       endBox.classList.toggle('vizibil', v.final !== undefined)

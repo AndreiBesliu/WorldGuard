@@ -26,6 +26,23 @@ import { decisionPan, decisionSound, stareFundal, stepCues } from './audio/cues'
 import { Sunet } from './audio/sunet'
 import { NIVELURI_SUNET } from './data/sunete'
 import { stepEvents, type StepEvent } from './events'
+import type { Terrain } from './data/terrain'
+import { LUME } from './data/lume'
+import {
+  commitRun,
+  decodeWorld,
+  encodeWorld,
+  newWorld,
+  planetRegions,
+  planetSaved,
+  regionAccess,
+  regionOf,
+  regionTerrain,
+  savedRing,
+  startRun,
+  type Lume,
+} from './sim/lume'
+import { createPlanetScreen, type PlanetView } from './ui/planeta'
 import { draw, fitLayout, hexToPixel, pixelToHex, resetRenderCaches, type Layout, type Overlay } from './render/canvas'
 import { Fx, toWorld } from './render/fx'
 import {
@@ -68,8 +85,18 @@ const canvas = document.getElementById('joc') as HTMLCanvasElement
 const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
 
 const params = new URLSearchParams(location.search)
+/** Partida liberă: cu `?seed=` în URL, o singură hartă, fără planetă (și pentru scripturile de verificare). */
+const liber = params.has('seed')
 let seed = Number(params.get('seed') ?? '2026') || 2026
 let state: GameState = newGame(seed)
+/** Lumea care ține minte (GDD §9.1); lipsește în partida liberă. */
+let lume: Lume | undefined
+/** Regiunea pe care se joacă acum și terenul cu care a pornit partida (rejucarea, la „anulează”, pornește din el). */
+let regiune: { cheie: string; teren: Map<string, Terrain> } | undefined
+/** Regiunea arătată pe ecranul planetei. */
+let regiuneAleasa: string | undefined
+/** O părăsire a partidei care așteaptă confirmarea (a doua apăsare, în câteva secunde). */
+let confirmare: { act: 'restart' | 'new'; pana: number } | undefined
 let extra = 2
 let optionIndex = 0
 let turnAles: TowerType = 'fizic'
@@ -145,8 +172,8 @@ const hud = createHud({
   cycleSound: () => act(cycleSound),
   toggleFundal: () => act(toggleFundal),
   undo: () => act(undo),
-  restart: () => act(() => restart(seed)),
-  newMap: () => act(() => restart(seed + 1)),
+  restart: () => act(restartKey),
+  newMap: () => act(newKey),
   selectTower: (tip) => act(() => selectTower(tip)),
   selectTool: (id) => act(() => (unealta = id as Terraform | 'mina')),
   setExtra: (n) => act(() => setExtra(n)),
@@ -537,11 +564,24 @@ function ocolView(): HudView['ocol'] {
 
 function finalView(): HudView['final'] {
   const total = Object.values(state.reactii).reduce((n, x) => n + (x ?? 0), 0)
+  const r = regiune && lume ? regionOf(lume, regiune.cheie) : undefined
+  // Pe o regiune: înapoi pe planetă (partida se socotește, terenul rămâne) sau încă o partidă aici.
+  const butoane: NonNullable<HudView['final']>['butoane'] = r
+    ? [
+        { act: 'new', text: 'Înapoi pe planetă', tasta: 'N', primar: true },
+        { act: 'restart', text: 'Reia regiunea', tasta: 'R' },
+      ]
+    : [
+        { act: 'restart', text: '⟳ Aceeași hartă', tasta: 'R', primar: true },
+        { act: 'new', text: 'Hartă nouă', tasta: 'N' },
+      ]
   if (state.faza === 'castigat') {
-    return { titlu: 'Ai apărat lumea', text: `Toate cele ${WAVES.length} valuri, cu ${state.vieti} vieți rămase și ${total} reacții.`, castigat: true }
+    const titlu = r ? (r.inima ? 'Ai salvat planeta' : `Ai salvat ${r.nume.replace('Ținutul', 'ținutul')}`) : 'Ai apărat lumea'
+    return { titlu, text: `Toate cele ${WAVES.length} valuri, cu ${state.vieti} vieți rămase și ${total} reacții.`, castigat: true, butoane }
   }
   if (state.faza === 'pierdut') {
-    return { titlu: 'Baza a căzut', text: `În valul ${state.val + 1} din ${WAVES.length}, după ${total} reacții.`, castigat: false }
+    const rest = r ? ' Ce ai făcut terenului rămâne.' : ''
+    return { titlu: 'Baza a căzut', text: `În valul ${state.val + 1} din ${WAVES.length}, după ${total} reacții.${rest}`, castigat: false, butoane }
   }
   return undefined
 }
@@ -552,6 +592,7 @@ function render(): void {
   const lastDecision = state.jurnal.at(-1)
   const start = checkStartWave(state)
   hud.update({
+    regiune: regiune && lume ? regionOf(lume, regiune.cheie)?.nume : undefined,
     val: `Val ${Math.min(state.val + 1, WAVES.length)}/${WAVES.length}`,
     boss: (WAVES[state.val]?.grupuri ?? []).some((g) => g.tip === 'boss'),
     vieti: state.vieti,
@@ -687,6 +728,7 @@ function decide(d: Decision): boolean {
     return false
   }
   state = r.value
+  saveRun()
   sunet.play(decisionSound(d), { pan: decisionPan(d, state) })
   // Ce se vede: praf unde s-a construit sau s-a modelat terenul, anunțul unui val nou.
   const now = performance.now()
@@ -739,7 +781,8 @@ function undo(): void {
   // Se anulează doar ce s-a hotărât în pregătirea curentă: o decizie luată la tick-ul de acum.
   const lastDecision = state.jurnal.at(-1)
   if (state.faza === 'pregatire' && lastDecision !== undefined && lastDecision.la === state.tick) {
-    state = replay(seed, state.jurnal.slice(0, -1), state.tick)
+    state = replay(seed, state.jurnal.slice(0, -1), state.tick, regiune?.teren)
+    saveRun()
   } else {
     refuz('Nu e nimic de anulat: se anulează doar deciziile din pregătirea curentă — un val jucat nu se dă înapoi.')
   }
@@ -754,9 +797,26 @@ function nextVariant(): void {
   if (options.length > 0) optionIndex = (optionIndex + 1) % options.length
 }
 
+/** R (și butonul ⟳): pe o regiune, încă o partidă pe ea; în partida liberă, aceeași hartă de la capăt. */
+function restartKey(): void {
+  if (regiune) leaveRegion('restart')
+  else restart(seed)
+}
+
+/** N (și butonul lui): pe o regiune, înapoi pe planetă; în partida liberă, o hartă nouă. */
+function newKey(): void {
+  if (regiune) leaveRegion('new')
+  else restart(seed + 1)
+}
+
 function restart(newSeed: number): void {
   seed = newSeed
-  state = newGame(seed)
+  resetRun(newGame(seed))
+}
+
+/** O partidă nouă din starea dată: tot ce ține de partida veche (alegeri, efecte, cache-uri) se uită. */
+function resetRun(s: GameState): void {
+  state = s
   selected = undefined
   acumulat = 0
   paused = false
@@ -764,6 +824,213 @@ function restart(newSeed: number): void {
   fx.clear()
   flash.clear()
   resetRenderCaches()
+}
+
+// --- Planeta (GDD §9.1) ----------------------------------------------------------------------------------------
+
+const CHEIE_LUME = 'worldguard.lume'
+const CHEIE_ARHIVA = 'worldguard.planete'
+/** Partida în desfășurare pe o regiune: deciziile ei, ca o pagină închisă la jumătate să nu ocolească lumea. */
+const CHEIE_PARTIDA = 'worldguard.partida'
+
+/** O partidă deschisă și lăsată fără nimic făcut nu se socotește. */
+const neinceputa = (s: GameState): boolean => s.tick === 0 && !s.jurnal.some((x) => x.d.tip === 'teren')
+
+/** Ține minte partida de pe regiune (la fiecare decizie și la sfârșitul fiecărui val). */
+function saveRun(): void {
+  if (!regiune) return
+  try {
+    if (neinceputa(state)) localStorage.removeItem(CHEIE_PARTIDA)
+    else localStorage.setItem(CHEIE_PARTIDA, JSON.stringify({ cheie: regiune.cheie, tick: state.tick, jurnal: state.jurnal }))
+  } catch {
+    // Fără spațiu de stocare: partida ține doar cât e pagina deschisă.
+  }
+}
+
+/**
+ * O partidă rămasă neterminată (pagina închisă în timpul ei) se socotește jucată, ca una părăsită: se rejoacă din
+ * deciziile ei, pe terenul regiunii, iar ce i-a făcut terenului rămâne. Rejucarea o și verifică: o înregistrare
+ * stricată sau modificată nu ajunge în lume.
+ */
+function settleUnfinishedRun(): void {
+  if (!lume) return
+  let text: string | null = null
+  try {
+    text = localStorage.getItem(CHEIE_PARTIDA)
+    localStorage.removeItem(CHEIE_PARTIDA)
+  } catch {
+    return
+  }
+  if (text === null) return
+  try {
+    const p = JSON.parse(text) as { cheie: string; tick: number; jurnal: GameState['jurnal'] }
+    const r = regionOf(lume, p.cheie)
+    if (!r) throw new Error(`regiune necunoscută: ${p.cheie}`)
+    const final = replay(r.seed, p.jurnal, p.tick, regionTerrain(lume, p.cheie))
+    lume = commitRun(lume, p.cheie, final)
+    saveWorld()
+    window.setTimeout(() => hud.toast(`Partida neterminată din ${r.nume.replace('Ținutul', 'ținutul')} s-a socotit jucată: ce ai făcut terenului a rămas.`, 'info'), 500)
+  } catch (e) {
+    window.setTimeout(() => hud.toast(`Partida neterminată nu s-a putut reface (${e instanceof Error ? e.message : String(e)}); s-a renunțat la ea.`), 500)
+  }
+}
+
+/** Seed-ul unei planete noi: din `?planeta=` (pentru verificări), altfel aleator (doar aici, nu în simulare). */
+function seedNou(): number {
+  return Number(params.get('planeta')) || (crypto.getRandomValues(new Uint32Array(1))[0] ?? 1) >>> 1
+}
+
+/** Lumea salvată în browser, sau una nouă. O salvare stricată se păstrează deoparte, nu se șterge. */
+function loadWorld(): Lume {
+  try {
+    const text = localStorage.getItem(CHEIE_LUME)
+    if (text !== null) {
+      const r = decodeWorld(text)
+      if (r.ok) return r.value
+      localStorage.setItem(`${CHEIE_LUME}.stricata`, text)
+      window.setTimeout(() => hud.toast(`Salvarea lumii nu s-a putut citi (${r.reason}); a rămas deoparte, iar planeta e nouă.`), 500)
+    }
+  } catch {
+    // Fără spațiu de stocare: lumea ține doar sesiunea asta.
+  }
+  return newWorld(seedNou())
+}
+
+function saveWorld(): void {
+  if (!lume) return
+  try {
+    localStorage.setItem(CHEIE_LUME, encodeWorld(lume))
+  } catch {
+    hud.toast('Lumea nu s-a putut salva în browser: progresul ține doar până închizi pagina.')
+  }
+}
+
+/** Ceasul lumii, pentru oameni: „1 h 12 min”. */
+function formatCeas(tickuri: number): string {
+  const min = Math.floor((tickuri * TICK_MS) / 60_000)
+  return min >= 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`
+}
+
+const planetName = (s: number): string => `Planeta ${(s % 0xffff).toString(16).toUpperCase().padStart(4, '0')}`
+
+function planetView(l: Lume): PlanetView {
+  const regiuni = planetRegions(l.planeta.seed)
+  const acces = (k: string): ReturnType<typeof regionAccess> => regionAccess(l, k)
+  const aleasa = regiuneAleasa ?? regiuni.find((r) => acces(r.cheie) === 'accesibila')?.cheie ?? key(LUME.start)
+  const r = regionOf(l, aleasa)
+  let detalii: PlanetView['aleasa']
+  if (r) {
+    const st = l.regiuni[r.cheie]
+    const teren = regionTerrain(l, r.cheie)
+    const numar = new Map<Terrain, number>()
+    for (const t of teren.values()) numar.set(t, (numar.get(t) ?? 0) + 1)
+    const randuri = [
+      teren.size > 0
+        ? `Terenul schimbat: ${[...numar].map(([t, n]) => `${n} × ${TERRAIN[t].nume.toLowerCase()}`).join(', ')}`
+        : 'Terenul e neatins.',
+      `Partide jucate aici: ${st?.partide ?? 0}`,
+      ...(r.inima ? ['Ultima regiune: cine îi salvează inima salvează planeta.'] : []),
+    ]
+    const a = acces(r.cheie)
+    const pornire = startRun(l, r.cheie)
+    detalii = {
+      cheie: r.cheie,
+      nume: r.nume,
+      stare: a === 'salvata' ? 'Salvată — te poți întoarce oricând' : a === 'accesibila' ? 'Se poate apăra' : 'Încă închisă',
+      randuri,
+      motiv: pornire.ok ? undefined : pornire.reason,
+      harta: newGame(r.seed, teren).map,
+      editate: [...teren.keys()],
+    }
+  }
+  return {
+    titlu: planetName(l.planeta.seed),
+    subtitlu: `ceasul lumii: ${formatCeas(l.ceas)} jucate · ${savedRing(l) + (planetSaved(l) ? 1 : 0)} din ${regiuni.length} regiuni salvate`,
+    salvata: planetSaved(l),
+    regiuni: regiuni.map((g) => ({ cheie: g.cheie, nume: g.nume, q: g.hex.q, r: g.hex.r, acces: acces(g.cheie), inima: g.inima, aleasa: g.cheie === aleasa })),
+    aleasa: detalii,
+  }
+}
+
+const planeta = createPlanetScreen({
+  alege: (k) => {
+    regiuneAleasa = k
+    showPlanet()
+  },
+  joaca: () => playRegion(),
+  planetaNoua: () => {
+    if (!lume || !planetSaved(lume)) return
+    // Planeta salvată rămâne în arhivă (harta galaxiei vine mai târziu); lumea pornește pe o planetă nouă.
+    try {
+      const arhiva = JSON.parse(localStorage.getItem(CHEIE_ARHIVA) ?? '[]') as unknown[]
+      localStorage.setItem(CHEIE_ARHIVA, JSON.stringify([...arhiva, { seed: lume.planeta.seed, ceas: lume.ceas }]))
+    } catch {
+      // Arhiva nu e esențială.
+    }
+    lume = newWorld(seedNou())
+    regiuneAleasa = undefined
+    saveWorld()
+    showPlanet()
+  },
+})
+
+function showPlanet(): void {
+  if (lume) planeta.show(planetView(lume))
+}
+
+/** Pornește o partidă pe regiunea aleasă (sau pe `cheie`). */
+function playRegion(dorita?: string): void {
+  if (!lume) return
+  const cheie = dorita ?? regiuneAleasa ?? planetView(lume).aleasa?.cheie
+  if (!cheie) return
+  const r = startRun(lume, cheie)
+  if (!r.ok) {
+    refuz(`Nu se poate: ${r.reason}`)
+    return
+  }
+  regiune = { cheie, teren: r.value.teren }
+  regiuneAleasa = cheie
+  seed = r.value.state.seed
+  resetRun(r.value.state)
+  planeta.hide()
+  relayout()
+  render()
+  const info = regionOf(lume, cheie)
+  const partide = lume.regiuni[cheie]?.partide ?? 0
+  hud.banner(info?.nume ?? cheie, partide > 0 ? `Partida ${partide + 1} aici — terenul își amintește` : 'Prima partidă aici')
+}
+
+/**
+ * Părăsește regiunea: înapoi pe planetă (`new`) sau încă o partidă pe ea (`restart`). Partida de acum se socotește
+ * jucată — ce i-ai făcut terenului rămâne, iar ceasul lumii înaintează —, altfel o terraformare încercată și apoi
+ * „anulată” prin repornire ar ocoli lumea care ține minte. O partidă în desfășurare cere a doua apăsare.
+ */
+function leaveRegion(act: 'restart' | 'new'): void {
+  if (!lume || !regiune) return
+  const terminata = state.faza === 'castigat' || state.faza === 'pierdut'
+  const gol = neinceputa(state)
+  if (!terminata && !gol) {
+    const acum = performance.now()
+    if (!confirmare || confirmare.act !== act || acum > confirmare.pana) {
+      confirmare = { act, pana: acum + 3000 }
+      hud.toast(`Apasă încă o dată ${act === 'new' ? 'N' : 'R'}: partida se socotește jucată, iar ce ai făcut terenului rămâne.`)
+      return
+    }
+  }
+  confirmare = undefined
+  const cheie = regiune.cheie
+  if (!gol) {
+    lume = commitRun(lume, cheie, state)
+    saveWorld()
+  }
+  regiune = undefined
+  try {
+    localStorage.removeItem(CHEIE_PARTIDA)
+  } catch {
+    // nimic de șters
+  }
+  if (act === 'restart') playRegion(cheie)
+  else showPlanet()
 }
 
 /** După un pas: reacțiile lui devin texte pe hartă, iar o reacție văzută prima dată în partidă — anunț + pauză scurtă. */
@@ -786,6 +1053,12 @@ function noteReactions(before: GameState, now: number): void {
 function frame(now: number): void {
   const dt = Math.min(250, now - last)
   last = now
+  if (planeta.visible) {
+    // Pe ecranul planetei nu curge nicio partidă și nu se desenează harta; fundalul muzical e cel calm.
+    sunet.fundal('pregatire')
+    requestAnimationFrame(frame)
+    return
+  }
   popups = popups.filter((p) => now - p.la < POPUP_MS)
   if (state.faza === 'val' && !paused && now >= freezeUntil) {
     acumulat += dt * (VITEZE_UI[vitezaIndex] ?? 1)
@@ -801,6 +1074,7 @@ function frame(now: number): void {
     if (state.faza !== 'val') {
       // Valul s-a terminat (sau partida): timpul se oprește, drumul se poate modela din nou.
       acumulat = 0
+      saveRun()
       syncHover()
       if (state.faza === 'pregatire' && state.venit) {
         hud.toast(`Valul ${state.val} s-a încheiat: dobândă +${state.venit.aur} aur, +${state.venit.pamant} pământ`, 'info')
@@ -852,6 +1126,18 @@ canvas.addEventListener('click', () => {
 })
 
 window.addEventListener('keydown', (e) => {
+  if (planeta.visible) {
+    // Pe ecranul planetei: Enter joacă regiunea aleasă; sunetul și fundalul merg ca peste tot.
+    let fn: (() => void) | undefined
+    if (e.key === 'Enter') fn = () => playRegion()
+    else if (e.key === 's' || e.key === 'S') fn = cycleSound
+    else if (e.key === 'b' || e.key === 'B') fn = toggleFundal
+    if (fn) {
+      e.preventDefault()
+      fn()
+    }
+    return
+  }
   const towerKey = ['4', '5', '6', '7'].indexOf(e.key)
   let fn: (() => void) | undefined
   if (e.key === ' ') fn = startWave
@@ -865,8 +1151,8 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'm' || e.key === 'M') fn = () => (unealta = 'mina')
   else if (e.key === 'Tab') fn = nextVariant
   else if (e.key === 'z' || e.key === 'Z') fn = undo
-  else if (e.key === 'r' || e.key === 'R') fn = () => restart(seed)
-  else if (e.key === 'n' || e.key === 'N') fn = () => restart(seed + 1)
+  else if (e.key === 'r' || e.key === 'R') fn = restartKey
+  else if (e.key === 'n' || e.key === 'N') fn = newKey
   else if (e.key === 't' || e.key === 'T') fn = () => towerAction('tinta')
   else if (e.key === 'c' || e.key === 'C') fn = () => towerAction('combina')
   else if (e.key === 'Escape') fn = () => towerAction('deselecteaza')
@@ -885,14 +1171,17 @@ versiune.id = 'versiune'
 versiune.textContent = `build ${__BUILD__.sha.slice(0, 7)}${__BUILD__.ref ? ` · ${__BUILD__.ref}` : ''} · ${__BUILD__.at.slice(0, 16).replace('T', ' ')} UTC`
 document.body.append(versiune)
 
-// Doar în `npm run dev`: starea, poziția pe ecran a unui hexagon și motorul de sunet, pentru consolă și scripturile
-// de verificare.
+// Doar în `npm run dev`: starea, lumea, poziția pe ecran a unui hexagon și motorul de sunet, pentru consolă și
+// scripturile de verificare.
 // Vite scoate blocul din build-ul de producție.
 if (import.meta.env.DEV) {
   Object.assign(window, {
     wg: {
       get state(): GameState {
         return state
+      },
+      get lume(): Lume | undefined {
+        return lume
       },
       sunet,
       px: (k: string): [number, number] => {
@@ -908,4 +1197,10 @@ for (const ev of ['pointerdown', 'keydown'] as const) window.addEventListener(ev
 
 window.addEventListener('resize', resize)
 resize()
+// Fără `?seed=`, jocul pornește pe planetă (lumea salvată în browser, sau una nouă).
+if (!liber) {
+  lume = loadWorld()
+  settleUnfinishedRun()
+  showPlanet()
+}
 requestAnimationFrame(frame)

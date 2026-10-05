@@ -2,7 +2,7 @@
 
 import type { Element, StateType } from './reactions'
 
-export type Terrain = 'campie' | 'apa' | 'padure' | 'deal' | 'filon' | 'ulei' | 'jar'
+export type Terrain = 'campie' | 'apa' | 'padure' | 'deal' | 'filon' | 'ulei' | 'jar' | 'cenusa' | 'puiet'
 
 export interface TerrainInfo {
   readonly nume: string
@@ -34,6 +34,10 @@ export const TERRAIN: Readonly<Record<Terrain, TerrainInfo>> = {
   // Pădurea aprinsă prin terraformare (GDD §1: „arzi pădurea de lângă drum, iar inamicii unși cu ulei explodează în
   // lanț”). Arde tot restul partidei (propunere); nu ține drum și nici turn.
   jar: { nume: 'Pădure în flăcări', culoare: '#5c2416', permiteTraseu: false, permiteTurn: false, atingere: { element: 'foc', aplica: 'arde' } },
+  // Urmele lumii care ține minte (GDD §9.1, felia 9): pădurea arsă devine cenușă la partida următoare, apoi puieți,
+  // apoi iar pădure (`EVOLUTIE`, `data/lume.ts`). Cenușa nu mai arde; amândouă țin drum și turn, ca o câmpie.
+  cenusa: { nume: 'Cenușă', culoare: '#5f5a55', permiteTraseu: true, permiteTurn: true },
+  puiet: { nume: 'Puieți', culoare: '#6f8f5a', permiteTraseu: true, permiteTurn: true },
 }
 
 /** Parametrii generatorului de hartă. */
