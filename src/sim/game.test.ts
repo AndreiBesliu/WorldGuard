@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import { TERRAFORM_TYPES } from '../data/economie'
 import { TARGET_MODES, TOWER_TYPES, TOWERS } from '../data/towers'
 import {
   applyDecision,
   checkBuild,
   checkCombine,
+  checkMine,
   checkStartWave,
+  checkTerraform,
   coverage,
   detourLimit,
   detourPossible,
@@ -49,6 +52,21 @@ function playRandom(seed: number): { s: GameState; blocked: number } {
     const activ = !isCombined(g)
     return checkCombine(s, id, activ).ok ? apply(s, { tip: 'combina', turn: id, activ }) : s
   }
+  /**
+   * Economia (felia 6): o mină pe primul filon liber, când ajunge aurul (cam o dată din două), și o terraformare la
+   * întâmplare lângă drum, când ajunge pământul.
+   */
+  const shapeLand = (s: GameState): GameState => {
+    let cur = s
+    const filon = [...cur.map.terrain].find(([k, t]) => t === 'filon' && checkMine(cur, k).ok)
+    if (filon && pick.int(2) === 0) cur = apply(cur, { tip: 'mina', hex: filon[0] })
+    const actiune = pick.pick(TERRAFORM_TYPES)
+    const nearPath = [...cur.map.terrain.keys()].filter(
+      (k) => checkTerraform(cur, actiune, k).ok && cur.path.some((h) => distance(h, fromKey(k)) === 1),
+    )
+    if (nearPath.length > 0) cur = apply(cur, { tip: 'teren', actiune, hex: pick.pick(nearPath) })
+    return cur
+  }
   let s = newGame(seed)
   let blocked = 0
   while (s.faza === 'pregatire') {
@@ -79,6 +97,7 @@ function playRandom(seed: number): { s: GameState; blocked: number } {
       s = apply(s, more)
     }
     s = toggleSome(s)
+    s = shapeLand(s)
     s = apply(s, { tip: 'pornesteVal' })
     const switchAt = s.tick + 1 + pick.int(150)
     const toggleAt = s.tick + 1 + pick.int(150)
@@ -97,13 +116,15 @@ describe('jurnalul deciziilor', () => {
     let blocked = 0
     let combined = 0
     const reactions = new Set<string>()
+    // Ce fel de decizii au intrat în jurnalele partidelor (toate felurile, pe ansamblu).
+    const kinds = new Set<string>()
     for (const seed of [1, 5, 2026]) {
       const game = playRandom(seed)
       const s = game.s
       blocked += game.blocked
       combined += s.jurnal.filter((l) => l.d.tip === 'combina' && l.d.activ).length
       for (const [r, n] of Object.entries(s.reactii)) if ((n ?? 0) > 0) reactions.add(r)
-      expect([...new Set(s.jurnal.map((l) => l.d.tip))].sort()).toEqual(['alege', 'combina', 'ocol', 'pornesteVal', 'tintire', 'turn'])
+      for (const l of s.jurnal) kinds.add(l.d.tip)
       // Regula grupurilor ține pe tot parcursul: un grup are un singur mod, un turn singur nu e combinat, iar un
       // grup combinat nu are o pereche incompatibilă.
       for (const g of towerGroups(s.turnuri)) {
@@ -120,6 +141,8 @@ describe('jurnalul deciziilor', () => {
     expect(blocked).toBeGreaterThan(0)
     // …s-au combinat grupuri (și au tras combinat, în val)…
     expect(combined).toBeGreaterThan(0)
+    // …și jurnalele au avut toate felurile de decizii, inclusiv minele și terraformările.
+    expect([...kinds].sort()).toEqual(['alege', 'combina', 'mina', 'ocol', 'pornesteVal', 'teren', 'tintire', 'turn'])
     // …iar partidele au avut reacții de mai multe feluri (stări, lanțuri, teren), reproduse identic.
     expect(reactions.size).toBeGreaterThanOrEqual(3)
     // Trei partide întregi, plus replay-ul lor: ~1–2,5 s pe mașina asta, mai mult pe un runner încărcat. Limita

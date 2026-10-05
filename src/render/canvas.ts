@@ -3,7 +3,7 @@
 import { ENEMIES, TRAITS } from '../data/enemies'
 import { MILI_HEX } from '../data/joc'
 import { STATES } from '../data/reactions'
-import { TERRAIN } from '../data/terrain'
+import { TERRAIN, type Terrain } from '../data/terrain'
 import { TOWERS, type TowerInfo, type TowerType } from '../data/towers'
 import { enemyHealth, enemySpeed, isCombined, pathContacts, towerGroups, type Enemy, type GameState } from '../sim/game'
 import { distance, fromKey, type Hex } from '../sim/hex'
@@ -95,6 +95,10 @@ export interface Overlay {
   readonly ghostLinks?: readonly { readonly to: Hex; readonly combinat: boolean }[]
   /** Turnul ales (click): un inel în jurul lui. */
   readonly selected?: Hex
+  /** Terraformarea de sub mouse: hexagonul colorat în terenul care ar ieși; `ok: false` = nu se poate. */
+  readonly terraform?: { readonly hex: Hex; readonly teren: Terrain; readonly ok: boolean }
+  /** Mina de sub mouse, ca fantomă. */
+  readonly mineGhost?: { readonly hex: Hex; readonly ok: boolean }
 }
 
 function drawCross(ctx: CanvasRenderingContext2D, x: number, y: number, size: number): void {
@@ -122,6 +126,25 @@ function drawLink(ctx: CanvasRenderingContext2D, a: { x: number; y: number }, b:
   if (dashed) ctx.setLineDash([5, 4])
   ctx.stroke()
   ctx.setLineDash([])
+}
+
+/** O mină pe un filon: intrarea în galerie, neagră, cu o grindă aurie deasupra. */
+function drawMine(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, alpha = 1): void {
+  ctx.globalAlpha = alpha
+  ctx.beginPath()
+  ctx.arc(x, y + size * 0.15, size * 0.38, Math.PI, 0)
+  ctx.closePath()
+  ctx.fillStyle = '#12161c'
+  ctx.fill()
+  ctx.strokeStyle = '#f5d76e'
+  ctx.lineWidth = Math.max(2, size * 0.1)
+  ctx.beginPath()
+  ctx.moveTo(x - size * 0.48, y + size * 0.15)
+  ctx.lineTo(x - size * 0.48, y - size * 0.3)
+  ctx.lineTo(x + size * 0.48, y - size * 0.3)
+  ctx.lineTo(x + size * 0.48, y + size * 0.15)
+  ctx.stroke()
+  ctx.globalAlpha = 1
 }
 
 function drawTower(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, info: TowerInfo, alpha = 1, contur = '#12161c'): void {
@@ -169,6 +192,15 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     hexPath(ctx, x, y, l.size * 0.97)
     ctx.fillStyle = TERRAIN[t].culoare
     ctx.fill()
+    if (t === 'jar') {
+      // Jarul: câteva scântei, ca pădurea în flăcări să se vadă dintr-o privire.
+      for (const [dx, dy, r] of [[-0.3, -0.2, 0.12], [0.25, -0.1, 0.1], [-0.05, 0.25, 0.14], [0.3, 0.3, 0.08]] as const) {
+        ctx.beginPath()
+        ctx.arc(x + dx * l.size, y + dy * l.size, r * l.size, 0, Math.PI * 2)
+        ctx.fillStyle = 'rgba(255, 140, 50, 0.85)'
+        ctx.fill()
+      }
+    }
     if (t === 'ulei') {
       // Luciul uleiului, ca balta să nu se confunde cu un teren închis oarecare.
       ctx.beginPath()
@@ -193,7 +225,7 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     ctx.fill()
     ;(contacts[i] ?? []).forEach((c, j) => {
       hexPath(ctx, x, y, l.size * (0.8 - j * 0.16))
-      ctx.strokeStyle = c.element === 'ulei' ? 'rgba(214, 138, 40, 1)' : 'rgba(74, 163, 255, 0.85)'
+      ctx.strokeStyle = c.element === 'ulei' ? 'rgba(214, 138, 40, 1)' : c.element === 'foc' ? 'rgba(255, 96, 48, 1)' : 'rgba(74, 163, 255, 0.85)'
       ctx.lineWidth = c.element === 'ulei' ? 2.5 : 2
       ctx.stroke()
     })
@@ -252,6 +284,30 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
       ctx.stroke()
       ctx.setLineDash([])
     }
+  }
+
+  // Minele de pe filoane.
+  for (const k of s.mine) {
+    const { x, y } = hexToPixel(fromKey(k), l)
+    drawMine(ctx, x, y, l.size)
+  }
+  // Terraformarea sau mina de sub mouse, ca fantomă.
+  if (o.terraform) {
+    const { x, y } = hexToPixel(o.terraform.hex, l)
+    hexPath(ctx, x, y, l.size * 0.97)
+    ctx.globalAlpha = o.terraform.ok ? 0.85 : 0.35
+    ctx.fillStyle = TERRAIN[o.terraform.teren].culoare
+    ctx.fill()
+    ctx.globalAlpha = 1
+    ctx.strokeStyle = o.terraform.ok ? '#f5d76e' : '#f0a35e'
+    ctx.lineWidth = 2
+    ctx.stroke()
+    if (!o.terraform.ok) drawCross(ctx, x, y, l.size)
+  }
+  if (o.mineGhost) {
+    const { x, y } = hexToPixel(o.mineGhost.hex, l)
+    drawMine(ctx, x, y, l.size, o.mineGhost.ok ? 0.8 : 0.3)
+    if (!o.mineGhost.ok) drawCross(ctx, x, y, l.size)
   }
 
   // Raza turnului de sub mouse (sau a celui de construit, sau a grupului): hexagoanele acoperite, ușor luminate.

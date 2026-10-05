@@ -12,6 +12,7 @@
 // timpul stă pe loc: acolo jucătorul modelează drumul, construiește turnuri și (mai târziu) alege din draft.
 
 import { CARD_IDS, CARDS, cardTower, DRAFT, type CardEffect, type CardId } from '../data/draft'
+import { ECONOMIE, TERRAFORMARI, type Terraform } from '../data/economie'
 import { CRESTERE_VIATA, ENEMIES, WAVES, type EnemyType, type Trait } from '../data/enemies'
 import { MILI_HEX, VIETI_BAZA } from '../data/joc'
 import type { ReactionType } from '../data/reactions'
@@ -53,6 +54,18 @@ export type Decision =
       readonly tip: 'alege'
       /** Cartea aleasă din oferta draftului. */
       readonly carte: CardId
+    }
+  | {
+      readonly tip: 'teren'
+      /** Terraformarea: canal, deal sau arde (pădurea). Se plătește cu pământ. */
+      readonly actiune: Terraform
+      /** Hexagonul, ca cheie „q,r”. */
+      readonly hex: string
+    }
+  | {
+      readonly tip: 'mina'
+      /** Filonul pe care se sapă mina, ca cheie „q,r”. */
+      readonly hex: string
     }
   | {
       readonly tip: 'combina'
@@ -148,6 +161,12 @@ export interface GameState {
   readonly imbunatatiri: Improvements
   /** Ocoluri în plus în pregătirea curentă (cartea „Ocol în plus”). Se golește când pornește valul. */
   readonly ocoluriBonus: number
+  /** Pământul (GDD §7): vine din valuri și din mine, se cheltuie doar pe terraformare. */
+  readonly pamant: number
+  /** Minele, ca chei de hexagon (pe filoane). Fiecare aduce pământ la fiecare val încheiat. */
+  readonly mine: readonly string[]
+  /** Ce a adus ultimul val încheiat (dobânda și pământul). Doar interfața îl citește. */
+  readonly venit?: { readonly aur: number; readonly pamant: number }
 }
 
 /** Îmbunătățirile unui tip de turn: +`dauna`% daună, trage cu `reincarcare`% mai des. */
@@ -184,6 +203,8 @@ export function newGame(seed: number): GameState {
     gratuite: {},
     imbunatatiri: {},
     ocoluriBonus: 0,
+    pamant: ECONOMIE.pamant.start,
+    mine: [],
   }
 }
 
@@ -469,10 +490,56 @@ export function checkBuild(state: GameState, tip: TowerType, hex: string): Resul
   if (state.path.some((h) => key(h) === hex)) return fail('pe drum nu se construiește')
   if (!TERRAIN[t].permiteTurn) return fail(`pe ${TERRAIN[t].nume.toLowerCase()} nu se construiește`)
   if (state.turnuri.some((x) => x.hex === hex)) return fail('aici e deja un turn')
+  if (state.mine.includes(hex)) return fail('aici e o mină')
   const cost = towerCost(state, tip, hex)
   const unde = cost === TOWERS[tip].cost ? '' : ` pe ${TERRAIN[t].nume.toLowerCase()}`
   if (state.aur < cost) return fail(`nu ajunge aurul: turnul ${TOWERS[tip].nume}${unde} costă ${cost}, ai ${state.aur}`)
   return ok(true)
+}
+
+/** Ce nu se poate terraforma și nu se poate săpa: drumul, turnurile, minele. Motivul, sau `undefined` dacă e liber. */
+function occupied(state: GameState, hex: string): string | undefined {
+  if (state.path.some((h) => key(h) === hex)) return 'pe drum nu se poate'
+  if (state.turnuri.some((x) => x.hex === hex)) return 'aici e un turn'
+  if (state.mine.includes(hex)) return 'aici e o mină'
+  return undefined
+}
+
+/** Se poate face terraformarea `actiune` pe `hex` acum? Dacă nu, de ce. Folosit și de previzualizare. */
+export function checkTerraform(state: GameState, actiune: Terraform, hex: string): Result<true> {
+  const info = TERRAFORMARI[actiune]
+  if (state.faza !== 'pregatire') return fail('terenul se modelează doar între valuri')
+  const t = state.map.terrain.get(hex)
+  if (t === undefined) return fail(`${hex} e în afara hărții`)
+  const busy = occupied(state, hex)
+  if (busy) return fail(busy)
+  if (!info.din.includes(t)) {
+    const unde = info.din.map((x) => TERRAIN[x].nume.toLowerCase()).join(' sau ')
+    return fail(`${info.verb} se poate doar pe ${unde}, nu pe ${TERRAIN[t].nume.toLowerCase()}`)
+  }
+  if (state.pamant < info.costPamant) return fail(`nu ajunge pământul: ${info.nume.toLowerCase()} costă ${info.costPamant}, ai ${state.pamant}`)
+  return ok(true)
+}
+
+/** Se poate săpa o mină pe `hex` acum? Dacă nu, de ce. */
+export function checkMine(state: GameState, hex: string): Result<true> {
+  if (state.faza !== 'pregatire') return fail('minele se sapă doar între valuri')
+  const t = state.map.terrain.get(hex)
+  if (t === undefined) return fail(`${hex} e în afara hărții`)
+  const busy = occupied(state, hex)
+  if (busy) return fail(busy)
+  if (t !== 'filon') return fail('o mină se sapă doar pe un filon')
+  if (state.aur < ECONOMIE.mina.costAur) return fail(`nu ajunge aurul: mina costă ${ECONOMIE.mina.costAur}, ai ${state.aur}`)
+  return ok(true)
+}
+
+/**
+ * Ce aduce sfârșitul unui val: dobânda (`ECONOMIE.dobanda.procent`% din aur, cel mult `maxim`) și pământul (al valului,
+ * plus câte unul pe mină).
+ */
+export function waveIncome(state: Pick<GameState, 'aur' | 'mine'>): { aur: number; pamant: number } {
+  const dobanda = Math.min(ECONOMIE.dobanda.maxim, Math.floor((Math.max(0, state.aur) * ECONOMIE.dobanda.procent) / 100))
+  return { aur: dobanda, pamant: ECONOMIE.pamant.peVal + state.mine.length * ECONOMIE.pamant.peMina }
 }
 
 export function applyDecision(state: GameState, d: Decision): Result<GameState> {
@@ -537,6 +604,19 @@ export function applyDecision(state: GameState, d: Decision): Result<GameState> 
       const allowed = checkPick(state, d.carte)
       if (!allowed.ok) return fail(allowed.reason)
       return ok(logged(applyCard({ ...state, oferta: [], carti: [...state.carti, d.carte] }, CARDS[d.carte].efect)))
+    }
+    case 'teren': {
+      const allowed = checkTerraform(state, d.actiune, d.hex)
+      if (!allowed.ok) return fail(allowed.reason)
+      const info = TERRAFORMARI[d.actiune]
+      // Harta e imuabilă: terenul nou intră într-o hartă nouă (ordinea hexagoanelor rămâne, deci și amprenta).
+      const terrain = new Map(state.map.terrain).set(d.hex, info.in)
+      return ok(logged({ ...state, map: { ...state.map, terrain }, pamant: state.pamant - info.costPamant }))
+    }
+    case 'mina': {
+      const allowed = checkMine(state, d.hex)
+      if (!allowed.ok) return fail(allowed.reason)
+      return ok(logged({ ...state, aur: state.aur - ECONOMIE.mina.costAur, mine: [...state.mine, d.hex] }))
     }
     case 'combina': {
       // Ca ținta, modul se poate schimba și în timpul valului.
@@ -737,8 +817,9 @@ export function step(state: GameState): GameState {
   if (deGenerat.length === 0 && inamici.length === 0) {
     const val = valIndex + 1
     if (val >= WAVES.length) return { ...next, val, faza: 'castigat' }
-    // Valul s-a încheiat: urmează draftul (1 din 3) pentru pregătirea următoare.
-    return { ...next, val, faza: 'pregatire', oferta: draftOffer({ ...next, val }) }
+    // Valul s-a încheiat: dobânda și pământul (GDD §7), apoi draftul (1 din 3) pentru pregătirea următoare.
+    const venit = waveIncome(next)
+    return { ...next, val, faza: 'pregatire', aur: aur + venit.aur, pamant: state.pamant + venit.pamant, venit, oferta: draftOffer({ ...next, val }) }
   }
   return next
 }
@@ -796,6 +877,7 @@ export function fingerprint(state: GameState): string {
   parts.push(`reactii=${reactii.map(([r, n]) => `${r}:${n}`).join(',')}`)
   parts.push(`deGenerat=${state.deGenerat.length}`)
   parts.push(`turnuri=${state.turnuri.map((t) => `${t.id}/${t.tip}/${t.hex}/${t.tintire}/${t.reincarcare}/${t.combinat ? 'c' : 'i'}`).join(';')}`)
+  parts.push(`pamant=${state.pamant}`, `mine=${state.mine.join(';')}`)
   let h = 0x811c9dc5
   const s = parts.join('|')
   for (let i = 0; i < s.length; i++) {

@@ -20,6 +20,9 @@ npm run check    # typecheck + teste + build
   sau un ocol în plus. Valul următor pornește abia după alegere.
 - `Spațiu` pornește valul, `P` pauză, `F` viteza, `Z` anulezi ultima decizie din pregătire, `R` de la capăt,
   `N` hartă nouă. Seed fix: `?seed=123` în URL.
+- **Economia:** după fiecare val primești dobândă (10% din aur, cel mult 30) și pământ. Cu pământul modelezi terenul:
+  `Q` canal, `W` deal, `E` arzi pădurea (inamicii de pe drumul vecin iau foc). `M` sapă o mină pe un filon (40 de aur):
+  pământ în plus la fiecare val.
 - **Terenul contează:** apa de lângă drum udă inamicii, bălțile de ulei îi ung (focul îi aprinde: explozie),
   dealul dă rază. Focul și frigul sunt incompatibile.
 - **25 de valuri.** **Bossii** (la fiecare al cincilea val) au trăsături care îi fac imuni la unele stări: uscat,

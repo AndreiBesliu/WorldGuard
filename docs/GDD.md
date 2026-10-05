@@ -94,6 +94,10 @@ boss la valurile 5, 10 și 15 (în prototip); din 05.10.2026, 25 de valuri, cu b
 - **Aur:** din inamici uciși, plus dobândă pe ce economisești. Se cheltuiește pe turnuri și îmbunătățiri.
 - **Pământ:** din filoane și din valurile încheiate. Se cheltuiește doar pe terraformare.
 - **Tensiunea:** apărare acum sau teren mai bun pentru mai târziu.
+- **În prototip (felia 6, 05.10.2026; cifrele sunt propuneri):**
+  - dobânda: 10% din aurul de la sfârșitul valului, cel mult 30;
+  - pământul: 1 pe val încheiat, plus 1 pe val pentru fiecare **mină** (40 de aur, pe un filon; pe ea nu se mai construiește); pornești cu 3 (decis 05.10.2026: pământ de start, ca terenul să conteze de la primul val; cifra e propunere);
+  - terraformarea (§5): **canal** (câmpie sau pădure → apă, 2 pământ), **deal** (câmpie sau pădure → deal, 3), **arzi pădurea** (pădure → pădure în flăcări, 2): inamicii de pe drumul vecin iau foc, iar cei unși cu ulei explodează. Pădurea arde tot restul partidei.
 
 ## 8. Inamicii
 
@@ -275,3 +279,8 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | Partida se lungește prin mai multe valuri (05.10.2026) | decis |
 | 25 de valuri, boss și la valurile 20 și 25, trăsături și pe grupuri obișnuite în valurile 16–25 | propunere |
 | Felia 6: economia — dobânda, pământul, filonul (05.10.2026) | decis |
+| Economia: dobândă 10% (cel mult 30), pământ 1 pe val + 1 pe mină, mina 40 de aur pe un filon | propunere |
+| Terraformarea: canal 2, deal 3, arzi pădurea 2 pământ; pădurea arsă aprinde drumul vecin tot restul partidei | propunere |
+| Pământ de start, ca terenul să conteze de la primul val (05.10.2026); 3 ca cifră | decis; cifra e propunere |
+| Terraformarea rămâne cum e (05.10.2026) | decis |
+| Felia 7: finisarea vizuală (05.10.2026) | decis |
