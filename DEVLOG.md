@@ -1615,3 +1615,10 @@ i-ar aduce / doar 3 amfibi.
   - cardul planetei arată sursele.
 
 **Propuneri ale mele, nedecise:** unul la 4 hexagoane, cel mult 3 din apa naturală.
+
+**Reparat după (găsit citind codul pentru felia 11):** o partidă rămasă la jumătate (pagina închisă în timpul ei) se
+rejuca la următoarea pornire **fără amfibii din canalele săpate** — `settleUnfinishedRun` din `main.ts` își construia
+singur începutul partidei și uitase câmpul nou. Pe o regiune cu canale, rejucarea ieșea altfel decât partida jucată.
+Acum refacerea e `settleRun` în `lume.ts`, care pornește prin `startRun`, deci nu mai are un al doilea loc de ținut la
+zi. Testul joacă două valuri și jumătate pe o regiune cu canale (amfibii apar), apoi cere aceeași amprentă la rejucare;
+cu începutul vechi, amprenta iese alta. **Testele: 186.**

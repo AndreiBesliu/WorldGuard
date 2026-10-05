@@ -40,8 +40,10 @@ import {
   regionOf,
   regionTerrain,
   savedRing,
+  settleRun,
   startRun,
   type Lume,
+  type PartidaSalvata,
 } from './sim/lume'
 import { createPlanetScreen, type PlanetView } from './ui/planeta'
 import { generateMap } from './sim/map'
@@ -870,11 +872,13 @@ function settleUnfinishedRun(): void {
   }
   if (text === null) return
   try {
-    const p = JSON.parse(text) as { cheie: string; tick: number; jurnal: GameState['jurnal'] }
+    const p = JSON.parse(text) as PartidaSalvata
     const r = regionOf(lume, p.cheie)
     if (!r) throw new Error(`regiune necunoscută: ${p.cheie}`)
-    const final = replay(r.seed, p.jurnal, p.tick, { teren: regionTerrain(lume, p.cheie), inima: r.inima })
-    lume = commitRun(lume, p.cheie, final)
+    const refacuta = settleRun(lume, p)
+    if (!refacuta.ok) throw new Error(refacuta.reason)
+    const { final } = refacuta.value
+    lume = refacuta.value.lume
     saveWorld()
     const urme = final.faza === 'castigat' ? 'câștigată: ce ai făcut terenului a rămas' : 'jucată, fără urme pe teren (doar câștigurile lasă urme)'
     window.setTimeout(() => hud.toast(`Partida neterminată din ${r.nume.replace('Ținutul', 'ținutul')} s-a socotit ${urme}.`, 'info'), 500)

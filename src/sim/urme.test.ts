@@ -4,12 +4,12 @@ import { AMFIBII, EVOLUTIE, LUME } from '../data/lume'
 import { STATES } from '../data/reactions'
 import type { Terrain } from '../data/terrain'
 import { TOWERS } from '../data/towers'
-import { enemySpeed, fingerprint, naturalAmphibians, newGame, pathContacts, spawnSchedule, step, waveAt, type Enemy, type GameState } from './game'
+import { checkBuild, enemySpeed, fingerprint, naturalAmphibians, newGame, pathContacts, replay, spawnSchedule, step, waveAt, type Enemy, type GameState } from './game'
 import { key, neighbors } from './hex'
-import { commitRun, dugCanals, newWorld, regionAmphibians, startRun } from './lume'
+import { commitRun, dugCanals, newWorld, regionAmphibians, regionTerrain, settleRun, startRun } from './lume'
 import { mixTerrain } from './map'
 import { applyContact, type ReactionContext, type Victim } from './reactions'
-import { must } from './testkit'
+import { must, runWave, startWave } from './testkit'
 
 // Arena: drumul drept de la (-9,0) la (9,0) (indicele i e hexagonul (i − 9, 0)), câmpie peste tot în afară de terenurile
 // date, fără ocol obligatoriu.
@@ -148,6 +148,50 @@ describe('amfibii: canalul săpat îi aduce (GDD §9.1)', () => {
     // Un canal acoperit apoi de un deal (ultima editare câștigă) nu mai e canal.
     const cuDeal = { ...l, regiuni: { [START]: { ...l.regiuni[START]!, editari: [...l.regiuni[START]!.editari, { hex: libere[0]!, actiune: 'deal' as const, la: l.ceas }] } } }
     expect(dugCanals(cuDeal, START)).toBe(2)
+  })
+
+  it('o partidă rămasă la jumătate se reface cu amfibii regiunii, identic cu partida de atunci', () => {
+    let l = newWorld(42)
+    const START = key(LUME.start)
+    const r0 = startRun(l, START)
+    if (!r0.ok) throw new Error(r0.reason)
+    const s0 = r0.value.state
+    const libere = [...s0.map.terrain].filter(([h, t]) => t === 'campie' && !s0.path.some((p) => key(p) === h) && !h.endsWith(',0')).map(([h]) => h)
+    let castigata = { ...s0, pamant: 10 }
+    for (const hex of libere.slice(0, 2)) castigata = must(castigata, { tip: 'teren', actiune: 'canal', hex })
+    l = commitRun(l, START, { ...castigata, faza: 'castigat', tick: 1000 })
+    expect(regionAmphibians(l, START)).toBe(2)
+    // Partida de acum: două valuri, apoi pagina se închide la mijlocul celui de-al treilea, după ce au apărut amfibii.
+    const r = startRun(l, START)
+    if (!r.ok) throw new Error(r.reason)
+    let s: GameState = r.value.state
+    // Turnuri Fizic lângă drum, cu tot aurul, înainte de fiecare val.
+    const construieste = (): void => {
+      for (const h of s.path) {
+        for (const n of neighbors(h)) {
+          if (s.aur >= TOWERS.fizic.cost && checkBuild(s, 'fizic', key(n)).ok) s = must(s, { tip: 'turn', turn: 'fizic', hex: key(n) })
+        }
+      }
+    }
+    for (let v = 0; v < 2; v++) {
+      construieste()
+      s = runWave(startWave(s))
+    }
+    construieste()
+    s = startWave(s)
+    let amfibi = false
+    for (let i = 0; i < 300 && s.faza === 'val'; i++) {
+      s = step(s)
+      amfibi ||= s.inamici.some((e) => e.tip === 'amfibiu')
+    }
+    expect(amfibi).toBe(true)
+    const refacuta = settleRun(l, { cheie: START, tick: s.tick, jurnal: s.jurnal })
+    if (!refacuta.ok) throw new Error(refacuta.reason)
+    expect(fingerprint(refacuta.value.final)).toBe(fingerprint(s))
+    // Fără amfibii regiunii (greșeala de dinainte), rejucarea iese altfel.
+    const fara = replay(r.value.state.seed, s.jurnal, s.tick, { teren: regionTerrain(l, START), inima: false })
+    expect(fingerprint(fara)).not.toBe(fingerprint(refacuta.value.final))
+    expect(refacuta.value.lume.regiuni[START]?.partide).toBe(2)
   })
 
   it('și apa naturală îi aduce (owner): unul la fiecare câteva hexagoane de apă de lângă drum, cu plafonul ei', () => {

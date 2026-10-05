@@ -9,7 +9,7 @@
 import type { Terraform } from '../data/economie'
 import { AMFIBII, EVOLUTIE, LUME } from '../data/lume'
 import type { Terrain } from '../data/terrain'
-import { newGame, type GameState, type Start } from './game'
+import { newGame, replay, type GameState, type LoggedDecision, type Start } from './game'
 import { distance, hexesInRadius, key, type Hex } from './hex'
 import { generateMap } from './map'
 import { fail, ok, type Result } from './result'
@@ -169,6 +169,30 @@ export function commitRun(l: Lume, cheie: string, final: GameState): Lume {
       [cheie]: { salvata: vechi.salvata || castigata, partide: vechi.partide + 1, editari: [...vechi.editari, ...noi] },
     },
   }
+}
+
+/** O partidă rămasă la jumătate (pagina închisă în timpul ei): regiunea, deciziile și tick-ul la care a rămas. */
+export interface PartidaSalvata {
+  readonly cheie: string
+  readonly tick: number
+  readonly jurnal: readonly LoggedDecision[]
+}
+
+/**
+ * Reface o partidă rămasă la jumătate și o socotește jucată (`commitRun`). Pornește exact ca la `startRun` — terenul,
+ * inima, amfibii —, deci rejucarea iese identică cu partida de atunci: lumea nu s-a mișcat între timp, fiindcă o
+ * partidă neîncheiată nu i-a dat încă nimic. Rejucarea o și verifică: o înregistrare stricată sau modificată se refuză.
+ */
+export function settleRun(l: Lume, p: PartidaSalvata): Result<{ lume: Lume; final: GameState }> {
+  const r = startRun(l, p.cheie)
+  if (!r.ok) return fail(r.reason)
+  let final: GameState
+  try {
+    final = replay(r.value.state.seed, p.jurnal, p.tick, r.value.start)
+  } catch (e) {
+    return fail(e instanceof Error ? e.message : String(e))
+  }
+  return ok({ lume: commitRun(l, p.cheie, final), final })
 }
 
 // --- Salvarea --------------------------------------------------------------------------------------------------
