@@ -284,3 +284,4 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | Pământ de start, ca terenul să conteze de la primul val (05.10.2026); 3 ca cifră | decis; cifra e propunere |
 | Terraformarea rămâne cum e (05.10.2026) | decis |
 | Felia 7: finisarea vizuală (05.10.2026) | decis |
+| Cum arată: decorul terenului, formele inamicilor, efectele reacțiilor, scuturarea ecranului, anunțul valului | propunere |

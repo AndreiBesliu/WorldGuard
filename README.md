@@ -1,7 +1,8 @@
 # World Guard
 
 Tower defense roguelite pe hexagoane: modelezi pământul unor planete vii, iar ele țin minte ce le-ai făcut.
-**Stare:** prototip în browser — feliile 1–5: valuri, turnuri, reacții, grupuri de turnuri, draftul și bossul.
+**Stare:** prototip în browser — feliile 1–7: valuri, turnuri, reacții, grupuri de turnuri, draftul și bossul,
+economia, finisarea vizuală.
 Fiecare PR are un link de previzualizare; `main` se publică pe Firebase Hosting.
 
 ```bash

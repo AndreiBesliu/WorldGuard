@@ -1054,3 +1054,89 @@ o pădure arsă.
 
 Efectul e mic, dar merge în direcția cerută. Fără terraformare, pământul de start nu schimbă nimic, cum era de
 așteptat. Vieți pierdute la boss, cu deal: Frig + Fizic pierde 20 în loc de 38.
+
+---
+
+## 05.10.2026 (11) — Felia 7: finisarea vizuală
+
+**Cerut de owner:** „finisarea vizuală” (răspunsul 3 la felia 6).
+
+**Făcut.** Regula din GDD §10, „forme simple, zero artă”, rămâne: totul e desenat din cod pe Canvas 2D, fără imagini.
+Desenul e doar mai lizibil și mai viu. Schimbarea e numai în desen și în interfață: `src/sim/` e neatins, deci rămân
+aceleași 133 de teste, iar replay-ul iese identic.
+- **Terenul** (`src/render/terrain.ts`): plăci luminate de sus, cu decor după tip:
+  - smocuri de iarbă, copaci, curbe de nivel pe deal, cristale pe filon, luciu pe ulei;
+  - decorul vine dintr-un hash al hexagonului, deci aceeași hartă arată mereu la fel;
+  - apa face valuri, uleiul lucește, pădurea în flăcări pâlpâie.
+- **Drumul:** margine închisă și mijloc deschis, cu săgeți care curg încet spre bază. Portalul de intrare se rotește.
+  Baza e un scut, cu viețile pe un arc în jurul lui.
+- **Turnurile:**
+  - placă de bază și corpul în forma și culoarea tipului, **întors spre ultima țintă**;
+  - o strălucire la fiecare lovitură;
+  - puncte aurii pentru îmbunătățirile din cărți;
+  - marginea aurie arată, ca înainte, grupul combinat.
+- **Inamicii:**
+  - forma după tip: rapidul e o săgeată, blindatul un pătrat cu plăci, roiul are sateliți, bossul o coroană care se
+    rotește;
+  - au umbră și clipesc alb când sunt loviți;
+  - stările se văd pe ei: hexagon de gheață, inel de răcire, pată de ulei, picătură de apă, flăcări;
+  - bara de viață trece din verde în galben, apoi în roșu.
+- **Loviturile, după turn:** ghiulea în arc (Fizic), jet de flacără (Foc), fulger frânt (Fulger), val de ger pe zonă
+  (Frig).
+- **Efectele** (`src/render/fx.ts`):
+  - reacțiile: explozie cu inel și fum, abur, dezgheț, îngheț, gheață spartă, fulgere între inamicii electrocutați în
+    lanț;
+  - inamicul ucis se sparge în culoarea lui, iar aurul primit urcă deasupra („+5”);
+  - baza lovită: un inel roșu, ecranul tremură scurt și marginile se înroșesc;
+  - praf la construcție și la terraformare, albastru la canal și portocaliu la pădurea arsă.
+- **Anunțul valului:** „Valul 3 din 25” apare 1,8 s în mijlocul ecranului, cu ce vine sau cu trăsăturile bossului.
+  Butonul de start pulsează cât timp valul poate porni.
+- Efectele folosesc `Math.random`, dar stau în `src/render/`: simularea nu le vede, deci replay-ul nu se schimbă.
+  Pozițiile lor sunt în unități de hexagon, ca un efect să rămână la locul lui dacă fereastra se redimensionează.
+
+**Reparat pe drum (venea din felia 6):** sub ~1350 px lățime barele se rup pe două rânduri, dar panoul din dreapta și
+banda draftului aveau poziții fixe în CSS. La 1200 × 760:
+- panoul acoperea „Arde pădurea” și „Mină”;
+- banda draftului era centrată cu `left: 50%`, deci lată de cel mult jumătate din ecran. Cărțile se rupeau pe două
+  rânduri și strângeau harta.
+
+Acum `mapArea()` le așază după barele măsurate. Banda e centrată peste hartă, iar notificările stau deasupra barei de
+jos. Verificat cu draftul deschis la 1600 × 1000, 1200 × 760, 1000 × 700 și 420 × 860: nicio suprapunere între bare,
+panou și bandă.
+
+**Măsurat — cât costă desenul.** Scena e sintetică și grea: 12 turnuri care trag, 120 de inamici cu stări, 20 de
+explozii. Rulează în Chromium fără placă video (rasterizare software, deci cazul pesimist), cu rasterizarea forțată la
+fiecare cadru. Milisecunde pe cadru, 3 repetări:
+
+| scenă | felia 6 | felia 7, prima variantă | felia 7, finală |
+|---|---|---|---|
+| hartă goală | 4,3–5,8 | 13,2–18,0 | 4,2–5,6 |
+| 12 turnuri care trag | 5,0–5,9 | 16,4–21,9 | 6,8–8,5 |
+| 120 de inamici cu stări | 3,7–5,0 | 17,4–18,1 | 9,6–10,9 |
+| tot deodată | 5,6–6,5 | 18,6–23,0 | 11,3–14,0 |
+
+- **Ce costa în prima variantă:**
+  - un gradient pe tot ecranul (fundalul), redesenat la fiecare cadru;
+  - un gradient nou pe fiecare inamic și pe fiecare turn, tot la fiecare cadru.
+- **Reparația:** fundalul stă acum în cache-ul terenului. Gradienții se fac o dată pe formă și mărime: sunt în
+  coordonatele locale ale formei, deci același gradient servește toți inamicii de același fel.
+- **Rămâne:** în cazul pesimist, desenul nou costă cam dublu față de cel din felia 6. În joc, pe aceeași mașină fără
+  placă video, scriptul a jucat 8 valuri: 60 de cadre pe secundă, cel mai lung cadru 17 ms, în pregătire și în val,
+  fără erori în consolă.
+- Desenul rulează acum la fiecare cadru, și între valuri, fiindcă apa, jarul și săgețile se mișcă tot timpul.
+  Înainte, între valuri se desena doar după o acțiune.
+
+**Văzut, nereparat:** pe telefon (420 × 860), bara de jos ocupă 324 px. Cu draftul deschis, hărții îi rămân ~70 px.
+Așa era și înainte: interfața n-a fost gândită pentru telefon (vezi întrebarea 2).
+
+**Propuneri ale mele, nedecise:** tot ce e vizual — culorile, formele inamicilor, efectele, scuturarea ecranului,
+anunțul valului.
+
+**Întrebări pentru owner:**
+1. **Scuturarea ecranului** (la explozii și când e lovită baza): rămâne, o facem mai slabă, sau o scoatem?
+2. **Telefonul:** contează pentru prototip, sau rămâne desktop (ținta e Steam)? Dacă contează, interfața de jos
+   trebuie regândită pentru ecrane înguste.
+3. **Ce urmează?** Lista din GDD §10 e acoperită, iar acum arată și a joc. Variante:
+   - un playtest al tău pe previzualizare, cu criteriul din §10 („fiecare val pune o alegere reală”);
+   - sunetul (lovituri, reacții, anunțul valului);
+   - meta-progresia (stratul C, lumea care ține minte), care e în afara prototipului.

@@ -134,11 +134,13 @@ function slot(e: HTMLElement): (html: string) => void {
 }
 
 export interface Hud {
-  /** Zona rămasă pentru hartă, în pixeli CSS. */
+  /** Zona rămasă pentru hartă, în pixeli CSS. Așază și banda draftului și panoul între bare. */
   mapArea(): { x: number; y: number; w: number; h: number }
   update(v: HudView): void
   /** O notificare: refuz (implicit) sau informație (`info`, de exemplu venitul de la sfârșitul valului). */
   toast(text: string, fel?: 'info'): void
+  /** Anunțul mare, în mijloc, la pornirea unui val. */
+  banner(titlu: string, subtitlu?: string): void
   announce(text: string): void
 }
 
@@ -216,6 +218,8 @@ export function createHud(actions: HudActions): Hud {
   // Notificările, anunțul și ecranul de final.
   const toasts = el('div', 'toasts', root)
   const announceBox = el('div', 'anunt', root)
+  const bannerBox = el('div', 'banner', root)
+  let bannerTimer: number | undefined
   const endBox = el('div', 'final', root)
   endBox.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('button')
@@ -227,11 +231,27 @@ export function createHud(actions: HudActions): Hud {
 
   return {
     mapArea() {
-      // Banda draftului, când e vizibilă, face parte din „sus”: harta începe sub ea.
-      const t = draftBox.classList.contains('vizibil') ? draftBox.getBoundingClientRect() : top.getBoundingClientRect()
+      // Barele se rup pe două sau trei rânduri când ecranul se îngustează, deci banda draftului și panoul se așază
+      // după înălțimea lor măsurată, nu după numerele fixe din CSS (cu acelea, la 1200 px panoul acoperea capătul
+      // barei de jos, iar banda draftului rândul de butoane de sus).
+      const sus = top.getBoundingClientRect()
       const b = bottom.getBoundingClientRect()
       // Pe ecrane late panoul stă fixat în dreapta, deci harta îi lasă loc; pe cele înguste e ascuns (CSS).
       const docked = getComputedStyle(panel).display !== 'none'
+      // Notificările stau chiar deasupra barei de jos.
+      toasts.style.bottom = `${innerHeight - b.top + 8}px`
+      // Banda draftului stă centrată peste hartă, adică la stânga panoului.
+      draftBox.style.top = `${sus.bottom + 6}px`
+      draftBox.style.right = docked ? `${panel.getBoundingClientRect().width + 16}px` : ''
+      // Banda draftului, când e vizibilă, face parte din „sus”: harta începe sub ea.
+      const draftShown = draftBox.classList.contains('vizibil')
+      const t = draftShown ? draftBox.getBoundingClientRect() : sus
+      // Panoul începe sub banda draftului doar dacă banda ajunge totuși până la el.
+      if (docked) {
+        const sub = draftShown && t.right > panel.getBoundingClientRect().left - 8 ? t : sus
+        panel.style.top = `${sub.bottom + 6}px`
+        panel.style.bottom = `${innerHeight - b.top + 6}px`
+      }
       const right = docked ? panel.getBoundingClientRect().width + 16 : 0
       return { x: 8, y: t.bottom + 6, w: innerWidth - right - 16, h: b.top - t.bottom - 12 }
     },
@@ -248,6 +268,8 @@ export function createHud(actions: HudActions): Hud {
           `<span class="faza ${v.faza}">${esc(v.fazaText)}</span>`,
       )
       startBtn.disabled = !v.start.ok
+      // Butonul de start pulsează cât valul poate porni: e pasul următor.
+      startBtn.classList.toggle('gata', v.start.ok && v.faza === 'pregatire')
       startBtn.title = v.start.ok ? 'Pornește valul' : (v.start.motiv ?? '')
       pauseBtn.innerHTML = `${v.paused ? '▶' : '⏸'} <kbd>P</kbd>`
       pauseBtn.classList.toggle('activ', v.paused)
@@ -353,6 +375,15 @@ export function createHud(actions: HudActions): Hud {
       window.setTimeout(() => t.classList.add('stinge'), 3200)
       window.setTimeout(() => t.remove(), 3700)
       while (toasts.children.length > 3) toasts.firstElementChild?.remove()
+    },
+
+    banner(titlu, subtitlu) {
+      bannerBox.innerHTML = `<div class="titlu-val">${esc(titlu)}</div>${subtitlu ? `<div class="sub-val">${esc(subtitlu)}</div>` : ''}`
+      bannerBox.classList.remove('vizibil')
+      void bannerBox.offsetWidth // repornește animația
+      bannerBox.classList.add('vizibil')
+      window.clearTimeout(bannerTimer)
+      bannerTimer = window.setTimeout(() => bannerBox.classList.remove('vizibil'), 1800)
     },
 
     announce(text) {

@@ -17,12 +17,13 @@
 
 import { CARDS, cardTower, type CardEffect, type CardId } from './data/draft'
 import { ECONOMIE, TERRAFORM_TYPES, TERRAFORMARI, type Terraform } from './data/economie'
-import { ENEMIES, TRAITS, WAVES } from './data/enemies'
-import { TICK_MS, VIETI_BAZA, VITEZE_UI } from './data/joc'
+import { describeWave, ENEMIES, TRAITS, WAVES } from './data/enemies'
+import { MILI_HEX, TICK_MS, VIETI_BAZA, VITEZE_UI } from './data/joc'
 import { ELEMENT_NAMES, REACTION_RULES, REACTIONS, STATES, TAG_NAMES, type ReactionType } from './data/reactions'
 import { TERRAIN } from './data/terrain'
 import { COMBINARE, TARGET_MODES, TARGET_NAMES, TOWERS, TOWER_TYPES, type ArmorCombo, type TowerType } from './data/towers'
-import { draw, fitLayout, hexToPixel, pixelToHex, type Layout, type Overlay } from './render/canvas'
+import { draw, fitLayout, hexToPixel, pixelToHex, resetRenderCaches, type Layout, type Overlay } from './render/canvas'
+import { Fx, toWorld } from './render/fx'
 import {
   applyDecision,
   armorCombos,
@@ -35,12 +36,14 @@ import {
   combinedContacts,
   detourLimit,
   detourPossible,
+  enemySpeed,
   fingerprint,
   groupOf,
   groupReload,
   incompatiblePair,
   isCombined,
   newGame,
+  pathLength,
   replay,
   step,
   towerCost,
@@ -564,15 +567,66 @@ function render(): void {
     lastDraftShown = draftShown
     relayout()
   }
+  const now = performance.now()
   draw(ctx, state, layout, {
+    now,
+    fx,
+    flash,
     start: chosen?.start,
     span: chosen?.span,
     preview: chosen?.hexes,
     alpha: state.faza === 'val' && !paused ? Math.min(1, acumulat / TICK_MS) : 0,
     ...context.overlay,
     selected: selectedTower() ? fromKey((selectedTower() as Tower).hex) : undefined,
-    popups: popups.map((p) => ({ text: p.text, culoare: p.culoare, progres: p.progres, varsta: (performance.now() - p.la) / POPUP_MS })),
+    popups: popups.map((p) => ({ text: p.text, culoare: p.culoare, progres: p.progres, varsta: (now - p.la) / POPUP_MS })),
   })
+}
+
+// --- Efectele (doar desen) ------------------------------------------------------------------------------------
+
+/** Efectele de scurtă durată și când a fost lovit ultima oară fiecare inamic (ca să clipească). */
+const fx = new Fx()
+const flash = new Map<number, number>()
+
+/** Unde e pe ecran un punct de pe drum (progres în mili-hexagoane), în unități de hexagon pentru efecte. */
+function worldAt(st: GameState, progres: number): { x: number; y: number } {
+  const idx = Math.min(st.path.length - 1, Math.floor(progres / MILI_HEX))
+  const frac = (progres % MILI_HEX) / MILI_HEX
+  const a = hexToPixel(st.path[idx] as Hex, layout)
+  const b = hexToPixel((st.path[idx + 1] ?? st.path[idx]) as Hex, layout)
+  return toWorld({ x: a.x + (b.x - a.x) * frac, y: a.y + (b.y - a.y) * frac }, layout)
+}
+
+/**
+ * Ce s-a întâmplat într-un pas, ca efecte: reacțiile (explozii, gheață, abur, fulgere între inamicii electrocutați),
+ * inamicii uciși (cu aurul lor) sau ajunși la bază, și cine a fost lovit (clipește alb).
+ */
+function stepEffects(before: GameState, after: GameState, now: number): void {
+  let lastBolt: { x: number; y: number } | undefined
+  for (const ev of after.evenimente) {
+    const w = worldAt(after, ev.progres)
+    if (ev.tip === 'explozie') fx.explozie(w, now)
+    else if (ev.tip === 'abur') fx.abur(w, now)
+    else if (ev.tip === 'dezghet') fx.dezghet(w, now)
+    else if (ev.tip === 'inghet') fx.inghet(w, now)
+    else if (ev.tip === 'spargere') fx.spargere(w, now)
+    else if (ev.tip === 'electrocutare') {
+      if (lastBolt) fx.fulger(lastBolt, w, now)
+      lastBolt = w
+    }
+  }
+  const alive = new Map(after.inamici.map((e) => [e.id, e]))
+  const end = pathLength(before)
+  for (const e of before.inamici) {
+    const now2 = alive.get(e.id)
+    if (now2) {
+      if (now2.viata < e.viata) flash.set(e.id, now)
+      continue
+    }
+    if (e.progres + enemySpeed(e) >= end) fx.baza(worldAt(before, end), now)
+    else fx.moarte(worldAt(before, e.progres), ENEMIES[e.tip].culoare, ENEMIES[e.tip].aur, now)
+  }
+  if (flash.size > 300) for (const id of flash.keys()) if (!alive.has(id)) flash.delete(id)
 }
 
 // --- Acțiuni --------------------------------------------------------------------------------------------------
@@ -580,9 +634,26 @@ function render(): void {
 /** Aplică decizia; refuzul (cu motivul lui, venit din simulare) apare ca notificare. */
 function decide(d: Decision): boolean {
   const r = applyDecision(state, d)
-  if (r.ok) state = r.value
-  else hud.toast(`Nu se poate: ${r.reason}`)
-  return r.ok
+  if (!r.ok) {
+    hud.toast(`Nu se poate: ${r.reason}`)
+    return false
+  }
+  state = r.value
+  // Ce se vede: praf unde s-a construit sau s-a modelat terenul, anunțul unui val nou.
+  const now = performance.now()
+  if (d.tip === 'turn' || d.tip === 'mina') fx.praf(toWorld(hexToPixel(fromKey(d.hex), layout), layout), now)
+  if (d.tip === 'teren') fx.praf(toWorld(hexToPixel(fromKey(d.hex), layout), layout), now, d.actiune === 'canal' ? 'rgba(120, 170, 220, 0.7)' : d.actiune === 'arde' ? 'rgba(255, 140, 60, 0.7)' : undefined)
+  if (d.tip === 'pornesteVal') {
+    const w = WAVES[state.val]
+    const bossi = (w?.grupuri ?? []).filter((g) => g.tip === 'boss')
+    const sub = bossi.length
+      ? `Boss · ${bossi.map((g) => (g.trasaturi ?? []).map((t) => TRAITS[t].nume).join(', ')).join(' · ')}`
+      : w
+        ? describeWave(w)
+        : ''
+    hud.banner(`Valul ${state.val + 1} din ${WAVES.length}`, sub)
+  }
+  return true
 }
 
 const selectedTower = (): Tower | undefined => state.turnuri.find((t) => t.id === selected)
@@ -641,6 +712,9 @@ function restart(newSeed: number): void {
   acumulat = 0
   paused = false
   popups = []
+  fx.clear()
+  flash.clear()
+  resetRenderCaches()
 }
 
 /** După un pas: reacțiile lui devin texte pe hartă, iar o reacție văzută prima dată în partidă — anunț + pauză scurtă. */
@@ -670,6 +744,7 @@ function frame(now: number): void {
       state = step(state)
       acumulat -= TICK_MS
       noteReactions(before, now)
+      stepEffects(before, state, now)
     }
     if (state.faza !== 'val') {
       // Valul s-a terminat (sau partida): timpul se oprește, drumul se poate modela din nou.
@@ -679,10 +754,9 @@ function frame(now: number): void {
         hud.toast(`Valul ${state.val} s-a încheiat: dobândă +${state.venit.aur} aur, +${state.venit.pamant} pământ`, 'info')
       }
     }
-    render()
-  } else if (popups.length > 0) {
-    render() // freeze-frame, pauză sau pregătire: textele se sting mai departe
   }
+  // Desenul rulează la fiecare cadru, și între valuri: apa, jarul, drumul și efectele se mișcă tot timpul.
+  render()
   requestAnimationFrame(frame)
 }
 
