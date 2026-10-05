@@ -50,10 +50,18 @@ npm run build
   - **Nu crea gradienți la fiecare cadru** (`createRadialGradient` per inamic și fundalul pe tot ecranul triplau
     costul desenului, DEVLOG felia 7): desenează forma în coordonate locale și refolosește gradientul din
     `gradient(ctx, cheie, …)`.
+- `src/events.ts` — ce s-a întâmplat într-un pas (lovituri, reacții, loviți, uciși, scăpați, apăruți, sfârșitul
+  valului), citit din starea de dinainte și cea de după. Pur. Din el se hrănesc și efectele de pe ecran, și sunetul:
+  **nu deduce evenimente a doua oară în altă parte**.
+- `src/audio/` — sunetul, sintetizat prin Web Audio din rețetele din `src/data/sunete.ts` (niciun fișier audio).
+  `cues.ts` (eveniment sau decizie → sunet și poziție în stereo) și `gate.ts` (câte repetiții și câte voci) sunt pure
+  și testate; `synth.ts` și `sunet.ts` ating Web Audio. Contextul real se face la primul gest al jucătorului.
+  Ca la `render/`, `Math.random` e voie aici: e doar ieșire.
 - `src/ui/` — interfața HTML peste hartă (bare, panou, cărți, notificări). Nu citește starea: primește o vedere
   gata calculată (`HudView`) și trimite înapoi acțiuni (`HudActions`).
-- `src/main.ts` — input și legătura dintre ele (controlerul). În `npm run dev` expune `window.wg.state` (doar citire),
-  pentru verificările în browser; blocul e sub `import.meta.env.DEV`, deci lipsește din build.
+- `src/main.ts` — input și legătura dintre ele (controlerul). În `npm run dev` expune `window.wg` (starea, doar citire;
+  poziția pe ecran a unui hexagon; motorul de sunet), pentru verificările în browser; blocul e sub
+  `import.meta.env.DEV`, deci lipsește din build.
 
 ## Reguli dure în `src/sim/`
 Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
@@ -198,4 +206,8 @@ Felia 6, decisă de owner (05.10.2026). Cifrele în `src/data/economie.ts`.
 - **Felia 7 (05.10.2026):** finisarea vizuală, tot din forme simple: terenul cu decor și animații, turnurile care se
   întorc spre țintă, inamicii după tip, cu stările pe ei, loviturile după turn, efectele reacțiilor, anunțul valului.
   Panoul și banda draftului se așază după barele măsurate. 133 de teste (simularea e neatinsă).
+- **Răspunsurile owner-ului la felia 7 (05.10.2026):** scuturarea ecranului rămâne; prototipul e pentru desktop.
+- **Felia 8 (05.10.2026):** sunetul, sintetizat fără fișiere: loviturile pe turn, reacțiile, morțile, bossul, baza,
+  valul, deciziile, refuzurile; stereo după hartă; volumul pe S. Evenimentele pasului (`src/events.ts`), comune pentru
+  efecte și sunet. 150 de teste.
 - **Următorul:** de ales cu owner-ul (vezi DEVLOG).

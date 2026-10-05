@@ -22,6 +22,10 @@ import { MILI_HEX, TICK_MS, VIETI_BAZA, VITEZE_UI } from './data/joc'
 import { ELEMENT_NAMES, REACTION_RULES, REACTIONS, STATES, TAG_NAMES, type ReactionType } from './data/reactions'
 import { TERRAIN } from './data/terrain'
 import { COMBINARE, TARGET_MODES, TARGET_NAMES, TOWERS, TOWER_TYPES, type ArmorCombo, type TowerType } from './data/towers'
+import { decisionPan, decisionSound, stepCues } from './audio/cues'
+import { Sunet } from './audio/sunet'
+import { NIVELURI_SUNET } from './data/sunete'
+import { stepEvents, type StepEvent } from './events'
 import { draw, fitLayout, hexToPixel, pixelToHex, resetRenderCaches, type Layout, type Overlay } from './render/canvas'
 import { Fx, toWorld } from './render/fx'
 import {
@@ -36,7 +40,6 @@ import {
   combinedContacts,
   detourLimit,
   detourPossible,
-  enemySpeed,
   fingerprint,
   groupOf,
   groupReload,
@@ -97,10 +100,34 @@ const FREEZE_MS = 600
 let popups: { text: string; culoare: string; progres: number; la: number }[] = []
 let freezeUntil = 0
 
+// Sunetul (doar ieșire, ca desenul): volumul ales se ține minte în browser, între sesiuni.
+const CHEIE_SUNET = 'worldguard.sunet'
+function nivelSalvat(): number {
+  try {
+    const v = Number(localStorage.getItem(CHEIE_SUNET))
+    return (NIVELURI_SUNET as readonly number[]).includes(v) && localStorage.getItem(CHEIE_SUNET) !== null ? v : 1
+  } catch {
+    return 1
+  }
+}
+const sunet = new Sunet(nivelSalvat())
+
+function cycleSound(): void {
+  const i = (NIVELURI_SUNET as readonly number[]).indexOf(sunet.volum)
+  sunet.volum = NIVELURI_SUNET[(i + 1) % NIVELURI_SUNET.length] ?? 1
+  try {
+    localStorage.setItem(CHEIE_SUNET, String(sunet.volum))
+  } catch {
+    // Fără spațiu de stocare (fereastră privată, blocat): volumul ține doar sesiunea asta.
+  }
+  sunet.play('clic')
+}
+
 const hud = createHud({
   startWave: () => act(startWave),
   togglePause: () => act(() => (paused = !paused)),
   cycleSpeed: () => act(() => (vitezaIndex = (vitezaIndex + 1) % VITEZE_UI.length)),
+  cycleSound: () => act(cycleSound),
   undo: () => act(undo),
   restart: () => act(() => restart(seed)),
   newMap: () => act(() => restart(seed + 1)),
@@ -370,6 +397,7 @@ function contextView(): { view: HudView['context']; overlay: Partial<Overlay> } 
         { k: 'După fiecare val', v: 'alegi 1 carte din 3 (8 / 9 / 0)' },
         { k: 'Q / W / E', v: 'canal, deal, arzi pădurea (cu pământ)' },
         { k: 'M pe un filon', v: 'mină: pământ la fiecare val' },
+        { k: 'S', v: 'sunetul: tare, încet, oprit' },
         ...COMBINARE.armura.map((c) => ({ k: `Combinat ${comboTowers(c)}`, v: `${c.nume}: ${comboEffect(c)}` })),
       ],
       nota:
@@ -520,6 +548,7 @@ function render(): void {
     start: start.ok ? { ok: true } : { ok: false, motiv: start.reason },
     paused,
     speed: VITEZE_UI[vitezaIndex] ?? 1,
+    sunet: sunet.volum,
     canUndo: state.faza === 'pregatire' && lastDecision !== undefined && lastDecision.la === state.tick,
     towers: TOWER_TYPES.map((tip, i) => ({
       tip,
@@ -598,35 +627,37 @@ function worldAt(st: GameState, progres: number): { x: number; y: number } {
 }
 
 /**
- * Ce s-a întâmplat într-un pas, ca efecte: reacțiile (explozii, gheață, abur, fulgere între inamicii electrocutați),
- * inamicii uciși (cu aurul lor) sau ajunși la bază, și cine a fost lovit (clipește alb).
+ * Evenimentele unui pas (`events.ts`), ca efecte: reacțiile (explozii, gheață, abur, fulgere între inamicii
+ * electrocutați), inamicii uciși (cu aurul lor) sau ajunși la bază, și cine a fost lovit (clipește alb).
  */
-function stepEffects(before: GameState, after: GameState, now: number): void {
+function stepEffects(evs: readonly StepEvent[], before: GameState, after: GameState, now: number): void {
   let lastBolt: { x: number; y: number } | undefined
-  for (const ev of after.evenimente) {
-    const w = worldAt(after, ev.progres)
-    if (ev.tip === 'explozie') fx.explozie(w, now)
-    else if (ev.tip === 'abur') fx.abur(w, now)
-    else if (ev.tip === 'dezghet') fx.dezghet(w, now)
-    else if (ev.tip === 'inghet') fx.inghet(w, now)
-    else if (ev.tip === 'spargere') fx.spargere(w, now)
-    else if (ev.tip === 'electrocutare') {
-      if (lastBolt) fx.fulger(lastBolt, w, now)
-      lastBolt = w
-    }
+  for (const ev of evs) {
+    if (ev.tip === 'reactie') {
+      const w = worldAt(after, ev.progres)
+      if (ev.reactie === 'explozie') fx.explozie(w, now)
+      else if (ev.reactie === 'abur') fx.abur(w, now)
+      else if (ev.reactie === 'dezghet') fx.dezghet(w, now)
+      else if (ev.reactie === 'inghet') fx.inghet(w, now)
+      else if (ev.reactie === 'spargere') fx.spargere(w, now)
+      else if (ev.reactie === 'electrocutare') {
+        if (lastBolt) fx.fulger(lastBolt, w, now)
+        lastBolt = w
+      }
+    } else if (ev.tip === 'lovit') flash.set(ev.inamic, now)
+    else if (ev.tip === 'scapat') fx.baza(worldAt(before, pathLength(before)), now)
+    else if (ev.tip === 'ucis') fx.moarte(worldAt(before, ev.inamic.progres), ENEMIES[ev.inamic.tip].culoare, ENEMIES[ev.inamic.tip].aur, now)
   }
-  const alive = new Map(after.inamici.map((e) => [e.id, e]))
-  const end = pathLength(before)
-  for (const e of before.inamici) {
-    const now2 = alive.get(e.id)
-    if (now2) {
-      if (now2.viata < e.viata) flash.set(e.id, now)
-      continue
-    }
-    if (e.progres + enemySpeed(e) >= end) fx.baza(worldAt(before, end), now)
-    else fx.moarte(worldAt(before, e.progres), ENEMIES[e.tip].culoare, ENEMIES[e.tip].aur, now)
+  if (flash.size > 300) {
+    const alive = new Set(after.inamici.map((e) => e.id))
+    for (const id of flash.keys()) if (!alive.has(id)) flash.delete(id)
   }
-  if (flash.size > 300) for (const id of flash.keys()) if (!alive.has(id)) flash.delete(id)
+}
+
+/** Un refuz: notificarea cu motivul, și sunetul lui. */
+function refuz(text: string): void {
+  hud.toast(text)
+  sunet.play('refuz')
 }
 
 // --- Acțiuni --------------------------------------------------------------------------------------------------
@@ -635,10 +666,11 @@ function stepEffects(before: GameState, after: GameState, now: number): void {
 function decide(d: Decision): boolean {
   const r = applyDecision(state, d)
   if (!r.ok) {
-    hud.toast(`Nu se poate: ${r.reason}`)
+    refuz(`Nu se poate: ${r.reason}`)
     return false
   }
   state = r.value
+  sunet.play(decisionSound(d), { pan: decisionPan(d, state) })
   // Ce se vede: praf unde s-a construit sau s-a modelat terenul, anunțul unui val nou.
   const now = performance.now()
   if (d.tip === 'turn' || d.tip === 'mina') fx.praf(toWorld(hexToPixel(fromKey(d.hex), layout), layout), now)
@@ -666,7 +698,7 @@ function towerAction(a: TowerAction, id?: number): void {
   }
   const t = id !== undefined ? state.turnuri.find((x) => x.id === id) : (towerAt(hoverHex) ?? selectedTower())
   if (!t) {
-    hud.toast('Alege întâi un turn: click pe el, sau ține mouse-ul deasupra.')
+    refuz('Alege întâi un turn: click pe el, sau ține mouse-ul deasupra.')
     return
   }
   if (a === 'tinta') {
@@ -692,7 +724,7 @@ function undo(): void {
   if (state.faza === 'pregatire' && lastDecision !== undefined && lastDecision.la === state.tick) {
     state = replay(seed, state.jurnal.slice(0, -1), state.tick)
   } else {
-    hud.toast('Nu e nimic de anulat: se anulează doar deciziile din pregătirea curentă — un val jucat nu se dă înapoi.')
+    refuz('Nu e nimic de anulat: se anulează doar deciziile din pregătirea curentă — un val jucat nu se dă înapoi.')
   }
 }
 
@@ -728,6 +760,7 @@ function noteReactions(before: GameState, now: number): void {
       const rule = REACTION_RULES.find((x) => x.tip === r)
       const reteta = rule ? ` (${ELEMENT_NAMES[rule.element]} pe ${TAG_NAMES[rule.eticheta]})` : ''
       hud.announce(`Reacție nouă: ${REACTIONS[r].nume}${reteta} — ${REACTIONS[r].efect}`)
+      sunet.play('descoperire')
       freezeUntil = now + FREEZE_MS
     }
   }
@@ -744,7 +777,9 @@ function frame(now: number): void {
       state = step(state)
       acumulat -= TICK_MS
       noteReactions(before, now)
-      stepEffects(before, state, now)
+      const evs = stepEvents(before, state)
+      stepEffects(evs, before, state, now)
+      for (const c of stepCues(evs, before)) sunet.play(c.sunet, { pan: c.pan })
     }
     if (state.faza !== 'val') {
       // Valul s-a terminat (sau partida): timpul se oprește, drumul se poate modela din nou.
@@ -785,8 +820,8 @@ canvas.addEventListener('click', () => {
   } else if (hovered !== undefined) {
     const allowed = checkDetourAllowed(state)
     const chosen = options[optionIndex]
-    if (!allowed.ok) hud.toast(`Nu se poate: ${allowed.reason}`)
-    else if (!chosen) hud.toast(`Nu există ocol de +${extra} aici. Încearcă alt număr sau alt loc.`)
+    if (!allowed.ok) refuz(`Nu se poate: ${allowed.reason}`)
+    else if (!chosen) refuz(`Nu există ocol de +${extra} aici. Încearcă alt număr sau alt loc.`)
     else decide({ tip: 'ocol', start: chosen.start, span: chosen.span, hexuri: chosen.hexes.map(key) })
   } else if (hoverHex !== undefined && state.map.terrain.has(key(hoverHex))) {
     const hex = key(hoverHex)
@@ -804,6 +839,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === ' ') fn = startWave
   else if (e.key === 'f' || e.key === 'F') fn = () => (vitezaIndex = (vitezaIndex + 1) % VITEZE_UI.length)
   else if (e.key === 'p' || e.key === 'P') fn = () => (paused = !paused)
+  else if (e.key === 's' || e.key === 'S') fn = cycleSound
   else if (e.key === '1' || e.key === '2' || e.key === '3') fn = () => setExtra(Number(e.key))
   else if (towerKey >= 0) fn = () => selectTower(TOWER_TYPES[towerKey] ?? turnAles)
   else if (TOOL_KEYS.includes(e.key.toUpperCase())) fn = () => (unealta = TERRAFORM_TYPES[TOOL_KEYS.indexOf(e.key.toUpperCase())])
@@ -817,7 +853,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'Escape') fn = () => towerAction('deselecteaza')
   else if (CARD_KEYS.includes(e.key)) {
     const carte = state.oferta[CARD_KEYS.indexOf(e.key)]
-    fn = () => (carte !== undefined ? decide({ tip: 'alege', carte }) : hud.toast('Nu e nicio carte de ales acum — draftul vine după fiecare val.'))
+    fn = () => (carte !== undefined ? decide({ tip: 'alege', carte }) : refuz('Nu e nicio carte de ales acum — draftul vine după fiecare val.'))
   }
   if (!fn) return
   e.preventDefault()
@@ -830,7 +866,8 @@ versiune.id = 'versiune'
 versiune.textContent = `build ${__BUILD__.sha.slice(0, 7)}${__BUILD__.ref ? ` · ${__BUILD__.ref}` : ''} · ${__BUILD__.at.slice(0, 16).replace('T', ' ')} UTC`
 document.body.append(versiune)
 
-// Doar în `npm run dev`: starea și poziția pe ecran a unui hexagon, pentru consolă și scripturile de verificare.
+// Doar în `npm run dev`: starea, poziția pe ecran a unui hexagon și motorul de sunet, pentru consolă și scripturile
+// de verificare.
 // Vite scoate blocul din build-ul de producție.
 if (import.meta.env.DEV) {
   Object.assign(window, {
@@ -838,6 +875,7 @@ if (import.meta.env.DEV) {
       get state(): GameState {
         return state
       },
+      sunet,
       px: (k: string): [number, number] => {
         const p = hexToPixel(fromKey(k), layout)
         return [p.x, p.y]
@@ -845,6 +883,9 @@ if (import.meta.env.DEV) {
     },
   })
 }
+
+// Browserele lasă pagina să cânte abia după un gest al jucătorului: primul click sau prima tastă pornește sunetul.
+for (const ev of ['pointerdown', 'keydown'] as const) window.addEventListener(ev, () => sunet.unlock(), { capture: true })
 
 window.addEventListener('resize', resize)
 resize()

@@ -1152,3 +1152,111 @@ anunțul valului.
 3. „Ce urmează?”: **sunetul**. E felia 8, în PR-ul ei.
 
 Nicio schimbare de cod: răspunsurile intră în GDD §14 și în `CLAUDE.md` (ținta prototipului e desktopul).
+
+---
+
+## 05.10.2026 (13) — Felia 8: sunetul
+
+**Cerut de owner:** „sunetul” (răspunsul 3 la felia 7).
+
+**Făcut.** Toate sunetele se sintetizează în browser, prin Web Audio, fără niciun fișier audio. E echivalentul sonor al
+„formelor simple, zero artă”. Simularea e neatinsă: același seed dă exact aceleași valuri ca în felia 7.
+- **Rețetele** (`src/data/sunete.ts`, 29 de sunete):
+  - fiecare sunet e o sumă de straturi scurte: un ton care alunecă între două frecvențe, sau zgomot alb printr-un
+    filtru;
+  - fiecare strat are un atac și o stingere;
+  - niciun sunet nu ține peste 2 secunde: sunt semnale, nu muzică.
+- **Ce sună:**
+  - loviturile, diferite pe turn: bubuit (Fizic), suflu (Foc), clinchet de gheață (Frig), pocnet electric (Fulger);
+    un grup combinat sună cu toate elementele lui deodată;
+  - cele 6 reacții, fiecare cu sunetul ei;
+  - inamicul ucis (pocnet și clinchetul aurului), bossul care apare (un corn grav) și bossul ucis;
+  - baza lovită;
+  - începutul și sfârșitul valului, victoria, înfrângerea;
+  - o reacție descoperită prima dată (odată cu anunțul ei);
+  - deciziile: turn, mină, canal, deal, pădure arsă, ocol, carte, țintă, grup;
+  - refuzurile („Nu se poate: …”).
+- **Stereo după hartă:** intrarea se aude în stânga, baza în dreapta, o lovitură de unde e turnul.
+- **Volumul:** butonul 🔊 din bara de sus sau tasta **S**: tare, încet, oprit. Alegerea se ține minte în browser.
+  Browserele lasă o pagină să cânte abia după un gest al jucătorului, deci sunetul pornește la primul click sau la
+  prima tastă.
+- **Arhitectura:**
+  - `src/events.ts` (nou) citește dintr-un pas al simulării ce s-a întâmplat: lovituri, reacții, loviți, uciși,
+    scăpați, apăruți, sfârșitul valului;
+  - din aceeași listă se hrănesc și efectele de pe ecran (refăcute peste ea), și sunetul (`src/audio/cues.ts`), ca
+    cele două să nu tragă concluzii diferite;
+  - **poarta** (`src/audio/gate.ts`) limitează repetițiile: un interval minim între două porniri ale aceluiași sunet,
+    un număr maxim de exemplare deodată, un plafon total de 24 trecut doar de sunetele importante;
+  - un compresor la ieșire ține totul sub distorsiune.
+- **Reparat pe drum:** un inamic ucis chiar în tick-ul în care apare (de un turn lângă intrare) nu era în nicio listă,
+  deci nu avea nici efect, nici aur care urcă. Acum se reface din programarea valului.
+
+**Teste: 150** (de la 133):
+- `events.test.ts`, 8 teste:
+  - lovitura și inamicul lovit;
+  - grupul combinat (o singură lovitură, cu toate tipurile);
+  - ucis sau scăpat;
+  - ucis la apariție;
+  - reacțiile și sfârșitul valului sau al partidei;
+  - fără pas, nimic;
+  - **un val întreg confruntat cu socotelile simulării:** aurul din uciși = aurul câștigat, daunele celor scăpați =
+    viețile pierdute, aparițiile = inamicii programați.
+- `audio/audio.test.ts`, 9 teste:
+  - rețetele au cifre cu sens (volume, timpi, frecvențe auzibile și cu variația de înălțime, cel mult 2 secunde);
+  - fiecare reacție, turn și terraformare are sunet;
+  - poarta: intervalul, vocile, plafonul și prioritarele;
+  - maparea evenimentelor și a deciziilor;
+  - stereo-ul.
+
+**Mutații reintroduse într-o copie (16):** 15 prinse. Un test nou a fost scris pentru stereo: unul de pe rândurile de
+jos ale hărții scăpa. Supraviețuiește una singură, echivalentă: verificarea „valul era în desfășurare” e redundantă
+lângă garda de tick, fiindcă `step` schimbă tick-ul doar în timpul unui val.
+
+**Măsurat — fiecare sunet**, randat offline în Chromium prin aceeași cale ca în joc (inclusiv compresorul). Sonoritatea
+e RMS pe cea mai tare fereastră de 100 ms, în dB față de maxim:
+
+| grup | sonoritate | vârf |
+|---|---|---|
+| loviturile turnurilor (cele mai dese) | −31 … −37 dB | −19 … −24 dB |
+| inamic ucis, clic, ocol, mină, construire | −30 … −36 dB | −13 … −21 dB |
+| reacțiile | −19 (explozia) … −33 dB | −10 … −17 dB |
+| baza lovită, începutul și sfârșitul valului, descoperirea | −19 … −22 dB | −10 … −13 dB |
+| bossul care apare, bossul ucis | −15 dB | −6 … −7 dB |
+
+- Prima trecere era dezechilibrată:
+  - electrocutarea (−41 dB), moartea (−38), ocolul (−39) și clicul (−47) abia se auzeau;
+  - aburul era un șuierat de −21 dB centrat pe 11 kHz.
+
+  Le-am reglat până la tabelul de mai sus.
+- Niciun sunet nu distorsionează: zero eșantioane peste 0,98.
+
+**Măsurat — un val întreg**: valul 5, cu boss și 6 turnuri de toate tipurile, randat offline din evenimentele lui
+reale.
+
+| viteză | sunete cerute | pornite | vârf | sonoritate, cea mai tare secundă | sonoritate, secunda mediană | distorsiune |
+|---|---|---|---|---|---|---|
+| 1× | 314 | 314 | −3,4 dB | −21,6 dB | −30,5 dB | 0 |
+| 4× | 314 | 207 | −3,1 dB | −21,0 dB | −25,6 dB | 0 |
+
+La 4×, poarta taie mai ales loviturile dese (Foc 54 din 108, Frig 34 din 67) și lasă trecute toate morțile, bossul,
+baza și anunțurile.
+
+**Verificat în browser** (contextul audio real):
+- înainte de primul gest nu există context; după primul click, contextul rulează;
+- au sunat ocolul, construcția, un refuz și valul;
+- S trece prin tare → încet → oprit; oprit, nu mai pornește niciun sunet; nivelul rămâne după reîncărcarea paginii;
+- 60 de cadre pe secundă cu sunetul pornit, fără erori sau avertismente în consolă;
+- cele 8 valuri ale scriptului din felia 7 ies identice (aur, vieți), iar efectele de pe ecran merg din noile
+  evenimente.
+
+**Propuneri ale mele, nedecise:** toate sunetele și volumele lor; cele trei niveluri de volum; stereo-ul după hartă;
+plafonul de 24 de sunete deodată.
+
+**Întrebări pentru owner:**
+1. **Sunetele** se aud cel mai repede în cele două fișiere atașate raportului: catalogul, 30 s cu toate sunetele pe
+   rând, și primele 30 s din valul 5. Sau pe previzualizare. Care sună greșit sau deranjează?
+2. **Muzică?** Acum sunt doar efecte. Un fundal muzical discret, tot sintetizat (de exemplu un acord care se schimbă
+   la boss), sau liniște între efecte?
+3. **Ce urmează?** Lista din GDD §10 e acoperită, iar jocul arată și sună. Variante:
+   - un playtest al tău pe previzualizare, cu criteriul din §10 („fiecare val pune o alegere reală”);
+   - meta-progresia (stratul C, lumea care ține minte), care e în afara prototipului.
