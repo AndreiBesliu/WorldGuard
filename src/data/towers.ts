@@ -94,9 +94,3 @@ export const TARGET_NAMES: Readonly<Record<TargetMode, string>> = {
  * vine doar din inamicii uciși (GDD §7) și se cheltuie doar pe turnuri.
  */
 export const AUR_START = 120
-
-/**
- * Turnurile nu blochează drumul (decis de owner, 05.10.2026). Ce se întâmplă cu turnul din cale e o
- * propunere: ocolul îl ridică și dă înapoi fracțiunea asta din cost — acum tot. (Alternativa: turnul se mută.)
- */
-export const RAMBURSARE_OCOL = 1

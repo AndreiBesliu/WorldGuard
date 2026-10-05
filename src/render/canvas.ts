@@ -79,8 +79,6 @@ export interface Overlay {
   readonly range?: { readonly hex: Hex; readonly raza: number; readonly culoare: string }
   /** Turnul care s-ar construi aici, ca fantomă; `ok: false` = nu se poate (motivul e în text). */
   readonly ghost?: { readonly hex: Hex; readonly tip: TowerType; readonly ok: boolean }
-  /** Turnurile pe care le-ar ridica ocolul previzualizat. */
-  readonly removes?: readonly Hex[]
 }
 
 function drawCross(ctx: CanvasRenderingContext2D, x: number, y: number, size: number): void {
@@ -228,10 +226,6 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     const { x, y } = hexToPixel(o.ghost.hex, l)
     drawTower(ctx, x, y, l.size, TOWERS[o.ghost.tip], o.ghost.ok ? 0.8 : 0.3)
     if (!o.ghost.ok) drawCross(ctx, x, y, l.size)
-  }
-  for (const h of o.removes ?? []) {
-    const { x, y } = hexToPixel(h, l)
-    drawCross(ctx, x, y, l.size)
   }
 
   // Inamicii: poziția se interpolează între centrele hexagoanelor de drum.

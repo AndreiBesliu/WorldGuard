@@ -45,12 +45,14 @@ Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
 Capete fixe (intrare `I`, bază `B`). O bucată înlocuiește o porțiune de 1–3 hexagoane cu un ocol mai lung
 cu +1..+3. Drumul nu are voie să se atingă singur (două hexagoane de drum neconsecutive nu pot fi vecine).
 Măsurat: pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoane — de aici `portiuneMaxima: 3`.
-- **Un ocol pe val** (decis de owner, 05.10.2026). Limita pornește de la `INSERARE.peVal` = 1, dar stă în
-  stare (`GameState.ocoluriPeVal`), ca upgrade-urile de mai târziu să o poată crește. `ocoluriFolosite` se
-  golește când pornește valul. `checkDetourAllowed` dă motivul refuzului — simularea și UI-ul îl folosesc pe același.
-- **Turnurile nu blochează drumul** (decis de owner, 05.10.2026). Ce se întâmplă cu turnul din cale e
-  **propunere**: ocolul îl ridică și îi dă aurul înapoi (`RAMBURSARE_OCOL`, acum tot); alternativa încă
-  deschisă e mutarea lui. `towersOnHexes` alimentează și previzualizarea.
+- **Un ocol pe val, obligatoriu** (decis de owner, 05.10.2026). Limita pornește de la `INSERARE.peVal` = 1,
+  dar stă în stare (`GameState.ocoluriPeVal`), ca upgrade-urile de mai târziu să o poată crește.
+  `ocoluriFolosite` se golește când pornește valul. `checkDetourAllowed` (se mai poate pune?) și
+  `checkStartWave` (poate porni valul?) dau motivul refuzului — simularea și UI-ul îl folosesc pe același.
+  Propunere: dacă pe drum nu mai încape niciun ocol (`detourPossible`), valul pornește fără el.
+- **Ocolul nu poate trece peste un turn** (decis de owner, 05.10.2026): jocul îl refuză, cu motiv.
+  `towerKeys` intră ca hexagoane blocate în `insertDetour`, `optionsAround` și `detourPossible`.
+  (Owner-ul spusese întâi „turnul nu blochează”; „jocul refuză plasarea pe traseu” l-a precizat.)
 
 ## Timpul (implementat)
 - Simularea merge pe **tick fix** (`TICK_MS` = 50 ms, 20 pe secundă) și **doar în timpul unui val**. Între
@@ -64,7 +66,7 @@ Măsurat: pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoan
 
 ## Turnurile (implementat)
 - Se construiesc **doar în pregătire**, cu aur; ținta se schimbă **oricând** (decizia intră în jurnal cu
-  tick-ul ei). Un ocol care trece peste un turn îl ridică — propunere, vezi mai sus.
+  tick-ul ei). Ocolul nu poate trece peste un turn (vezi mai sus).
 - Ordinea unui tick: inamicii merg → apar cei noi → turnurile lovesc, în ordinea id-urilor (un inamic ucis nu
   mai e țintă) → cei uciși lasă aur → sfârșitul valului sau al partidei.
 - Raza = distanța pe grilă până la hexagonul de drum pe care stă inamicul (cel mai apropiat centru).
@@ -89,6 +91,6 @@ Măsurat: pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoan
   vieți, faze (pregătire → val → pregătire / câștigat / pierdut), viteză și pauză în UI. 48 de teste.
 - **Felia 2 (04.10.2026):** 4 turnuri de bază (fizic, foc, frig, fulger), 4 moduri de țintire, armură,
   aur din inamicii uciși. Cifrele, măsurate cu un bot.
-- **Deciziile owner-ului (05.10.2026):** un ocol pe val (cu loc pentru upgrade), turnul nu blochează drumul,
-  boss la valurile 5, 10 și 15. Propunere: ocolul ridică turnul din cale și dă aurul înapoi. 65 de teste.
+- **Deciziile owner-ului (05.10.2026):** un ocol pe val, obligatoriu (cu loc pentru upgrade); ocolul nu poate
+  trece peste un turn; boss la valurile 5, 10 și 15. 68 de teste.
 - **Următorul:** felia 3 — stările și reacțiile (pe etichete), plus terenul în reacții (vezi DEVLOG).

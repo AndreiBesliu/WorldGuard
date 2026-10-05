@@ -4,10 +4,12 @@ import {
   applyDecision,
   checkBuild,
   coverage,
+  detourPossible,
   fingerprint,
   newGame,
   replay,
   step,
+  towerKeys,
   type Decision,
   type GameState,
   type LoggedDecision,
@@ -15,14 +17,15 @@ import {
 import { key } from './hex'
 import { optionsAround } from './path'
 import { createRng } from './rng'
+import { firstDetour, must } from './testkit'
 
 /**
- * Joacă o partidă întreagă cu decizii alese pseudo-aleator (determinist): în fiecare pregătire un ocol (cât
- * permite limita) și turnuri pe hexagoane libere care acoperă drumul, iar în fiecare val o schimbare de țintă
- * la un tick oarecare. Turnurile stau lângă drum, deci ocolurile de mai târziu trec uneori peste ele și le
- * ridică — `lifted` numără de câte ori.
+ * Joacă o partidă întreagă cu decizii alese pseudo-aleator (determinist): în fiecare pregătire ocolul
+ * obligatoriu și turnuri pe hexagoane libere care acoperă drumul, iar în fiecare val o schimbare de țintă la
+ * un tick oarecare. Turnurile stau lângă drum, deci blochează uneori variante de ocol — `blocked` numără de
+ * câte ori le-a lipsit jucătorului o variantă din cauza lor.
  */
-function playRandom(seed: number): { s: GameState; lifted: number } {
+function playRandom(seed: number): { s: GameState; blocked: number } {
   const pick = createRng(seed, 'test/jucator')
   const apply = (s: GameState, d: Decision): GameState => {
     const r = applyDecision(s, d)
@@ -30,16 +33,16 @@ function playRandom(seed: number): { s: GameState; lifted: number } {
     return r.ok ? r.value : s
   }
   let s = newGame(seed)
-  let lifted = 0
+  let blocked = 0
   while (s.faza === 'pregatire') {
     const index = 1 + pick.int(s.path.length - 2)
-    const opts = optionsAround(s.map, s.path, index, 1 + pick.int(3))
-    if (opts.length > 0) {
-      const o = pick.pick(opts)
-      const before = s.turnuri.length
-      s = apply(s, { tip: 'ocol', start: o.start, span: o.span, hexuri: o.hexes.map(key) })
-      lifted += before - s.turnuri.length
-    }
+    const extra = 1 + pick.int(3)
+    const opts = optionsAround(s.map, s.path, index, extra, towerKeys(s))
+    blocked += optionsAround(s.map, s.path, index, extra).length - opts.length
+    // Ocolul e obligatoriu: dacă la locul ales nu încape, se ia primul care încape pe drum (dacă există).
+    const o = opts.length > 0 ? pick.pick(opts) : undefined
+    const d: Decision | undefined = o ? { tip: 'ocol', start: o.start, span: o.span, hexuri: o.hexes.map(key) } : firstDetour(s)
+    if (d) s = apply(s, d)
     for (let tries = 0; tries < 10; tries++) {
       const tip = pick.pick(TOWER_TYPES)
       if (s.aur < TOWERS[tip].cost) break
@@ -57,24 +60,24 @@ function playRandom(seed: number): { s: GameState; lifted: number } {
       if (t && s.tick === switchAt) s = apply(s, { tip: 'tintire', turn: t.id, mod: pick.pick(TARGET_MODES.filter((m) => m !== t.tintire)) })
     }
   }
-  return { s, lifted }
+  return { s, blocked }
 }
 
 describe('jurnalul deciziilor', () => {
-  it('replay(seed, jurnal) reconstruiește exact aceeași stare — ocoluri, turnuri ridicate, ținte schimbate în val', () => {
-    let lifted = 0
+  it('replay(seed, jurnal) reconstruiește exact aceeași stare — ocoluri, turnuri, ținte schimbate în val', () => {
+    let blocked = 0
     for (const seed of [1, 5, 2026]) {
       const game = playRandom(seed)
       const s = game.s
-      lifted += game.lifted
+      blocked += game.blocked
       expect([...new Set(s.jurnal.map((l) => l.d.tip))].sort()).toEqual(['ocol', 'pornesteVal', 'tintire', 'turn'])
       expect(s.jurnal.length).toBeGreaterThan(10)
       const again = replay(seed, s.jurnal, s.tick)
       expect(fingerprint(again)).toBe(fingerprint(s))
       expect(again.path.map(key)).toEqual(s.path.map(key))
     }
-    // Măcar un ocol a trecut peste un turn, deci replay-ul a exersat și ridicarea cu aur înapoi.
-    expect(lifted).toBeGreaterThan(0)
+    // Turnurile chiar au blocat variante de ocol pe parcurs, deci replay-ul a exersat și regula asta.
+    expect(blocked).toBeGreaterThan(0)
   })
 
   it('jurnalul trece prin JSON fără pierderi (se poate salva și trimite)', () => {
@@ -112,49 +115,85 @@ describe('jurnalul deciziilor', () => {
   })
 })
 
-describe('un ocol pe val (decis de owner, 05.10.2026)', () => {
-  const firstDetour = (s: GameState): Decision => {
-    for (let i = 1; i < s.path.length - 1; i++) {
-      const o = optionsAround(s.map, s.path, i, 2)[0]
-      if (o) return { tip: 'ocol', start: o.start, span: o.span, hexuri: o.hexes.map(key) }
-    }
-    throw new Error('niciun ocol pe hartă')
-  }
-  const must = (s: GameState, d: Decision): GameState => {
-    const r = applyDecision(s, d)
-    if (!r.ok) throw new Error(r.reason)
-    return r.value
+describe('ocolul pe val: unul, obligatoriu (decis de owner, 05.10.2026)', () => {
+  const detour = (s: GameState): Decision => {
+    const d = firstDetour(s)
+    if (!d) throw new Error('niciun ocol pe hartă')
+    return d
   }
 
+  it('valul nu pornește fără ocol — refuz cu motiv —, iar după ocol pornește', () => {
+    const s = newGame(4)
+    expect(applyDecision(s, { tip: 'pornesteVal' })).toEqual({ ok: false, reason: 'pune întâi ocolul acestui val — e obligatoriu' })
+    expect(applyDecision(must(s, detour(s)), { tip: 'pornesteVal' }).ok).toBe(true)
+  })
+
+  it('dacă pe hartă nu mai încape niciun ocol, valul pornește fără el (altfel partida s-ar bloca)', () => {
+    const s0 = newGame(4)
+    const onPath = new Set(s0.path.map(key))
+    // Toată harta, în afară de drum, devine apă: niciun ocol nu mai încape.
+    const terrain = new Map([...s0.map.terrain].map(([k, t]) => [k, onPath.has(k) ? t : ('apa' as const)]))
+    const s: GameState = { ...s0, map: { ...s0.map, terrain } }
+    expect(detourPossible(s)).toBe(false)
+    expect(detourPossible(s0)).toBe(true)
+    expect(applyDecision(s, { tip: 'pornesteVal' }).ok).toBe(true)
+  })
+
+  it('și când turnurile blochează toate ocolurile rămase, valul pornește fără ocol', () => {
+    const s0 = newGame(4)
+    let index = 1
+    while (optionsAround(s0.map, s0.path, index, 2).length === 0) index++
+    const o = optionsAround(s0.map, s0.path, index, 2)[0]!
+    // Harta: apă peste tot în afară de drum și de hexagoanele unui singur ocol.
+    const keep = new Set([...s0.path.map(key), ...o.hexes.map(key)])
+    const terrain = new Map([...s0.map.terrain].map(([k, t]) => [k, keep.has(k) ? t : ('apa' as const)]))
+    let s: GameState = { ...s0, map: { ...s0.map, terrain }, aur: 1000 }
+    expect(detourPossible(s)).toBe(true)
+    expect(applyDecision(s, { tip: 'pornesteVal' }).ok).toBe(false)
+    // Turnuri pe hexagoanele acelui ocol: nu mai încape niciunul.
+    for (const h of o.hexes) s = must(s, { tip: 'turn', turn: 'fizic', hex: key(h) })
+    expect(detourPossible(s)).toBe(false)
+    expect(applyDecision(s, { tip: 'pornesteVal' }).ok).toBe(true)
+  })
+
+  it('cu limita crescută de un upgrade, toate ocolurile pregătirii sunt obligatorii (propunere)', () => {
+    let s: GameState = { ...newGame(4), ocoluriPeVal: 2 }
+    expect(applyDecision(s, { tip: 'pornesteVal' })).toEqual({ ok: false, reason: 'mai ai de pus 2 ocoluri în pregătirea asta — sunt obligatorii' })
+    s = must(s, detour(s))
+    expect(applyDecision(s, { tip: 'pornesteVal' })).toEqual({ ok: false, reason: 'mai ai de pus un ocol în pregătirea asta — e obligatoriu' })
+    s = must(s, detour(s))
+    expect(applyDecision(s, { tip: 'pornesteVal' }).ok).toBe(true)
+  })
+
   it('al doilea ocol din aceeași pregătire e refuzat, cu motiv, și nu intră în jurnal', () => {
-    const one = must(newGame(4), firstDetour(newGame(4)))
+    const one = must(newGame(4), detour(newGame(4)))
     expect(one.ocoluriFolosite).toBe(1)
-    expect(applyDecision(one, firstDetour(one))).toEqual({ ok: false, reason: 'ocolul acestui val e deja pus — următorul vine după val' })
+    expect(applyDecision(one, detour(one))).toEqual({ ok: false, reason: 'ocolul acestui val e deja pus — următorul vine după val' })
     expect(one.jurnal).toHaveLength(1)
   })
 
   it('după val, dreptul la ocol revine; în timpul valului motivul rămâne „doar între valuri”', () => {
-    const one = must(newGame(4), firstDetour(newGame(4)))
+    const one = must(newGame(4), detour(newGame(4)))
     let cur = must(one, { tip: 'pornesteVal' })
     expect(cur.ocoluriFolosite).toBe(0)
-    expect(applyDecision(cur, firstDetour(one))).toEqual({ ok: false, reason: 'drumul se modelează doar între valuri' })
+    expect(applyDecision(cur, detour(one))).toEqual({ ok: false, reason: 'drumul se modelează doar între valuri' })
     while (cur.faza === 'val') cur = step(cur)
     expect(cur.faza).toBe('pregatire')
-    expect(applyDecision(cur, firstDetour(cur)).ok).toBe(true)
+    expect(applyDecision(cur, detour(cur)).ok).toBe(true)
   })
 
   it('anularea ocolului (replay fără el, ca Z în UI) redă dreptul la ocol', () => {
-    const one = must(newGame(4), firstDetour(newGame(4)))
+    const one = must(newGame(4), detour(newGame(4)))
     const undone = replay(4, one.jurnal.slice(0, -1), one.tick)
     expect(undone.ocoluriFolosite).toBe(0)
-    expect(applyDecision(undone, firstDetour(undone)).ok).toBe(true)
+    expect(applyDecision(undone, detour(undone)).ok).toBe(true)
   })
 
   it('limita stă în stare (`ocoluriPeVal`), ca un upgrade de mai târziu să o poată crește — și rămâne după val', () => {
     let s: GameState = { ...newGame(4), ocoluriPeVal: 2 }
-    s = must(s, firstDetour(s))
-    s = must(s, firstDetour(s))
-    expect(applyDecision(s, firstDetour(s))).toEqual({
+    s = must(s, detour(s))
+    s = must(s, detour(s))
+    expect(applyDecision(s, detour(s))).toEqual({
       ok: false,
       reason: 'ai pus deja cele 2 ocoluri ale acestui val — următoarele vin după val',
     })
@@ -163,8 +202,8 @@ describe('un ocol pe val (decis de owner, 05.10.2026)', () => {
     while (s.faza === 'val') s = step(s)
     expect(s.faza).toBe('pregatire')
     expect(s.ocoluriPeVal).toBe(2)
-    s = must(s, firstDetour(s))
-    s = must(s, firstDetour(s))
+    s = must(s, detour(s))
+    s = must(s, detour(s))
     expect(s.ocoluriFolosite).toBe(2)
   })
 })

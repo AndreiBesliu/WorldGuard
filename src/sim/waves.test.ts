@@ -9,24 +9,11 @@ import {
   replay,
   spawnSchedule,
   step,
-  type Decision,
   type GameState,
 } from './game'
 import { key } from './hex'
 import { optionsAround } from './path'
-
-const must = (s: GameState, d: Decision): GameState => {
-  const r = applyDecision(s, d)
-  if (!r.ok) throw new Error(r.reason)
-  return r.value
-}
-
-/** Rulează simularea până se schimbă faza (sfârșitul valului sau al partidei). */
-function runWave(s: GameState, maxTicks = 100_000): GameState {
-  let cur = s
-  for (let i = 0; i < maxTicks && cur.faza === 'val'; i++) cur = step(cur)
-  return cur
-}
+import { must, runWave, startWave } from './testkit'
 
 describe('datele valurilor', () => {
   it('15 valuri, fiecare cu grupuri valide', () => {
@@ -74,7 +61,7 @@ describe('apariția inamicilor', () => {
 
 describe('deplasarea și baza', () => {
   it('un inamic normal ajunge la bază exact când a parcurs tot drumul', () => {
-    let s = must(newGame(4), { tip: 'pornesteVal' })
+    let s = startWave(newGame(4))
     const firstSpawn = s.deGenerat[0]!.tick
     const ticksToWalk = Math.ceil(pathLength(s) / ENEMIES.normal.viteza)
     // Până la tick-ul în care ar trebui să ajungă, primul inamic e încă pe drum.
@@ -89,7 +76,7 @@ describe('deplasarea și baza', () => {
   })
 
   it('progresul fiecărui inamic crește strict și nu depășește drumul', () => {
-    let s = must(newGame(2), { tip: 'pornesteVal' })
+    let s = startWave(newGame(2))
     const last = new Map<number, number>()
     while (s.faza === 'val') {
       s = step(s)
@@ -103,7 +90,7 @@ describe('deplasarea și baza', () => {
   })
 
   it('un drum mai lung ține inamicii mai mult pe hartă — rostul ocolurilor', () => {
-    const shortRun = runWave(must(newGame(9), { tip: 'pornesteVal' }))
+    const shortRun = runWave(startWave(newGame(9))) // cu ocolul obligatoriu, unul singur
     // Șase ocoluri într-o singură pregătire: ca după un upgrade al limitei (`ocoluriPeVal`).
     let long: GameState = { ...newGame(9), ocoluriPeVal: 6 }
     for (let k = 0; k < 6; k++) {
@@ -112,35 +99,35 @@ describe('deplasarea și baza', () => {
       const o = opts[0]!
       long = must(long, { tip: 'ocol', start: o.start, span: o.span, hexuri: o.hexes.map(key) })
     }
-    expect(long.path.length).toBeGreaterThan(newGame(9).path.length)
-    const longRun = runWave(must(long, { tip: 'pornesteVal' }))
+    expect(long.path.length).toBeGreaterThan(shortRun.path.length)
+    const longRun = runWave(startWave(long))
     expect(longRun.tick).toBeGreaterThan(shortRun.tick)
   })
 })
 
 describe('fazele partidei', () => {
   it('după un val terminat, revine pregătirea pentru valul următor', () => {
-    const s = runWave(must(newGame(3), { tip: 'pornesteVal' }))
+    const s = runWave(startWave(newGame(3)))
     expect(s.faza).toBe('pregatire')
     expect(s.val).toBe(1)
     expect(s.inamici).toHaveLength(0)
   })
 
   it('drumul nu se poate modela în timpul unui val — refuz cu motiv', () => {
-    const s = must(newGame(3), { tip: 'pornesteVal' })
+    const s = startWave(newGame(3))
     const r = applyDecision(s, { tip: 'ocol', start: 1, span: 3, hexuri: [] })
     expect(r).toEqual({ ok: false, reason: 'drumul se modelează doar între valuri' })
   })
 
   it('un val nu poate porni peste altul', () => {
-    const s = must(newGame(3), { tip: 'pornesteVal' })
+    const s = startWave(newGame(3))
     expect(applyDecision(s, { tip: 'pornesteVal' }).ok).toBe(false)
   })
 
   it('fără turnuri, partida se pierde — și se pierde identic de fiecare dată', () => {
     const play = (): GameState => {
       let s = newGame(2026)
-      while (s.faza === 'pregatire') s = runWave(must(s, { tip: 'pornesteVal' }))
+      while (s.faza === 'pregatire') s = runWave(startWave(s))
       return s
     }
     const a = play()
@@ -159,7 +146,7 @@ describe('replay cu timp', () => {
     for (let v = 0; v < 3 && s.faza === 'pregatire'; v++) {
       const opts = optionsAround(s.map, s.path, 1 + (v * 3) % (s.path.length - 2), 2)
       if (opts[0]) s = must(s, { tip: 'ocol', start: opts[0].start, span: opts[0].span, hexuri: opts[0].hexes.map(key) })
-      s = must(s, { tip: 'pornesteVal' })
+      s = startWave(s)
       for (let t = 0; t < 150; t++) s = step(s)
       checkpoints.push({ tick: s.tick, fp: fingerprint(s) })
       s = runWave(s)
@@ -175,7 +162,7 @@ describe('replay cu timp', () => {
   })
 
   it('anularea unui ocol după un val jucat (cum face Z în UI) dă starea de dinainte de ocol', () => {
-    const before = runWave(must(newGame(21), { tip: 'pornesteVal' }))
+    const before = runWave(startWave(newGame(21)))
     expect(before.faza).toBe('pregatire')
     let o: ReturnType<typeof optionsAround>[number] | undefined
     for (let i = 1; i < before.path.length - 1 && !o; i++) o = optionsAround(before.map, before.path, i, 2)[0]
@@ -187,7 +174,7 @@ describe('replay cu timp', () => {
   })
 
   it('pozițiile sunt întregi (fără derivă de virgulă mobilă)', () => {
-    let s = must(newGame(5), { tip: 'pornesteVal' })
+    let s = startWave(newGame(5))
     for (let t = 0; t < 300; t++) s = step(s)
     for (const e of s.inamici) {
       expect(Number.isInteger(e.progres)).toBe(true)

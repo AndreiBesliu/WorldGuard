@@ -11,25 +11,12 @@ import {
   pickTarget,
   replay,
   step,
-  towerRefund,
-  towersOnHexes,
-  type Decision,
+  towerKeys,
   type GameState,
 } from './game'
 import { distance, fromKey, key } from './hex'
 import { optionsAround } from './path'
-
-const must = (s: GameState, d: Decision): GameState => {
-  const r = applyDecision(s, d)
-  if (!r.ok) throw new Error(r.reason)
-  return r.value
-}
-
-const runWave = (s: GameState): GameState => {
-  let cur = s
-  while (cur.faza === 'val') cur = step(cur)
-  return cur
-}
+import { firstDetour, must, runWave, startWave } from './testkit'
 
 /** Hexagonul liber care acoperă cele mai multe hexagoane de drum (primul, la egalitate). */
 function bestHex(s: GameState, tip: TowerType): string {
@@ -71,14 +58,14 @@ describe('construcția', () => {
       ok: false,
       reason: `nu ajunge aurul: turnul Fulger costă ${TOWERS.fulger.cost}, ai ${poor.aur}`,
     })
-    const inWave = must(s, { tip: 'pornesteVal' })
+    const inWave = startWave(s)
     expect(applyDecision(inWave, { tip: 'turn', turn: 'fizic', hex: bestHex(s, 'fizic') })).toEqual({
       ok: false,
       reason: 'turnurile se construiesc doar între valuri',
     })
   })
 
-  it('turnul nu blochează drumul: ocolul îl ridică și dă aurul înapoi, iar celelalte turnuri rămân', () => {
+  it('jocul refuză un ocol care ar trece peste un turn — cu motiv — iar varianta nu mai apare (decis 05.10.2026)', () => {
     let s = newGame(11)
     let index = 1
     while (optionsAround(s.map, s.path, index, 2).length === 0) index++
@@ -86,55 +73,18 @@ describe('construcția', () => {
     const o = options[0]!
     const inTheWay = key(o.hexes[0]!)
     s = must(s, { tip: 'turn', turn: 'fizic', hex: inTheWay })
-    s = build(s, 'fizic') // al doilea turn, în afara ocolului
-    const other = s.turnuri[1]!
-    expect(o.hexes.some((h) => key(h) === other.hex)).toBe(false)
-    // Turnul din cale apare și printre variante (nu le mai filtrează nimic), și în previzualizare.
-    expect(optionsAround(s.map, s.path, index, 2)).toEqual(options)
-    expect(towersOnHexes(s, o.hexes).map((t) => t.id)).toEqual([1])
-    const before = s.aur
-    s = must(s, { tip: 'ocol', start: o.start, span: o.span, hexuri: o.hexes.map(key) })
-    expect(s.path.some((h) => key(h) === inTheWay)).toBe(true)
-    expect(s.turnuri.map((t) => t.id)).toEqual([other.id])
-    expect(s.aur).toBe(before + towerRefund('fizic'))
-    expect(towerRefund('fizic')).toBe(TOWERS.fizic.cost) // propunerea: tot aurul înapoi
-    // …și replay-ul ajunge la aceeași stare.
-    expect(fingerprint(replay(11, s.jurnal))).toBe(fingerprint(s))
-  })
-
-  it('un ocol peste mai multe turnuri de tipuri diferite le ridică pe toate și dă înapoi aurul fiecăruia', () => {
-    const base: GameState = { ...newGame(11), aur: 1000 }
-    let index = 1
-    const long = () => optionsAround(base.map, base.path, index, 3).find((o) => o.hexes.length >= 2)
-    while (!long()) index++
-    const o = long()!
-    // Un Fizic în afara ocolului e primul în listă; Fulger și Foc stau pe hexagoanele ocolului.
-    let s = build(base, 'fizic')
-    expect(o.hexes.some((h) => key(h) === s.turnuri[0]!.hex)).toBe(false)
-    s = must(s, { tip: 'turn', turn: 'fulger', hex: key(o.hexes[0]!) })
-    s = must(s, { tip: 'turn', turn: 'foc', hex: key(o.hexes[1]!) })
-    expect(towersOnHexes(s, o.hexes).map((t) => t.tip)).toEqual(['fulger', 'foc'])
-    const before = s.aur
-    s = must(s, { tip: 'ocol', start: o.start, span: o.span, hexuri: o.hexes.map(key) })
-    expect(s.turnuri.map((t) => t.tip)).toEqual(['fizic'])
-    expect(s.aur).toBe(before + towerRefund('fulger') + towerRefund('foc'))
-    expect(towerRefund('fulger') + towerRefund('foc')).toBe(TOWERS.fulger.cost + TOWERS.foc.cost)
-    // Niciun turn nu rămâne pe drum.
-    expect(s.turnuri.some((t) => s.path.some((h) => key(h) === t.hex))).toBe(false)
-  })
-
-  it('amprenta deosebește două stări care diferă doar prin contorul de turnuri, după o ridicare', () => {
-    const s0 = newGame(11)
-    let index = 1
-    while (optionsAround(s0.map, s0.path, index, 2).length === 0) index++
-    const o = optionsAround(s0.map, s0.path, index, 2)[0]!
-    const ocol: Decision = { tip: 'ocol', start: o.start, span: o.span, hexuri: o.hexes.map(key) }
-    const a = must(must(s0, { tip: 'turn', turn: 'fizic', hex: key(o.hexes[0]!) }), ocol) // turn ridicat
-    const b = must(s0, ocol)
-    expect(a.aur).toBe(b.aur)
-    expect(a.turnuri).toEqual(b.turnuri)
-    expect(a.urmatorulTurn).not.toBe(b.urmatorulTurn)
-    expect(fingerprint(a)).not.toBe(fingerprint(b))
+    const r = applyDecision(s, { tip: 'ocol', start: o.start, span: o.span, hexuri: o.hexes.map(key) })
+    expect(r).toEqual({ ok: false, reason: `pe ${inTheWay} e un turn — drumul nu trece prin turnuri` })
+    // Refuzul nu consumă ocolul pregătirii și nu atinge turnul.
+    expect(s.ocoluriFolosite).toBe(0)
+    expect(s.turnuri.map((t) => t.hex)).toEqual([inTheWay])
+    // Variantele afișate (cu turnurile ca hexagoane blocate) nu mai conțin ocolul prin turn.
+    const after = optionsAround(s.map, s.path, index, 2, towerKeys(s))
+    expect(after.some((x) => x.hexes.some((h) => key(h) === inTheWay))).toBe(false)
+    expect(after.length).toBeLessThan(options.length)
+    // Un ocol găsit cu turnurile ca hexagoane blocate se poate pune, iar drumul rezultat ocolește turnul.
+    const next = must(s, firstDetour(s)!)
+    expect(next.path.some((h) => key(h) === inTheWay)).toBe(false)
   })
 })
 
@@ -159,7 +109,7 @@ describe('țintirea', () => {
 
   it('ținta se poate schimba în timpul valului; replay-ul o reproduce la tick-ul ei', () => {
     let s = build(build(newGame(8), 'fizic'), 'fizic')
-    s = must(s, { tip: 'pornesteVal' })
+    s = startWave(s)
     for (let t = 0; t < 120; t++) s = step(s)
     s = must(s, { tip: 'tintire', turn: 1, mod: 'ultimul' })
     expect(s.jurnal.at(-1)).toEqual({ la: s.tick, d: { tip: 'tintire', turn: 1, mod: 'ultimul' } })
@@ -176,7 +126,7 @@ describe('țintirea', () => {
     expect(applyDecision(s, { tip: 'tintire', turn: 2, mod: 'primul' })).toEqual({ ok: false, reason: 'turnul țintește deja așa' })
     expect(applyDecision(s, { tip: 'tintire', turn: 9, mod: 'slab' })).toEqual({ ok: false, reason: 'nu există turnul 9' })
     let lost = newGame(8)
-    while (lost.faza === 'pregatire') lost = runWave(must(lost, { tip: 'pornesteVal' }))
+    while (lost.faza === 'pregatire') lost = runWave(startWave(lost))
     expect(applyDecision(lost, { tip: 'tintire', turn: 1, mod: 'slab' })).toEqual({ ok: false, reason: 'partida s-a încheiat' })
   })
 })
@@ -189,7 +139,7 @@ describe('lovitura', () => {
   })
 
   it('un turn lovește exact o dată la `reincarcare` tick-uri cât are țintă, iar uciderea dă aur', () => {
-    let s = must(build(newGame(4), 'fizic'), { tip: 'pornesteVal' })
+    let s = startWave(build(newGame(4), 'fizic'))
     const hits: number[] = []
     let killed = 0
     while (s.faza === 'val') {
@@ -215,7 +165,7 @@ describe('lovitura', () => {
     // Pornim direct de la valul 3, cel cu roiul (starea e date simple, deci se poate construi așa în test).
     let s: GameState = { ...build(newGame(6), 'frig'), val: 2 }
     let maxTargets = 0
-    s = must(s, { tip: 'pornesteVal' })
+    s = startWave(s)
     while (s.faza === 'val') {
       s = step(s)
       const hit = s.turnuri[0]!.lovitura
@@ -232,7 +182,7 @@ describe('partida cu turnuri', () => {
       if (withTowers) {
         while (s.aur >= TOWERS.fizic.cost) s = build(s, 'fizic')
       }
-      s = runWave(must(s, { tip: 'pornesteVal' }))
+      s = runWave(startWave(s))
     }
     return s
   }

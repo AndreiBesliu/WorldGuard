@@ -41,8 +41,8 @@ export const INSERARE = {
    */
   portiuneMaxima: 3,
   /**
-   * Câte ocoluri se pot pune într-o pregătire (decis de owner, 05.10.2026: unul pe val). Upgrade-urile de mai
-   * târziu (draft, relicve) cresc valoarea din stare — `GameState.ocoluriPeVal` — nu pe cea de aici.
+   * Câte ocoluri se pun într-o pregătire (decis de owner, 05.10.2026: unul pe val, obligatoriu). Upgrade-urile
+   * de mai târziu (draft, relicve) cresc valoarea din stare — `GameState.ocoluriPeVal` — nu pe cea de aici.
    */
   peVal: 1,
 } as const

@@ -338,3 +338,74 @@ toate cele 7 sunt prinse de teste.
 - Ocolul nefolosit: se pierde (acum) sau se adună de la un val la altul?
 
 **Rămâne:** felia 3 — stările și reacțiile (pe etichete), plus terenul în reacții.
+
+---
+
+## 05.10.2026 (2) — Ocolul e obligatoriu, iar jocul refuză ocolul peste un turn
+
+**Decis de owner** (răspunsuri la întrebările din intrarea anterioară):
+1. Turnul din calea ocolului: „jocul refuză plasarea pe traseu”.
+2. Rambursarea: fără răspuns. Nu mai contează: nu se ridică nimic, deci nu e nimic de rambursat.
+3. Ocolul nefolosit: „ocolul se folosește obligatoriu”.
+
+**Cum am înțeles primul răspuns:** un ocol care ar trece peste un turn e refuzat, cu motiv, cum era în felia 2.
+Owner-ul răspunsese înainte „turnul nu blochează”, pe care îl aplicasem ca „ocolul trece și ridică turnul”;
+răspunsul nou îl precizează, iar ridicarea cu aurul înapoi dispare. Dacă owner-ul a vrut altceva, se schimbă
+ușor înapoi.
+
+**Făcut:**
+- **Turnul blochează ocolul:**
+  - `path.ts` revine la forma din felia 2 (hexagoane blocate în căutarea și validarea ocolurilor);
+  - `towerKeys` intră ca hexagoane blocate în `insertDetour`, `optionsAround` și `detourPossible`;
+  - variantele de ocol care ar trece peste un turn nici nu mai apar în previzualizare;
+  - s-au scos ridicarea, rambursarea (`RAMBURSARE_OCOL`) și X-urile din previzualizare.
+- **Ocolul e obligatoriu:**
+  - `checkStartWave` refuză pornirea valului cât timp ocolul pregătirii n-a fost pus: „pune întâi ocolul
+    acestui val — e obligatoriu”;
+  - excepția (propunere): dacă pe drum nu mai încape niciun ocol (`detourPossible`), valul pornește fără el,
+    altfel partida s-ar bloca. Se poate ajunge acolo prin teren sau prin turnuri care blochează tot;
+  - cu un upgrade de mai multe ocoluri, toate sunt obligatorii (propunere);
+  - rândul de sus spune „valul pornește după ocol” și „ocol obligatoriu 0/1”.
+- `src/sim/testkit.ts`: ajutoare pentru teste (`must`, `firstDetour`, `startWave`, `runWave`). Cu ocolul
+  obligatoriu, testele care porneau valul direct pun acum întâi ocolul.
+- `docs/GDD.md` (§5, §14) și `CLAUDE.md`, cu deciziile.
+- Teste: 68.
+  - **Noi:**
+    - valul nu pornește fără ocol, cu motivul exact;
+    - pe o hartă fără loc de ocol, valul pornește;
+    - când turnurile blochează toate ocolurile rămase, valul pornește;
+    - cu limita crescută, toate ocolurile sunt obligatorii.
+  - **Testul ocolului prin turn** cere refuzul cu motiv. Refuzul nu consumă ocolul pregătirii, iar varianta
+    nu mai apare.
+  - **Jocul aleator** pune ocolul obligatoriu ocolind turnurile și numără de câte ori turnurile i-au luat o
+    variantă; testul de replay cere ca asta să se fi întâmplat.
+- **Mutații reintroduse într-o copie** — toate prinse de teste:
+  - turnul nu mai blochează;
+  - ocolul nu mai e obligatoriu;
+  - fără ieșire când nu încape niciun ocol;
+  - `detourPossible` ignoră turnurile (prins doar după testul nou cu turnurile care blochează tot);
+  - fără limita de un ocol;
+  - valul resetează limita crescută.
+- **Verificat în browser**, fără erori în consolă:
+  - Spațiu fără ocol arată refuzul cu motiv;
+  - un turn lângă drum scade variantele de ocol de acolo de la 7 la 5, fără niciuna prin turn;
+  - după ocol, valul pornește.
+
+**Măsurat** — botul din felia 2, pe regulile finale, 20 de hărți. Rezultatele sunt identice cu coloana
+„1 ocol pe val” din felia 2, fiindcă botul punea deja un ocol ori de câte ori se putea:
+
+| strategie | rezultat |
+|---|---|
+| toate turnurile, pe rând | câștigă 19/20 (9–20 vieți); una cade în valul 5 |
+| doar Fizic | câștigă 20/20 (6–20 vieți) |
+| doar Fulger | câștigă 20/20 (9–17 vieți) |
+| Frig + Fulger | câștigă 20/20 (15–20 vieți) |
+| Fizic + Foc | câștigă 16/20; 4 cad în valul 5 |
+| doar Frig | cade în valul 10 |
+| doar Foc | cade în valul 5–9 |
+
+- Pregătiri în care nu mai încăpea niciun ocol: 0–3 la 20 de partide (din circa 300 de pregătiri) — rare,
+  spre final.
+- Durata: 8–14 minute la 1×.
+
+**Rămâne:** felia 3 — stările și reacțiile (pe etichete), plus terenul în reacții.

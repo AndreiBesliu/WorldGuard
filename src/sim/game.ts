@@ -14,10 +14,10 @@
 import { ENEMIES, WAVES, type EnemyType } from '../data/enemies'
 import { MILI_HEX, VIETI_BAZA } from '../data/joc'
 import { INSERARE, TERRAIN } from '../data/terrain'
-import { AUR_START, RAMBURSARE_OCOL, TARGET_MODES, TOWERS, type TargetMode, type TowerType } from '../data/towers'
+import { AUR_START, TARGET_MODES, TOWERS, type TargetMode, type TowerType } from '../data/towers'
 import { distance, fromKey, key, type Hex } from './hex'
 import { generateMap, type GameMap } from './map'
-import { insertDetour } from './path'
+import { detourOptions, insertDetour } from './path'
 import { fail, ok, type Result } from './result'
 
 export type Decision =
@@ -151,17 +151,48 @@ export function checkDetourAllowed(state: GameState): Result<true> {
 }
 
 /**
- * Turnurile de pe hexagoanele date — cele pe care un ocol le-ar ridica. Turnurile nu blochează drumul
- * (decis de owner); ce se întâmplă cu turnul din cale e o propunere: ocolul îl ridică, iar aurul lui se dă
- * înapoi (`towerRefund`). Alternativa încă deschisă: turnul se mută.
+ * Hexagoanele ocupate de turnuri. Jocul refuză un ocol care ar trece peste ele (decis de owner, 05.10.2026),
+ * deci ele intră ca hexagoane blocate în căutarea și în validarea ocolurilor.
  */
-export function towersOnHexes(state: GameState, hexes: readonly Hex[]): Tower[] {
-  const keys = new Set(hexes.map(key))
-  return state.turnuri.filter((t) => keys.has(t.hex))
+export function towerKeys(state: GameState): Set<string> {
+  return new Set(state.turnuri.map((t) => t.hex))
 }
 
-/** Aurul dat înapoi pentru un turn ridicat de un ocol. */
-export const towerRefund = (tip: TowerType): number => Math.floor(TOWERS[tip].cost * RAMBURSARE_OCOL)
+// Memorare pentru `detourPossible`: e o funcție pură de stare, iar UI-ul o întreabă la fiecare desen.
+const possibleCache = new WeakMap<GameState, boolean>()
+
+/** Mai încape vreun ocol pe drum acum (teren, turnuri, regula „drumul nu se atinge singur”)? */
+export function detourPossible(state: GameState): boolean {
+  const cached = possibleCache.get(state)
+  if (cached !== undefined) return cached
+  const blocked = towerKeys(state)
+  let found = false
+  for (let span = 1; span <= INSERARE.portiuneMaxima && !found; span++) {
+    for (let start = 0; start + span + 1 <= state.path.length - 1 && !found; start++) {
+      for (let extra = INSERARE.minim; extra <= INSERARE.maxim && !found; extra++) {
+        found = detourOptions(state.map, state.path, start, span, extra, blocked).length > 0
+      }
+    }
+  }
+  possibleCache.set(state, found)
+  return found
+}
+
+/**
+ * Poate porni valul? Ocolul pregătirii e obligatoriu (decis de owner, 05.10.2026): cât timp mai e de pus
+ * și încape vreunul pe drum, valul așteaptă. Dacă pe drum nu mai încape niciun ocol, valul pornește —
+ * altfel partida s-ar bloca.
+ */
+export function checkStartWave(state: GameState): Result<true> {
+  if (state.faza !== 'pregatire') return fail('un val e deja în desfășurare sau partida s-a încheiat')
+  if (!WAVES[state.val]) return fail('nu mai există valuri')
+  const rest = state.ocoluriPeVal - state.ocoluriFolosite
+  if (rest > 0 && detourPossible(state)) {
+    if (state.ocoluriPeVal === 1) return fail('pune întâi ocolul acestui val — e obligatoriu')
+    return fail(rest === 1 ? 'mai ai de pus un ocol în pregătirea asta — e obligatoriu' : `mai ai de pus ${rest} ocoluri în pregătirea asta — sunt obligatorii`)
+  }
+  return ok(true)
+}
 
 /** Se poate construi turnul `tip` pe hexagonul `hex` acum? Dacă nu, de ce. Folosit și de previzualizare. */
 export function checkBuild(state: GameState, tip: TowerType, hex: string): Result<true> {
@@ -182,25 +213,13 @@ export function applyDecision(state: GameState, d: Decision): Result<GameState> 
     case 'ocol': {
       const allowed = checkDetourAllowed(state)
       if (!allowed.ok) return fail(allowed.reason)
-      const hexes = d.hexuri.map(fromKey)
-      const r = insertDetour(state.map, state.path, d.start, d.span, hexes)
+      const r = insertDetour(state.map, state.path, d.start, d.span, d.hexuri.map(fromKey), towerKeys(state))
       if (!r.ok) return fail(r.reason)
-      const ridicate = new Set(towersOnHexes(state, hexes))
-      let refund = 0
-      for (const t of ridicate) refund += towerRefund(t.tip)
-      return ok(
-        logged({
-          ...state,
-          path: r.value,
-          ocoluriFolosite: state.ocoluriFolosite + 1,
-          aur: state.aur + refund,
-          turnuri: state.turnuri.filter((t) => !ridicate.has(t)),
-        }),
-      )
+      return ok(logged({ ...state, path: r.value, ocoluriFolosite: state.ocoluriFolosite + 1 }))
     }
     case 'pornesteVal': {
-      if (state.faza !== 'pregatire') return fail('un val e deja în desfășurare sau partida s-a încheiat')
-      if (!WAVES[state.val]) return fail('nu mai există valuri')
+      const allowed = checkStartWave(state)
+      if (!allowed.ok) return fail(allowed.reason)
       // Turnurile încep fiecare val încărcate.
       const turnuri = state.turnuri.map((t) => (t.reincarcare === 0 ? t : { ...t, reincarcare: 0 }))
       return ok(logged({ ...state, faza: 'val', turnuri, ocoluriFolosite: 0, deGenerat: spawnSchedule(state.val, state.tick) }))
@@ -383,8 +402,8 @@ export function fingerprint(state: GameState): string {
     `vieti=${state.vieti}`,
     `aur=${state.aur}`,
     `ocoluri=${state.ocoluriFolosite}/${state.ocoluriPeVal}`,
-    // Contoarele de id sunt stare cu viitor: după ce un ocol ridică un turn, `urmatorulTurn` nu mai e
-    // „numărul de turnuri + 1”, deci intră separat în amprentă.
+    // Contoarele de id sunt stare cu viitor: de îndată ce un turn va putea dispărea (vânzare, de exemplu),
+    // `urmatorulTurn` nu mai e „numărul de turnuri + 1”, deci intră separat în amprentă.
     `urmatorulTurn=${state.urmatorulTurn}`,
     `urmatorulId=${state.urmatorulId}`,
   ]

@@ -46,8 +46,8 @@ boss la valurile 5, 10 și 15 (în prototip)
 - **Traseu cu capete fixe:** intrarea inamicilor și baza nu se mută. Pornești cu un drum drept între ele, iar la fiecare val aplici o bucată aleasă din trei: un **ocol** care **înlocuiește o porțiune de 1–3 hexagoane** cu un drum mai lung cu +1, +2 sau +3. Drumul se lungește ca o sfoară; puzzle-ul e *cât drum încape între două puncte fixe, și pe unde*.
   - **Drumul nu are voie să se atingă singur:** două hexagoane de drum neconsecutive nu pot fi vecine.
   - **Măsurat în prototip:** pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoane. Prima variantă, inserția între doi vecini, nu permitea nimic peste +1.
-  - **Un ocol pe val** (decis 05.10.2026). Upgrade-urile de mai târziu (din draft sau relicve) pot da mai multe.
-  - **Turnurile nu blochează drumul** (decis 05.10.2026). Ce se întâmplă cu turnul din calea ocolului e încă propunere: în prototip, ocolul îl ridică și îi dă aurul înapoi integral; alternativa e ca turnul să fie mutat.
+  - **Un ocol pe val, obligatoriu** (decis 05.10.2026): valul nu pornește până nu e pus. Upgrade-urile de mai târziu (din draft sau relicve) pot da mai multe. Propuneri: dacă pe hartă nu mai încape niciun ocol, valul pornește fără el (altfel partida s-ar bloca); cu un upgrade, toate ocolurile pregătirii sunt obligatorii.
+  - **Ocolul nu poate trece peste un turn: jocul refuză, cu motiv** (decis 05.10.2026). Owner-ul răspunsese întâi „turnul nu blochează”; răspunsul ulterior, „jocul refuză plasarea pe traseu”, l-a precizat.
 - **Bucățile se aleg, nu se trag la noroc.** E răspunsul direct la reclamația numărul 1 din gen („când am nevoie de turn, primesc drum”).
 - **Ramificații deterministe și lizibile.** Inamicii nu aleg o ramură la întâmplare; regula se vede pe ecran.
 - **Terenul participă la reacții:**
@@ -234,6 +234,6 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | Sezoane automate + Inițiativele zeului create de owner | decis |
 | Numele de lucru: World Guard; jucătorii sunt Guardians | decis |
 | Prototip: boss la valurile 5, 10 și 15 (05.10.2026) | decis |
-| Un ocol pe val; upgrade-urile de mai târziu pot da mai multe (05.10.2026) | decis |
-| Turnurile nu blochează drumul (05.10.2026) | decis |
-| Turnul din calea ocolului se ridică, cu tot aurul înapoi (alternativa: se mută) | propunere |
+| Un ocol pe val, obligatoriu; upgrade-urile de mai târziu pot da mai multe (05.10.2026) | decis |
+| Dacă nu mai încape niciun ocol, valul pornește fără el | propunere |
+| Ocolul nu poate trece peste un turn: jocul îl refuză, cu motiv (05.10.2026) | decis |

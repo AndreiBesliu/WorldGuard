@@ -2,7 +2,7 @@
 //
 // Mouse-ul face lucruri diferite după ce e sub el:
 //   - un hexagon de drum (în pregătire) = ocol: 1/2/3 = cu cât se lungește drumul, Tab = următoarea variantă,
-//     Click = aplici ocolul. Un ocol pe val; un turn aflat în calea lui se ridică și își dă aurul înapoi;
+//     Click = aplici ocolul. Un ocol pe val, obligatoriu înainte de val; nu poate trece peste un turn;
 //   - un hexagon liber = turn: 4/5/6/7 = alegi turnul, Click = îl construiești (doar în pregătire);
 //   - un turn = îi vezi raza și ținta, Click = schimbi ținta (și în timpul valului).
 // Z = anulezi ultima decizie din pregătirea curentă (timpul care a trecut nu se dă înapoi).
@@ -20,16 +20,17 @@ import {
   applyDecision,
   checkBuild,
   checkDetourAllowed,
+  checkStartWave,
+  detourPossible,
   fingerprint,
   newGame,
   replay,
   step,
-  towerRefund,
-  towersOnHexes,
+  towerKeys,
   type GameState,
   type Tower,
 } from './sim/game'
-import { fromKey, key, type Hex } from './sim/hex'
+import { key, type Hex } from './sim/hex'
 import { optionsAround, type DetourOption } from './sim/path'
 
 const TOP_RESERVE = 140
@@ -65,13 +66,14 @@ function resize(): void {
 }
 
 function refreshOptions(): void {
-  options = hovered === undefined ? [] : optionsAround(state.map, state.path, hovered, extra)
+  // Turnurile blochează ocolurile, deci variantele care ar trece peste ele nici nu apar.
+  options = hovered === undefined ? [] : optionsAround(state.map, state.path, hovered, extra, towerKeys(state))
   if (optionIndex >= options.length) optionIndex = 0
 }
 
 /**
  * Recalculează ce e sub mouse după orice schimbare (mișcare, decizie, Z, hartă nouă) și variantele de ocol.
- * Ecranul trebuie să arate mereu exact ce ar face un clic acolo — inclusiv turnurile pe care le-ar ridica.
+ * Ecranul trebuie să arate mereu exact ce ar face un clic acolo.
  * Întoarce `true` dacă s-a schimbat hexagonul de drum de sub mouse.
  */
 function syncHover(): boolean {
@@ -94,10 +96,14 @@ function phaseLine(): string {
   const next = WAVES[state.val]
   switch (state.faza) {
     case 'pregatire': {
-      const ocol = checkDetourAllowed(state).ok
-        ? `ocol ${state.ocoluriFolosite}/${state.ocoluriPeVal}: +${extra} (1/2/3) · ${options.length} variante (Tab)`
-        : `ocolul acestui val e pus (${state.ocoluriFolosite}/${state.ocoluriPeVal})`
-      return `Urmează valul ${state.val + 1}: ${next ? describeWave(next) : '—'} · Spațiu = pornește valul · ${ocol} · Z = anulează`
+      const done = `${state.ocoluriFolosite}/${state.ocoluriPeVal}`
+      const ocol = !checkDetourAllowed(state).ok
+        ? `ocolul acestui val e pus (${done})`
+        : detourPossible(state)
+          ? `ocol obligatoriu ${done}: +${extra} (1/2/3) · ${options.length} variante aici (Tab)`
+          : 'niciun ocol nu mai încape pe hartă'
+      const go = checkStartWave(state).ok ? 'Spațiu = pornește valul' : 'valul pornește după ocol'
+      return `Urmează valul ${state.val + 1}: ${next ? describeWave(next) : '—'} · ${go} · ${ocol} · Z = anulează`
     }
     case 'val':
       return `Valul ${state.val + 1} e pe drum: ${state.inamici.length} pe hartă, ${state.deGenerat.length} mai vin · F = viteză · P = pauză · Click pe turn = schimbă ținta`
@@ -124,14 +130,11 @@ function hoverLine(): { text: string; overlay: Partial<Overlay> } {
     }
   }
   if (hovered !== undefined) {
-    // Pe drum: ce turnuri ar ridica ocolul ales (turnurile nu blochează drumul).
-    const chosen = shownDetour()
-    const lifted = chosen ? towersOnHexes(state, chosen.hexes) : []
+    // Pe drum: previzualizarea ocolului se desenează pe hartă; aici doar spunem când nu încape niciunul.
+    const empty = checkDetourAllowed(state).ok && options.length === 0
     return {
-      text: lifted.length
-        ? `Ocolul ridică ${lifted.map((t) => `${TOWERS[t.tip].nume} #${t.id}`).join(', ')} și îți dă înapoi ${lifted.reduce((n, t) => n + towerRefund(t.tip), 0)} aur`
-        : '',
-      overlay: { removes: lifted.map((t) => fromKey(t.hex)) },
+      text: empty ? `Aici nu încape un ocol de +${extra}: apă, filon, un turn în cale, marginea hărții sau drumul s-ar atinge singur` : '',
+      overlay: {},
     }
   }
   if (hoverHex === undefined || !state.map.terrain.has(key(hoverHex))) return { text: '', overlay: {} }
@@ -235,7 +238,7 @@ canvas.addEventListener('click', () => {
     if (!allowed.ok) {
       message = `Nu se poate: ${allowed.reason}`
     } else if (!chosen) {
-      message = `Nu există ocol de +${extra} aici (apă, filon, marginea hărții, sau drumul s-ar atinge singur). Încearcă alt număr sau alt loc.`
+      message = `Nu există ocol de +${extra} aici (apă, filon, un turn în cale, marginea hărții, sau drumul s-ar atinge singur). Încearcă alt număr sau alt loc.`
     } else {
       decide({ tip: 'ocol', start: chosen.start, span: chosen.span, hexuri: chosen.hexes.map(key) })
     }
