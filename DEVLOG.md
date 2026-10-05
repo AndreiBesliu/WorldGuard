@@ -409,3 +409,160 @@ ușor înapoi.
 - Durata: 8–14 minute la 1×.
 
 **Rămâne:** felia 3 — stările și reacțiile (pe etichete), plus terenul în reacții.
+
+---
+
+## 05.10.2026 (3) — Felia 3: stările și reacțiile, pe etichete, plus terenul în reacții
+
+**Cerut de owner:** „continuă cu felia 3”.
+
+**Făcut:**
+- `src/data/reactions.ts`:
+  - **Stările:**
+    - arde (6 daune la 0,5 s, 3 s, trece de armură);
+    - ud (3 s);
+    - răcit („înghețat parțial” din GDD: −25% viteză, 2 s);
+    - înghețat (oprit, 0,75 s);
+    - uns cu ulei (10 s).
+  - **Elementele:** impact, foc, frig, fulger, apă.
+  - **Regulile, scrise pe etichete** (GDD §6):
+    - explozie: foc pe inflamabil; 50 de daune în jur; unșii de alături explodează și ei, în lanț;
+    - abur: foc pe ud, sau apă pe cel care arde; se sting amândouă;
+    - dezgheț: foc pe rece (gheața se topește, flacăra prinde), sau frig pe cel care arde (se sting);
+    - îngheț: frig pe ud; înghețat de tot în loc de răcit;
+    - spargere: impact pe fragil; daună ×3; consumă gheața;
+    - electrocutare: fulger pe ud; sare la cel mult 2 inamici uzi de alături, cu 35% din daună.
+- `src/sim/reactions.ts`:
+  - motorul (`applyContact`): întâi regulile, apoi dauna atingerii (după armură), apoi starea lăsată, dacă
+    n-a fost blocată sau înlocuită;
+  - stările trec cu un tick (`tickStates`);
+  - viteza (`enemySpeed`): se aplică încetinirea cea mai mare, nu se adună.
+- **Turnurile au element și stare:** Fizic = impact, Foc = foc (lasă arde), Frig = frig (lasă răcit),
+  Fulger = fulger.
+- **Terenul:**
+  - apa udă inamicul o dată, când intră pe un hexagon de drum vecin cu ea. Pe hartă, hexagoanele astea au un
+    contur albastru;
+  - dealul dă rază +1 și cere 20 de aur în plus la construcție (propunere: „cu un cost”, ca să nu fie
+    evident cel mai bun).
+- **Starea partidei:** `reactii` numără reacțiile (cronică, playtest; intră în amprentă), iar `evenimente`
+  păstrează reacțiile ultimului tick, doar pentru desen.
+- **UI:**
+  - stările pe inamici: inel pentru răcit și înghețat, puncte pentru restul;
+  - numele reacției apare pe hartă și se stinge;
+  - la prima reacție de un fel în partidă: anunț („Reacție nouă: Îngheț (frig pe ud) — …”) și un
+    freeze-frame de 0,6 s, doar pe ecran (GDD §6);
+  - descrierea turnului spune ce lasă și în ce reacții intră;
+  - rândul de sus numără reacțiile partidei.
+- **Teste: 86** — 17 noi pentru reacții, plus verificarea de disciplină a lui `reactions.ts` (fără ceas și
+  fără aleator global).
+  - Fiecare reacție, pe inamici construiți în test, inclusiv ce NU trebuie să se întâmple: vecinul uscat
+    nu e electrocutat, uleiul de departe nu explodează, răcitul nu se sparge.
+  - Arsura prin armură; încetinirea.
+  - Apa udă exact la intrarea pe hexagon și nu se reîmprospătează cât inamicul stă pe loc.
+  - Apa + frig nu țin inamicii prinși la nesfârșit.
+  - Dealul.
+  - Stările și reacțiile intră în amprentă.
+  - Testul de replay cere ca partidele aleatoare să aibă cel puțin 3 tipuri de reacții.
+- **Mutații reintroduse într-o copie** (12): toate prinse, cu o excepție echivalentă. „Încetinirile se
+  adună” dă același rezultat pe datele de acum, pentru că singura încetinire parțială e răcitul. Două dintre
+  ele („apa udă la fiecare tick”, „stările nu intră în amprentă”) au fost prinse abia după două teste noi.
+- **Verificat în browser**, fără erori în consolă:
+  - conturul albastru de lângă apă;
+  - inelul frigului;
+  - textul „Îngheț” pe hartă;
+  - anunțul primei reacții;
+  - rezumatul reacțiilor sus.
+
+**Măsurat — și a schimbat cifrele.** Botul din feliile anterioare (ocolul obligatoriu, turnurile pe locurile
+cu cea mai multă acoperire), 20 de hărți.
+
+- **Prima trecere avea două strategii dominante:**
+  - doar Frig și doar Fulger câștigau 20/20, aproape fără să piardă vieți (9.000 de înghețuri, respectiv
+    33.000 de electrocutări);
+  - jucătorul aleator din teste, care în felia 2 cădea la valurile 3–7, câștiga toate partidele.
+
+  Cauza: apa e aproape peste tot lângă drum (de exemplu, 15 din 20 de hexagoane de drum pe seed 2026), deci
+  aproape toți inamicii sunt uzi.
+- **Am încercat 9 variante** (B–J: limita și procentul lanțului, durata înghețului și a udului, încetinirea,
+  dauna Frigului, viața valurilor ×1,1/×1,25). Pârghia care a contat a fost **Frigul**: încetinirea continuă
+  îi ajută pe toți ceilalți. Am ales varianta H:
+  - Frig: daună 8, răcit −25%, îngheț 0,75 s;
+  - electrocutare: cel mult 2 inamici în plus, cu 35% din daună;
+  - udul rămâne după electrocutare, cum spune GDD-ul.
+
+  Rezultatul:
+
+  | strategie | felia 2 (regulile finale) | felia 3 |
+  |---|---|---|
+  | doar Fizic | 20/20 (6–20 vieți) | 18/20 (1–20 vieți) |
+  | doar Foc | cade în valul 5–9 | 0/20, cade în valul 5–9 |
+  | doar Frig | cade în valul 10 | 0/20, cade în valul 7–10 |
+  | doar Fulger | 20/20 (9–17 vieți) | 20/20 (7–20 vieți) |
+  | Fizic + Foc | 16/20 | 15/20 |
+  | Frig + Fulger | 20/20 (15–20 vieți) | 20/20 (14–20 vieți) |
+  | Frig + Fizic | — | 20/20 (10–20 vieți) |
+  | toate, pe rând | 19/20 | 14/20 |
+
+- **Ce spune tabelul:**
+  - **combinațiile contează:** Frig singur pierde, dar Frig + Fulger și Frig + Fizic câștigă;
+  - **Focul e slab:** apa îl stinge (abur), frigul îl anulează (dezgheț), iar reacția lui bună, explozia, n-are
+    încă ulei (vezi întrebările);
+  - **amestecul la întâmplare pierde mai des** (14/20): focul și frigul se anulează de 16.800 de ori.
+    Plasarea contează, cum vrea designul;
+  - **Fulger singur câștigă încă**, dar a câștigat și în felia 2, fără reacții. Problema e dificultatea
+    generală, nu reacțiile; se reglează odată cu economia și draftul.
+- Durata: 3–15 minute la 1×.
+
+**Propuneri ale mele, nedecise:**
+- toate cifrele stărilor și reacțiilor;
+- arsura trece de armură (rolul focului contra blindaților);
+- apa udă o dată pe hexagon, la intrare. Altfel înghețul se reface la nesfârșit;
+- dealul: +1 rază pentru +20 aur;
+- freeze-frame-ul de 0,6 s la prima reacție.
+
+**Întrebări pentru owner:**
+- **De unde vine uleiul?** Niciun turn de bază nu unge inamicii, deci explozia (imaginea GIF-ului din
+  GDD §1) nu se poate produce încă. Variante: un turn al cincilea, o trăsătură a unor valuri (inamici care vin
+  unși), terenul (smoală), o carte din draft.
+- **Apa e prea des lângă drum?** Pe hărțile de acum, aproape tot drumul e lângă apă, deci reacțiile cu apă
+  sunt automate, nu o alegere de plasare. Cu mai puțină apă (generatorul de hartă), porțiunile ude ar deveni
+  locuri căutate, iar canalele din felia 6 ar conta.
+- **Focul și frigul se anulează reciproc** (GDD: „focul anulează udul și frigul”). În joc asta înseamnă că două
+  turnuri puse prost se sabotează. E dorit așa?
+
+**Rămâne:** felia 4 — vecinătatea între turnuri.
+
+---
+
+## 05.10.2026 (4) — Publicare pe Firebase Hosting, la fiecare checkpoint
+
+**Cerut de owner:** „vreau să-l publicăm în Firebase și să-i facem update acolo la fiecare checkpoint”. Proiectul
+Firebase: `worldguard-910f1` (Blaze), cu o aplicație Web înregistrată.
+
+**Făcut:**
+- `firebase.json` (publică `dist/`; fișierele din `assets/` cu cache lung, `index.html` fără cache) și
+  `.firebaserc` (`default` și `live` = `worldguard-910f1`).
+- `.github/workflows/publicare.yml` — primul CI al repo-ului:
+  - **verificare** la fiecare PR și la push pe `main`: `npm ci`, `npm run check`;
+  - **previzualizare** la fiecare PR, pe canalul `pr-<număr>` (30 de zile), cu linkul comentat pe PR;
+  - **live** la push pe `main` sau manual, doar de pe `main`, în mediul GitHub `live`, unde se poate cere mai
+    târziu o aprobare;
+  - fără secretul `FIREBASE_SERVICE_ACCOUNT`, publicarea e sărită cu un avertisment, iar verificarea rulează;
+  - intrările workflow-ului trec prin `env:`, niciodată direct în `run:` (regula proiectelor lui Andrei).
+- **Amprenta build-ului în colțul paginii:** commit, ramură și ora build-ului (`__BUILD__`, din `BUILD_SHA` și
+  `BUILD_REF`). „Ce e publicat” se vede dintr-o privire.
+- **Configurația web Firebase nu intră în cod.** Jocul nu folosește SDK-ul (nici Analytics); o adăugăm când apare
+  un backend.
+
+**Verificat:**
+- build-ul de producție, servit static ca de Firebase, arată „build f5c2184 · claude/felia-3-reactii · …”, n-are
+  hook-ul de dev și nici erori în consolă;
+- workflow-ul se citește ca YAML valid, cu cele trei joburi și condițiile lor.
+
+Publicarea propriu-zisă se verifică la primul run din GitHub Actions; de aici nu se poate.
+
+**De făcut de owner** (o singură dată): secretul `FIREBASE_SERVICE_ACCOUNT` în GitHub. Cheia se generează în
+Firebase → Project settings → Service accounts → Generate new private key, iar fișierul JSON nu se pune în repo.
+
+**Notă:** PR-urile feliilor sunt stivuite (#1 → #2 → #3). Workflow-ul e în ramura feliei 3, deci previzualizările
+pornesc de la PR #3 și de la feliile care vin peste el. Live-ul pleacă după ce stiva ajunge în `main`.

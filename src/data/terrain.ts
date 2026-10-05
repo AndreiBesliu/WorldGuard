@@ -1,5 +1,7 @@
 // Cifrele și regulile de teren stau aici, nu împrăștiate prin cod.
 
+import type { Element, StateType } from './reactions'
+
 export type Terrain = 'campie' | 'apa' | 'padure' | 'deal' | 'filon'
 
 export interface TerrainInfo {
@@ -9,13 +11,23 @@ export interface TerrainInfo {
   readonly permiteTraseu: boolean
   /** Se poate construi un turn pe acest teren? */
   readonly permiteTurn: boolean
+  /**
+   * Terenul participă la reacții (GDD §5): un inamic care intră pe un hexagon de drum vecin cu terenul ăsta
+   * e atins de `element` și primește starea `aplica` (apa udă).
+   */
+  readonly atingere?: { readonly element: Element; readonly aplica: StateType }
+  /** Rază în plus pentru turnul construit aici (dealul). */
+  readonly bonusRaza?: number
+  /** Aur în plus la construcția unui turn aici — prețul razei, ca dealul să nu fie evident cel mai bun. */
+  readonly costTurn?: number
 }
 
 export const TERRAIN: Readonly<Record<Terrain, TerrainInfo>> = {
   campie: { nume: 'Câmpie', culoare: '#8f9d6a', permiteTraseu: true, permiteTurn: true },
-  apa: { nume: 'Apă', culoare: '#3f6f9e', permiteTraseu: false, permiteTurn: false },
+  apa: { nume: 'Apă', culoare: '#3f6f9e', permiteTraseu: false, permiteTurn: false, atingere: { element: 'apa', aplica: 'ud' } },
   padure: { nume: 'Pădure', culoare: '#2f5a37', permiteTraseu: true, permiteTurn: true },
-  deal: { nume: 'Deal', culoare: '#9a7f5a', permiteTraseu: true, permiteTurn: true },
+  // Propunere: +1 rază, +20 aur. Prețul ar putea fi și altul (reîncărcare mai lentă, teren mai rar).
+  deal: { nume: 'Deal', culoare: '#9a7f5a', permiteTraseu: true, permiteTurn: true, bonusRaza: 1, costTurn: 20 },
   filon: { nume: 'Filon', culoare: '#7d5f8f', permiteTraseu: false, permiteTurn: true },
 }
 

@@ -2,10 +2,12 @@
 
 import { ENEMIES, WAVES } from '../data/enemies'
 import { MILI_HEX } from '../data/joc'
+import { STATES } from '../data/reactions'
 import { TERRAIN } from '../data/terrain'
 import { TOWERS, type TowerInfo, type TowerType } from '../data/towers'
+import { enemySpeed, pathContacts, type Enemy, type GameState } from '../sim/game'
 import { distance, fromKey, type Hex } from '../sim/hex'
-import type { Enemy, GameState } from '../sim/game'
+import { STATE_ORDER } from '../sim/reactions'
 
 const SQRT3 = Math.sqrt(3)
 
@@ -79,6 +81,10 @@ export interface Overlay {
   readonly range?: { readonly hex: Hex; readonly raza: number; readonly culoare: string }
   /** Turnul care s-ar construi aici, ca fantomă; `ok: false` = nu se poate (motivul e în text). */
   readonly ghost?: { readonly hex: Hex; readonly tip: TowerType; readonly ok: boolean }
+  /** Textele reacțiilor de pe hartă: unde (pe drum), ce scrie și cât de vechi sunt (0 = proaspete, 1 = dispar). */
+  readonly popups?: readonly { readonly text: string; readonly culoare: string; readonly progres: number; readonly varsta: number }[]
+  /** Anunțul unei reacții descoperite acum, în mijlocul hărții. */
+  readonly banner?: string
 }
 
 function drawCross(ctx: CanvasRenderingContext2D, x: number, y: number, size: number): void {
@@ -139,13 +145,21 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     ctx.fill()
   }
 
-  // Traseul: hexagoane deschise la culoare + linia prin centre, ca să se vadă ordinea.
-  for (const h of s.path) {
+  // Traseul: hexagoane deschise la culoare + linia prin centre, ca să se vadă ordinea. Hexagoanele de lângă apă
+  // au un contur albastru: acolo inamicii se udă (terenul participă la reacții, și regula se vede).
+  const contacts = pathContacts(s)
+  s.path.forEach((h, i) => {
     const { x, y } = hexToPixel(h, l)
     hexPath(ctx, x, y, l.size * 0.97)
     ctx.fillStyle = '#d9c7a0'
     ctx.fill()
-  }
+    if (contacts[i]) {
+      hexPath(ctx, x, y, l.size * 0.78)
+      ctx.strokeStyle = 'rgba(74, 163, 255, 0.85)'
+      ctx.lineWidth = 2
+      ctx.stroke()
+    }
+  })
   if (o.start !== undefined && o.span !== undefined) {
     // Capetele ocolului: conturul galben. Porțiunea care dispare: hașurată.
     for (const i of [o.start, o.start + o.span + 1]) {
@@ -232,7 +246,7 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
   const lastProgress = (s.path.length - 1) * MILI_HEX
   const pos = new Map<number, { x: number; y: number }>()
   const enemyPos = (e: Enemy): { x: number; y: number } | undefined => {
-    const progres = Math.min(lastProgress, e.progres + ENEMIES[e.tip].viteza * (o.alpha ?? 0))
+    const progres = Math.min(lastProgress, e.progres + enemySpeed(e) * (o.alpha ?? 0))
     const idx = Math.floor(progres / MILI_HEX)
     const frac = (progres % MILI_HEX) / MILI_HEX
     const from = s.path[idx]
@@ -256,6 +270,21 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     ctx.strokeStyle = e.tip === 'boss' ? '#ffffff' : 'rgba(0, 0, 0, 0.55)'
     ctx.lineWidth = e.tip === 'boss' ? 2 : 1
     ctx.stroke()
+    // Stările: înghețat = inel alb gros, răcit = inel albastru deschis, restul = puncte colorate deasupra.
+    if (e.stari.inghetat !== undefined || e.stari.racit !== undefined) {
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, radius + 2.5, 0, Math.PI * 2)
+      ctx.strokeStyle = STATES[e.stari.inghetat !== undefined ? 'inghetat' : 'racit'].culoare
+      ctx.lineWidth = e.stari.inghetat !== undefined ? 3 : 1.5
+      ctx.stroke()
+    }
+    const dots = STATE_ORDER.filter((st) => e.stari[st] !== undefined && st !== 'inghetat' && st !== 'racit')
+    dots.forEach((st, k) => {
+      ctx.beginPath()
+      ctx.arc(p.x - ((dots.length - 1) * 5) / 2 + k * 5, p.y + radius + 4, 2.2, 0, Math.PI * 2)
+      ctx.fillStyle = STATES[st].culoare
+      ctx.fill()
+    })
     // Bara de viață, doar după prima lovitură.
     const max = Math.round(info.viata * waveHp)
     if (e.viata < max) {
@@ -306,6 +335,38 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
   }
   mark(s.map.spawn, '#b03a2e', 'I')
   mark(s.map.base, '#2e6fb0', 'B')
+
+  // Reacțiile, ca text care urcă și se stinge acolo unde s-au produs.
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = `bold ${Math.max(11, l.size * 0.5)}px system-ui, sans-serif`
+  for (const pop of o.popups ?? []) {
+    const idx = Math.min(s.path.length - 1, Math.floor(pop.progres / MILI_HEX))
+    const frac = (pop.progres % MILI_HEX) / MILI_HEX
+    const a = s.path[idx]
+    const b = s.path[idx + 1] ?? a
+    if (!a || !b) continue
+    const p0 = hexToPixel(a, l)
+    const p1 = hexToPixel(b, l)
+    ctx.globalAlpha = Math.max(0, 1 - pop.varsta)
+    ctx.fillStyle = pop.culoare
+    ctx.fillText(pop.text, p0.x + (p1.x - p0.x) * frac, p0.y + (p1.y - p0.y) * frac - l.size * (0.6 + pop.varsta))
+    ctx.globalAlpha = 1
+  }
+
+  // Anunțul unei reacții noi.
+  if (o.banner) {
+    ctx.font = 'bold 18px system-ui, sans-serif'
+    const w = ctx.measureText(o.banner).width + 32
+    const y = l.originY - l.size * 1.5 * (s.map.radius + 0.6)
+    ctx.fillStyle = 'rgba(18, 22, 28, 0.88)'
+    ctx.fillRect(l.originX - w / 2, y - 18, w, 36)
+    ctx.strokeStyle = '#f5d76e'
+    ctx.lineWidth = 2
+    ctx.strokeRect(l.originX - w / 2, y - 18, w, 36)
+    ctx.fillStyle = '#f5d76e'
+    ctx.fillText(o.banner, l.originX, y)
+  }
 
   // Textul de sus
   ctx.textAlign = 'left'

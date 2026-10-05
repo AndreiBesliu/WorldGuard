@@ -19,11 +19,25 @@ npm test           # Vitest
 npm run build
 ```
 
+## Publicare (Firebase Hosting, proiectul `worldguard-910f1`)
+- **Nu se publică de mână.** `.github/workflows/publicare.yml`:
+  - la fiecare PR: `npm run check`, apoi o **previzualizare** pe canalul `pr-<număr>` (ține 30 de zile); linkul
+    apare ca un comentariu pe PR — fiecare felie e un checkpoint jucabil;
+  - la push pe `main` (unirea unui PR): aceeași verificare, apoi **live**; manual, tot doar de pe `main`.
+- Cere secretul `FIREBASE_SERVICE_ACCOUNT` în GitHub (cheia JSON a unui cont de serviciu). Fără el, verificarea
+  rulează și publicarea e sărită cu un avertisment.
+- Jocul afișează în colț ce build rulează (`__BUILD__`: commit, ramură, oră), pus de Vite din `BUILD_SHA` /
+  `BUILD_REF`. Configurația web Firebase (`apiKey` etc.) **nu** e în cod: jocul nu folosește încă SDK-ul.
+- Regula comună a proiectelor lui Andrei (test + live, publicarea live doar de owner, cu confirmare și jurnal)
+  se aplică din clipa în care apare un backend. Până atunci: previzualizările țin loc de „test”, iar live-ul
+  pleacă doar din `main`, adică doar după ce owner-ul unește un PR.
+
 ## Arhitectura
 - `src/sim/` — **nucleul de joc, determinist, fără DOM.** Hartă, traseu, decizii, valuri și inamici,
-  turnuri și țintire; (mai târziu) reacții. Tot ce contează pentru reguli stă aici.
-- `src/data/` — cifrele și regulile de conținut (teren, ocoluri, inamici și valuri, turnuri, constantele
-  partidei).
+  turnuri și țintire, stări și reacții (`reactions.ts`). Tot ce contează pentru reguli stă aici.
+  `testkit.ts` are ajutoarele testelor (`must`, `firstDetour`, `startWave`, `runWave`).
+- `src/data/` — cifrele și regulile de conținut (teren, ocoluri, inamici și valuri, turnuri, stări și reacții,
+  constantele partidei).
   **Un număr de gameplay scris direct în cod e o greșeală**: îl muți în `src/data/`.
 - `src/render/` — desenarea pe Canvas 2D. Citește starea, nu o modifică.
 - `src/main.ts` — input și legătura dintre ele. În `npm run dev` expune `window.wg.state` (doar citire),
@@ -73,6 +87,19 @@ Măsurat: pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoan
   Egalitățile la țintire se rup după progres, apoi după id. Armura scade din fiecare lovitură, minimum 1.
 - O verificare de construcție (`checkBuild`) dă motivul refuzului; aceeași funcție alimentează previzualizarea.
 
+## Stările și reacțiile (implementat)
+- **Regulile se scriu pe etichete, nu pe perechi** (GDD §6), în `src/data/reactions.ts`: o regulă spune ce se
+  întâmplă când un *element* (lovitura unui turn: impact, foc, frig, fulger; sau terenul: apă) atinge un inamic
+  care poartă o stare cu o anumită *etichetă*. O stare nouă cu eticheta „inflamabil” explodează la foc fără cod nou.
+- Motorul e `applyContact` din `src/sim/reactions.ts`: întâi regulile (în ordinea din date), apoi dauna
+  atingerii (după armură), apoi starea pe care o lasă, dacă nicio regulă n-a blocat-o sau n-a înlocuit-o.
+- Ordinea unui tick: inamicii merg (încetinirea cea mai mare se aplică, nu se adună) → apar cei noi → stările
+  trec cu un tick (arsura lovește și trece de armură) → terenul (apa udă inamicul **o dată, când intră** pe un
+  hexagon de drum vecin cu ea) → turnurile lovesc → cei uciși lasă aur → sfârșitul valului.
+- `GameState.reactii` numără reacțiile (date pentru cronică și playtest) și intră în amprentă;
+  `GameState.evenimente` sunt reacțiile ultimului tick, doar pentru desen.
+- Dealul: rază +1 și +20 aur la construcție (`towerRange`, `towerCost`) — propunere.
+
 ## Cum se lucrează
 - După fiecare felie: `npm run check` verde → intrare în `DEVLOG.md` → commit. Stagează explicit
   fișierele, **nu** `git add -A` (owner-ul rulează sesiuni paralele pe proiecte diferite).
@@ -93,4 +120,8 @@ Măsurat: pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoan
   aur din inamicii uciși. Cifrele, măsurate cu un bot.
 - **Deciziile owner-ului (05.10.2026):** un ocol pe val, obligatoriu (cu loc pentru upgrade); ocolul nu poate
   trece peste un turn; boss la valurile 5, 10 și 15. 68 de teste.
-- **Următorul:** felia 3 — stările și reacțiile (pe etichete), plus terenul în reacții (vezi DEVLOG).
+- **Felia 3 (05.10.2026):** stările (arde, ud, răcit, înghețat, uns) și 6 reacții pe etichete (explozie, abur,
+  dezgheț, îngheț, spargere, electrocutare); apa udă, dealul dă rază. Anunț la prima reacție, cu freeze-frame.
+  Cifrele, măsurate cu botul. 86 de teste.
+- **Publicare (05.10.2026):** Firebase Hosting `worldguard-910f1` — previzualizare la fiecare PR, live la `main`.
+- **Următorul:** felia 4 — vecinătatea între turnuri (vezi DEVLOG).

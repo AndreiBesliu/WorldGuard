@@ -64,20 +64,24 @@ function playRandom(seed: number): { s: GameState; blocked: number } {
 }
 
 describe('jurnalul deciziilor', () => {
-  it('replay(seed, jurnal) reconstruiește exact aceeași stare — ocoluri, turnuri, ținte schimbate în val', () => {
+  it('replay(seed, jurnal) reconstruiește exact aceeași stare — ocoluri, turnuri, ținte schimbate în val, reacții', () => {
     let blocked = 0
+    const reactions = new Set<string>()
     for (const seed of [1, 5, 2026]) {
       const game = playRandom(seed)
       const s = game.s
       blocked += game.blocked
+      for (const [r, n] of Object.entries(s.reactii)) if ((n ?? 0) > 0) reactions.add(r)
       expect([...new Set(s.jurnal.map((l) => l.d.tip))].sort()).toEqual(['ocol', 'pornesteVal', 'tintire', 'turn'])
       expect(s.jurnal.length).toBeGreaterThan(10)
       const again = replay(seed, s.jurnal, s.tick)
       expect(fingerprint(again)).toBe(fingerprint(s))
       expect(again.path.map(key)).toEqual(s.path.map(key))
     }
-    // Turnurile chiar au blocat variante de ocol pe parcurs, deci replay-ul a exersat și regula asta.
+    // Turnurile chiar au blocat variante de ocol pe parcurs, deci replay-ul a exersat și regula asta…
     expect(blocked).toBeGreaterThan(0)
+    // …iar partidele au avut reacții de mai multe feluri (stări, lanțuri, teren), reproduse identic.
+    expect(reactions.size).toBeGreaterThanOrEqual(3)
   })
 
   it('jurnalul trece prin JSON fără pierderi (se poate salva și trimite)', () => {
