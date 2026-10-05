@@ -76,7 +76,9 @@ export const TOWERS: Readonly<Record<TowerType, TowerInfo>> = {
   fulger: {
     nume: 'Fulger',
     cost: 70,
-    dauna: 36,
+    // 36 până în felia 5. Cu draftul și valurile care cresc, Fulger singur câștiga orice (20/20 și cu cărți alese la
+    // întâmplare); la 30 ajunge cam cât Fizic singur (botul, DEVLOG felia 5). Propunere.
+    dauna: 30,
     raza: 3,
     reincarcare: 24,
     zona: false,

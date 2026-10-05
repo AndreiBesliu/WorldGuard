@@ -35,10 +35,16 @@ Documentul rezumă discuția de design din 04.10.2026 și cele trei scanări de 
 
 ```
 val → recompense (aur, pământ) → alegi 1 din 3 cărți → modelezi harta / plasezi turnuri → combinații → val
-boss la valurile 5, 10 și 15 (în prototip)
+boss la valurile 5, 10 și 15 (în prototip); din 05.10.2026, 25 de valuri, cu boss la fiecare al cincilea
 ```
 
 **Cărțile din draft:** o bucată de traseu, un turn, o îmbunătățire sau o relicvă.
+
+**În prototip (felia 5, 05.10.2026; detaliile sunt propuneri):**
+- draftul vine după fiecare val, iar valul următor nu pornește până nu alegi;
+- 15 cărți: un turn gratuit pentru fiecare tip; două îmbunătățiri pe tip (+25% daună, trage cu 20% mai des), care se adună; două relicve, câte o dată pe partidă (Cartograful: +1 ocol în fiecare pregătire, adică upgrade-ul de ocoluri decis pe 05.10; Bastionul: +5 vieți); o bucată de traseu (un ocol în plus, doar în pregătirea aceea);
+- din cele 3 cărți, 2 sunt din stilul tău (tipurile pe care le ai, relicvele, traseul) și 1 din afara lui (§6);
+- cărțile cresc puterea cu fiecare val, deci și valurile cresc: viața inamicilor crește cu 20% pe val, peste multiplicatorul fiecărui val. Măsurat cu botul: cu cărțile alese bine, combinațiile bune câștigă aproape mereu; cu cărțile alese la întâmplare, majoritatea strategiilor pierd. Alegerea din draft contează.
 
 ## 5. Harta în partidă — decis
 
@@ -92,6 +98,10 @@ boss la valurile 5, 10 și 15 (în prototip)
 ## 8. Inamicii
 
 - **Prototip:** normal, rapid, blindat, roi, plus boss.
+- **Trăsături** (felia 5, propunere): un grup de inamici poate fi imun la anumite stări, ca un val să contracareze o combinație (§6). În prototip le au bossii:
+  - valul 5: **uscat** (nu poate fi udat, deci nici înghețat de apă, nici electrocutat);
+  - valul 10: **neclintit** (frigul nu-l încetinește și nu-l îngheață);
+  - valul 15: doi bossi, unul **ignifug** (nu ia foc, nu se unge) și unul uscat și neclintit.
 - **Manifestările zeului căzut** diferă după tipul de planetă.
 - **Previzualizarea valului următor** e obligatorie; lipsa ei e o reclamație frecventă în gen.
 
@@ -165,7 +175,7 @@ Fapte notabile deblochează conținut (de exemplu, 200 de păduri arse dau doctr
 - grila hex, traseul cu inserții (3 variante pe val), 4 tipuri de teren care participă la reacții;
 - terraformare: canal, deal, arde;
 - 4 turnuri de bază (fizic, foc, frig, fulger), ~6 reacții și grupuri de turnuri (individual sau combinat);
-- 4 inamici + boss la valurile 5, 10 și 15 (decis 05.10.2026), 15 valuri, draft 1 din 3;
+- 4 inamici + boss la valurile 5, 10 și 15 (decis 05.10.2026), apoi la 20 și 25: 25 de valuri, ca partida să ajungă la 20–30 de minute (decis 05.10.2026: „mai multe valuri”); draft 1 din 3;
 - aur cu dobândă și pământ;
 - **jurnalul deciziilor din prima zi**: e baza meta-progresiei, a verificării pe server și a datelor de playtest.
 
@@ -255,3 +265,13 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | …și nu se pot combina în același grup (05.10.2026) | decis |
 | Combinarea singură nu trece de armură; unele combinații o străpung sau o ignoră (05.10.2026) | decis |
 | Care combinații: Fizic + Foc ignoră armura, Fizic + Frig străpunge 5 | propunere |
+| Felia 5: draftul și bossul (05.10.2026) | decis |
+| Draftul după fiecare val, obligatoriu înainte de val; 2 cărți din stil + 1 din afară; cărțile din prototip | propunere |
+| Relicva Cartograful = upgrade-ul „+1 ocol pe val” | propunere |
+| Bossul: trăsături care îl fac imun la stări (uscat, neclintit, ignifug) | propunere |
+| Viața inamicilor crește cu 20% pe val, peste multiplicatorul valului (compensează draftul) | propunere |
+| Fulger: daună 36 → 30 (era strategia dominantă cu draftul) | propunere |
+| Un singur tip de turn, cu toate cărțile pe el, e un build bun (05.10.2026) | decis |
+| Partida se lungește prin mai multe valuri (05.10.2026) | decis |
+| 25 de valuri, boss și la valurile 20 și 25, trăsături și pe grupuri obișnuite în valurile 16–25 | propunere |
+| Felia 6: economia — dobânda, pământul, filonul (05.10.2026) | decis |

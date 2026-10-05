@@ -782,3 +782,172 @@ Rezultatul se vede la primul run al PR-ului.
 la cel mai apropiat întreg.
 
 **Întrebare pentru owner:** ce urmează, **draftul și bossul** (GDD §10) sau **economia** (dobânda și pământul)?
+
+---
+
+## 05.10.2026 (7) — Felia 5: draftul 1 din 3 și bossul cu trăsături
+
+**Cerut de owner:** la „ce urmează?”, a ales **draftul și bossul**.
+
+**Făcut — draftul** (GDD §4: „val → recompense → alegi 1 din 3 cărți → modelezi harta → val”):
+- **Cărțile, ca date** (`src/data/draft.ts`): 15, de patru feluri, ca în GDD. Tot ce e mai jos e propunerea mea:
+  - **turn gratuit**, câte unul pe tip: următorul turn de tipul ăla nu costă nimic, nici pe deal;
+  - **îmbunătățiri**, două pe tip: +25% daună, sau trage cu 20% mai des. Se adună de la o carte la alta. „Mai des” e
+    cadența × 1,2, deci reîncărcarea × 100/120: cinci cărți dublează cadența, n-o duc la zero;
+  - **relicve**, o dată pe partidă: **Cartograful** dă +1 ocol în fiecare pregătire. E upgrade-ul de ocoluri decis
+    pe 05.10, iar toate ocolurile rămân obligatorii. **Bastionul** dă +5 vieți;
+  - **traseu**: „Ocol în plus”, un ocol în plus doar în pregătirea aceea.
+- **Oferta** se face când se încheie un val. Are 3 cărți diferite, pe fluxul ei (`draft/<val>`), deci un replay o
+  reface identic. **2 sunt din stilul tău** (tipurile pe care le ai, relicvele, traseul) și **1 din afara lui** (GDD §6).
+  Relicvele luate nu mai apar.
+- **Decizia `alege`**, cu motiv la refuz. **Valul nu pornește până nu alegi.** Alegerea se poate anula cu Z, ca
+  orice decizie din pregătire.
+- Starea nouă (`oferta`, `carti`, `gratuite`, `imbunatatiri`, `ocoluriBonus`) intră în amprentă.
+
+**Făcut — bossul:**
+- **Trăsături** pe grupurile din valuri (`TRAITS`), care îl fac pe inamic imun la stări. Imunitatea e în motorul
+  reacțiilor: o stare oprită nu mai pornește nici reacțiile ei. E ideea din GDD §6, „valuri cu trăsături care
+  contracarează anumite etichete”. Propunerea:
+  - **uscat** (bossul valului 5): nu se udă, deci nici îngheț, nici electrocutare;
+  - **neclintit** (bossul valului 10): frigul nu-l încetinește și nu-l îngheață;
+  - **ignifug** (unul din cei doi bossi ai valului 15, celălalt fiind uscat și neclintit): nu ia foc și nu se unge.
+- Trăsăturile apar în previzualizarea valului (cu ce înseamnă) și deasupra bossului pe hartă.
+
+**Interfața:**
+- Banda draftului apare sub bara de sus, cu 3 cărți. Fiecare carte are felul ei (cele din afara stilului au chenar
+  punctat), nume, efect și tasta (8 / 9 / 0); se alege și cu click. Harta își face loc sub bandă.
+- Butonul de pornire arată motivul („alege întâi o carte din draft”).
+- Cartea de turn gratuit arată „gratuit” în locul prețului. Turnurile îmbunătățite arată „40 → 50 (cărți)”.
+- Panoul are secțiunea „Cărțile tale”.
+
+**Teste: 123** (de la 107):
+- `draft.test.ts`, 10 teste:
+  - **oferta:** nu există la început; după un val are 3 cărți diferite; după ultimul val, nimic. E deterministă și
+    are mereu exact o carte din afara stilului. Relicvele luate nu mai apar. Datele cărților sunt verificate;
+  - **alegerea:** valul nu pornește fără ea; refuzurile au motiv; cartea intră în jurnal;
+  - **efectele:** turnul gratuit (și pe deal; prețul revine după), îmbunătățirile care se adună (și într-un grup
+    combinat, și în val, inclusiv reîncărcarea după lovitură), Cartograful, Ocol în plus, Bastionul;
+  - **amprenta:** include starea nouă.
+- `boss.test.ts`, 5 teste:
+  - trăsăturile bossilor din fiecare val;
+  - uscat (fără ud, deci fără îngheț și fără electrocutare), neclintit (viteza nu scade), ignifug (fără arsură și fără
+    explozie);
+  - bossul apare în val cu trăsăturile lui, care intră în amprentă.
+- Partidele aleatoare din testul de replay aleg acum și cărți. Testul cere să apară decizia `alege` și să iasă
+  identic la replay.
+- `waves.test.ts`: viața crește cu valul după formulă, nu scade niciodată de la un val la altul, iar inamicii apar
+  cu viața asta.
+
+**Mutații reintroduse într-o copie (18):** toate prinse. Două au trecut la prima rundă și au cerut un test mai strict:
+reîncărcarea îmbunătățită ignorată după lovitură, și grupul combinat care ignoră îmbunătățirile.
+
+**Măsurat — botul, și a schimbat cifrele.** 20 de hărți, ocolul obligatoriu, turnurile pe rând, iar după fiecare
+val o carte. Botul alege cărțile în două feluri:
+- **bine**: întâi îmbunătățiri pentru tipurile lui, apoi turnurile lui gratuite, apoi relicve, apoi traseul;
+- **la întâmplare**.
+
+- **Pe valurile de dinainte, draftul făcea jocul prea ușor.** Cu cărți alese bine, aproape orice strategie câștiga
+  20/20, chiar și doar Frig, care fără draft pierdea tot. Cu cărți la întâmplare, la fel. La dificultatea aceea nici
+  trăsăturile bossului nu schimbau nimic.
+- **Variante încercate:**
+  - viața valurilor × (1 + k·i), cu k = 0,1 / 0,15 / 0,2;
+  - Fulger cu daună 30 sau cu reîncărcare 30.
+- **Alese (propunere):**
+  - **`CRESTERE_VIATA` = 20% pe val**, peste multiplicatorul fiecărui val. Ultimul boss are 19.760 de vieți;
+  - **Fulger cu 30 de daune în loc de 36.** La 36, Fulger singur câștiga 20/20 chiar cu cărți la întâmplare.
+
+**Rezultatul, pe datele din commit.** Câștiguri din 20:
+
+| strategie (răsfirat) | cărți alese bine | cărți la întâmplare | felia 4, fără draft |
+|---|---|---|---|
+| doar Fizic | 20 | 13 | 17 |
+| doar Foc | 18 | 7 | 7 |
+| doar Frig | 7 | 0 | 0 |
+| doar Fulger | 19 | 11 | 20 |
+| Fizic + Foc | 16 | 7 | 16 |
+| Frig + Fulger | 20 | 6 | 20 |
+| Frig + Fizic | 20 | 7 | 20 |
+| Fizic + Fulger | 13 | 3 | 17 |
+| toate, pe rând | 5 | 5 | 14 |
+
+- **Alegerea din draft contează.** Aceeași strategie, cu cărți bune față de cărți la întâmplare: Frig + Fizic
+  20 față de 7, Frig + Fulger 20 față de 6, Fizic + Foc 16 față de 7.
+- **Un singur tip cu toate cărțile pe el e un „build” puternic:** Fizic 20/20, Fulger 19/20. Împrăștierea pe toate
+  patru tipurile pierde (5/20), mai ales că Foc și Frig se anulează.
+- **Trăsăturile bossului contracarează strategiile cu frig.** Măsurat la valuri +20%, cu Fulger la 36, cu și fără
+  trăsături:
+  - Frig singur câștigă 7/20 cu trăsături și 18/20 fără;
+  - viețile pierdute la valurile cu boss, cu trăsături față de fără: Frig + Fulger 30 față de 10, Frig + Fizic 90 față
+    de 60;
+  - Fizic și Fulger nu sunt afectate, cum trebuie: trăsăturile țintesc stările.
+- **Grupuri combinate** (cărți bune): Foc 20, Fizic 18, Frig + Fizic 18, Frig + Fulger 17, Fizic + Foc 16, Frig 2.
+  **Cu un ocol spre ulei:** Foc singur câștigă 19/20.
+- **Durata, la 1×:** mediana e 10–11 minute, maximul 18–23. Înainte era 5–10 minute. Ținta din GDD e 20–30.
+
+**Verificat în browser**, pe datele finale, jucând până la valul 6 (fără erori în consolă):
+- banda draftului după fiecare val, cu cartea din afara stilului marcată; alegerea cu click;
+- Cartograful dă 2 ocoluri pe pregătire, iar Ocol în plus încă unul;
+- valul 5 arată în previzualizare „Boss · Uscat — nu poate fi udat…” și „viață ×2,16”; bossul are eticheta
+  deasupra, pe hartă;
+- panoul arată „Cărțile tale”, cu numărul de exemplare.
+
+Testul de replay cu partide întregi are acum o limită de 30 s. Cât timp botul rula în paralel, a depășit o dată
+limita implicită de 5 s; singur trece în aproximativ 2,4 s.
+
+**Propuneri ale mele, nedecise:**
+- cărțile și cifrele lor;
+- oferta de 2 cărți din stil + 1 din afară;
+- alegerea obligatorie înainte de val;
+- trăsăturile bossilor și ce val primește ce;
+- creșterea vieții cu 20% pe val;
+- Fulger la 30 de daune.
+
+**Întrebări pentru owner:**
+1. **Un singur tip, cu toate cărțile pe el, câștigă** (Fizic 20/20). E un „build” bun de roguelite, sau vrei ca
+   aceeași îmbunătățire luată de mai multe ori să dea tot mai puțin?
+2. **Partidele durează încă puțin:** mediana e 10–11 minute la 1×, ținta e 20–30. Variante: mai multe valuri, valuri
+   mai lungi, sau inamici mai lenți.
+3. **Felia următoare e economia** (dobânda la aur, pământul, filonul)?
+
+---
+
+## 05.10.2026 (8) — Răspunsurile owner-ului la felia 5: build-ul pe un tip rămâne, mai multe valuri
+
+**Răspunsuri:**
+1. „Un singur tip, cu toate cărțile pe el, câștigă — e un build bun?”: **„build bun”**. Rămâne cum e.
+2. „Partidele durează puțin: cum le lungim?”: **„mai multe valuri”**.
+3. „Felia următoare e economia?”: **„da”**.
+
+**Făcut:**
+- **25 de valuri în loc de 15.** Valurile 16–25 sunt scrise de mână, după tiparul primelor 15: mai mulți inamici,
+  multiplicatorul vieții de la 2,75 la 4,1.
+- **Boss la fiecare al cincilea val.** La 5, 10 și 15 e decizia owner-ului; la 20 și 25 e propunerea mea:
+  - valul 20: un boss ignifug și neclintit;
+  - valul 25: trei bossi, unul uscat, unul neclintit, unul ignifug.
+- **De la valul 16, trăsături și pe grupurile obișnuite** (propunere), ca o singură combinație să nu țină până la
+  capăt: rapizi neclintiți (val 18), roi uscat (val 21), normali ignifugi (val 23).
+
+**Măsurat — botul, cu 25 de valuri.** Am încercat creșterea vieții de 20%, 12% și 6% pe val. Am păstrat 20%:
+proporțiile de câștig rămân cele din felia 5, iar durata ajunge în țintă.
+
+| strategie | cărți alese bine | cărți la întâmplare |
+|---|---|---|
+| doar Fizic | 20 | 11 |
+| doar Foc | 18 | 5 |
+| doar Frig | 7 | 0 |
+| doar Fulger | 19 | 11 |
+| Fizic + Foc | 15 | 2 |
+| Frig + Fulger | 20 | 4 |
+| Frig + Fizic | 19 | 3 |
+| Fizic + Fulger | 13 | 2 |
+| toate, pe rând | 4 | 2 |
+
+- **Durata partidelor câștigate**, în timp de joc la 1×: 12–29 de minute, mediana 19 (cu cărți alese bine). Cu
+  cărți la întâmplare: 20–41 de minute, mediana 28. Înainte, cu 15 valuri, mediana era 10–11 minute.
+- **Timpul de pregătire nu e inclus:** simularea stă pe loc cât construiești și alegi. Cu o jumătate de minut de
+  pregătire pe val, o partidă reală ajunge la 30 de minute sau peste. Ținta din GDD e 20–30.
+- **Unde se pierde, cu cărți bune:** mai ales la valurile cu boss (10 pierderi la valul 10, 4 la 15) și la început
+  (valurile 3–5). Cu cărți la întâmplare se pierde și la ultimul val, cel cu trei bossi (12 pierderi).
+- Cu 12% sau 6% pe val, aproape orice câștigă din nou (doar Frig: 18/20, respectiv 19/20).
+
+**Teste: 123**, aceleași, actualizate: 25 de valuri, boss la 5, 10, 15, 20 și 25.

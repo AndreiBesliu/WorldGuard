@@ -11,7 +11,8 @@
 // Timpul: simularea avansează doar în timpul unui val, câte un tick (TICK_MS) pe rând. Între valuri
 // timpul stă pe loc: acolo jucătorul modelează drumul, construiește turnuri și (mai târziu) alege din draft.
 
-import { ENEMIES, WAVES, type EnemyType } from '../data/enemies'
+import { CARD_IDS, CARDS, cardTower, DRAFT, type CardEffect, type CardId } from '../data/draft'
+import { CRESTERE_VIATA, ENEMIES, WAVES, type EnemyType, type Trait } from '../data/enemies'
 import { MILI_HEX, VIETI_BAZA } from '../data/joc'
 import type { ReactionType } from '../data/reactions'
 import { INSERARE, TERRAIN, type Terrain } from '../data/terrain'
@@ -21,6 +22,7 @@ import { generateMap, type GameMap } from './map'
 import { detourOptions, insertDetour } from './path'
 import { applyContact, enemySpeed, STATE_ORDER, tickStates, type Contact, type ReactionContext, type States } from './reactions'
 import { fail, ok, type Result } from './result'
+import { createRng } from './rng'
 
 export { damageAfterArmor, enemySpeed } from './reactions'
 
@@ -48,6 +50,11 @@ export type Decision =
       readonly mod: TargetMode
     }
   | {
+      readonly tip: 'alege'
+      /** Cartea aleasă din oferta draftului. */
+      readonly carte: CardId
+    }
+  | {
       readonly tip: 'combina'
       /** Un turn din grup — oricare. */
       readonly turn: number
@@ -71,6 +78,8 @@ export interface Enemy {
   readonly progres: number
   /** Stările de pe el (arde, ud, răcit…): câte tick-uri mai ține fiecare. */
   readonly stari: Readonly<States>
+  /** Trăsăturile grupului din care vine (bossii le au): stările la care e imun. */
+  readonly trasaturi?: readonly Trait[]
 }
 
 /** O reacție produsă într-un tick — pentru desen (textul care apare pe hartă) și, mai târziu, pentru cronică. */
@@ -84,6 +93,7 @@ export interface ReactionEvent {
 export interface Spawn {
   readonly tick: number
   readonly tip: EnemyType
+  readonly trasaturi?: readonly Trait[]
 }
 
 export interface Tower {
@@ -128,7 +138,25 @@ export interface GameState {
   readonly reactii: Readonly<Partial<Record<ReactionType, number>>>
   /** Reacțiile din ultimul tick. Nu influențează viitorul — doar desenul le citește. */
   readonly evenimente: readonly ReactionEvent[]
+  /** Oferta draftului din pregătirea asta (goală = nicio carte de ales). Se face când se termină un val. */
+  readonly oferta: readonly CardId[]
+  /** Cărțile alese, în ordine. */
+  readonly carti: readonly CardId[]
+  /** Turnurile gratuite primite din draft, pe tip. */
+  readonly gratuite: Readonly<Partial<Record<TowerType, number>>>
+  /** Îmbunătățirile din draft, pe tip: procentele adunate. */
+  readonly imbunatatiri: Improvements
+  /** Ocoluri în plus în pregătirea curentă (cartea „Ocol în plus”). Se golește când pornește valul. */
+  readonly ocoluriBonus: number
 }
+
+/** Îmbunătățirile unui tip de turn: +`dauna`% daună, trage cu `reincarcare`% mai des. */
+export interface Improvement {
+  readonly dauna: number
+  readonly reincarcare: number
+}
+
+export type Improvements = Readonly<Partial<Record<TowerType, Improvement>>>
 
 export function newGame(seed: number): GameState {
   const { map, path } = generateMap(seed)
@@ -151,32 +179,52 @@ export function newGame(seed: number): GameState {
     urmatorulId: 1,
     reactii: {},
     evenimente: [],
+    oferta: [],
+    carti: [],
+    gratuite: {},
+    imbunatatiri: {},
+    ocoluriBonus: 0,
   }
 }
 
 /** Cât de lung e drumul, în unitățile simulării. Un inamic ajunge la bază când îl parcurge. */
 export const pathLength = (s: GameState): number => (s.path.length - 1) * MILI_HEX
 
+/**
+ * Viața unui inamic de tipul `tip` în valul `valIndex`: a tipului × multiplicatorul valului × (1 + CRESTERE_VIATA ×
+ * valIndex / 100). Calculul e pe întregi (multiplicatorul valului în sutimi), ca rotunjirea să nu depindă de virgulă.
+ */
+export function enemyHealth(tip: EnemyType, valIndex: number): number {
+  const sutimi = Math.round((WAVES[valIndex]?.viata ?? 1) * 100)
+  return Math.round((ENEMIES[tip].viata * sutimi * (100 + CRESTERE_VIATA * valIndex)) / 10_000)
+}
+
+/** Multiplicatorul de viață al valului `valIndex` (pentru afișare): cât din viața de bază are fiecare inamic. */
+export const waveHealth = (valIndex: number): number => (Math.round((WAVES[valIndex]?.viata ?? 1) * 100) * (100 + CRESTERE_VIATA * valIndex)) / 10_000
+
 /** Programul de apariție al unui val, pornit la `startTick`. Ordine stabilă: tick, apoi ordinea grupurilor. */
 export function spawnSchedule(valIndex: number, startTick: number): Spawn[] {
   const wave = WAVES[valIndex]
   if (!wave) return []
-  const out: { tick: number; tip: EnemyType; ordine: number }[] = []
+  const out: { tick: number; tip: EnemyType; trasaturi?: readonly Trait[]; ordine: number }[] = []
   let ordine = 0
   for (const grp of wave.grupuri) {
     for (let k = 0; k < grp.numar; k++) {
-      out.push({ tick: startTick + 1 + grp.intarziere + k * grp.interval, tip: grp.tip, ordine: ordine++ })
+      out.push({ tick: startTick + 1 + grp.intarziere + k * grp.interval, tip: grp.tip, trasaturi: grp.trasaturi, ordine: ordine++ })
     }
   }
   out.sort((a, b) => a.tick - b.tick || a.ordine - b.ordine)
-  return out.map(({ tick, tip }) => ({ tick, tip }))
+  return out.map(({ tick, tip, trasaturi }) => (trasaturi ? { tick, tip, trasaturi } : { tick, tip }))
 }
+
+/** Câte ocoluri se pun în pregătirea asta: cele de pe val (relicvele le cresc) plus cele din cartea „Ocol în plus”. */
+export const detourLimit = (state: Pick<GameState, 'ocoluriPeVal' | 'ocoluriBonus'>): number => state.ocoluriPeVal + state.ocoluriBonus
 
 /** Se poate pune un ocol acum (faza, limita pe val)? Dacă nu, de ce. Folosit și de UI. */
 export function checkDetourAllowed(state: GameState): Result<true> {
   if (state.faza !== 'pregatire') return fail('drumul se modelează doar între valuri')
-  if (state.ocoluriFolosite >= state.ocoluriPeVal) {
-    const n = state.ocoluriPeVal
+  if (state.ocoluriFolosite >= detourLimit(state)) {
+    const n = detourLimit(state)
     return fail(n === 1 ? 'ocolul acestui val e deja pus — următorul vine după val' : `ai pus deja cele ${n} ocoluri ale acestui val — următoarele vin după val`)
   }
   return ok(true)
@@ -218,18 +266,34 @@ export function detourPossible(state: GameState): boolean {
 export function checkStartWave(state: GameState): Result<true> {
   if (state.faza !== 'pregatire') return fail('un val e deja în desfășurare sau partida s-a încheiat')
   if (!WAVES[state.val]) return fail('nu mai există valuri')
-  const rest = state.ocoluriPeVal - state.ocoluriFolosite
+  if (state.oferta.length > 0) return fail('alege întâi o carte din draft (1 din 3)')
+  const rest = detourLimit(state) - state.ocoluriFolosite
   if (rest > 0 && detourPossible(state)) {
-    if (state.ocoluriPeVal === 1) return fail('pune întâi ocolul acestui val — e obligatoriu')
+    if (detourLimit(state) === 1) return fail('pune întâi ocolul acestui val — e obligatoriu')
     return fail(rest === 1 ? 'mai ai de pus un ocol în pregătirea asta — e obligatoriu' : `mai ai de pus ${rest} ocoluri în pregătirea asta — sunt obligatorii`)
   }
   return ok(true)
 }
 
-/** Cât costă turnul `tip` pe hexagonul `hex`: prețul lui plus ce cere terenul (dealul). */
+/** Cât costă turnul `tip` pe hexagonul `hex`: prețul lui plus ce cere terenul (dealul) — sau nimic, cu o carte de turn gratuit. */
 export function towerCost(state: GameState, tip: TowerType, hex: string): number {
+  if ((state.gratuite[tip] ?? 0) > 0) return 0
   const t = state.map.terrain.get(hex)
   return TOWERS[tip].cost + (t === undefined ? 0 : (TERRAIN[t].costTurn ?? 0))
+}
+
+/** Dauna unei lovituri a turnului `tip`, cu îmbunătățirile din draft. */
+export function towerDamage(state: Pick<GameState, 'imbunatatiri'>, tip: TowerType): number {
+  return Math.floor((TOWERS[tip].dauna * (100 + (state.imbunatatiri[tip]?.dauna ?? 0))) / 100)
+}
+
+/**
+ * Reîncărcarea turnului `tip`, cu îmbunătățirile din draft. „Trage cu p% mai des” = cadența × (100 + p)/100, deci
+ * cărțile se adună fără să ajungă vreodată la zero: reîncărcarea × 100/(100 + p), rotunjit, cel puțin 1 tick.
+ */
+export function towerReload(state: Pick<GameState, 'imbunatatiri'>, tip: TowerType): number {
+  const p = state.imbunatatiri[tip]?.reincarcare ?? 0
+  return Math.max(1, Math.floor((TOWERS[tip].reincarcare * 200 + (100 + p)) / (2 * (100 + p))))
 }
 
 /** Raza turnului: a tipului, plus ce dă terenul pe care stă (dealul). */
@@ -278,8 +342,9 @@ export function incompatiblePair(tipuri: readonly TowerType[]): readonly [TowerT
   return COMBINARE.incompatibile.find(([a, b]) => tipuri.includes(a) && tipuri.includes(b))
 }
 
-/** Reîncărcarea unui grup combinat: a celui mai lent turn. */
-export const groupReload = (tipuri: readonly TowerType[]): number => Math.max(...tipuri.map((t) => TOWERS[t].reincarcare))
+/** Reîncărcarea unui grup combinat: a celui mai lent turn (cu îmbunătățirile din draft). */
+export const groupReload = (tipuri: readonly TowerType[], imbunatatiri: Improvements = {}): number =>
+  Math.max(...tipuri.map((t) => towerReload({ imbunatatiri }, t)))
 
 /** Combinațiile de elemente din grup care schimbă armura (`COMBINARE.armura`), în ordinea din date. */
 export function armorCombos(tipuri: readonly TowerType[]): ArmorCombo[] {
@@ -296,8 +361,10 @@ export function armorCombos(tipuri: readonly TowerType[]): ArmorCombo[] {
  * la cel mai apropiat întreg, cel puțin o dată pe turn), deci combinarea singură nu trece de ea. Doar combinațiile
  * din `COMBINARE.armura` o străpung (`penetrare`) sau o ignoră.
  */
-export function combinedContacts(tipuri: readonly TowerType[]): Contact[] {
-  const R = groupReload(tipuri)
+export function combinedContacts(tipuri: readonly TowerType[], imbunatatiri: Improvements = {}): Contact[] {
+  const R = groupReload(tipuri, imbunatatiri)
+  const dauna = (t: TowerType): number => towerDamage({ imbunatatiri }, t)
+  const reincarcare = (t: TowerType): number => towerReload({ imbunatatiri }, t)
   const elemente = new Set(tipuri.map((t) => TOWERS[t].element))
   const bonus = 100 + COMBINARE.bonusPeElement * Math.min(elemente.size - 1, COMBINARE.elementeInPlus)
   const combos = armorCombos(tipuri)
@@ -307,9 +374,9 @@ export function combinedContacts(tipuri: readonly TowerType[]): Contact[] {
     const ale = tipuri.filter((t) => TOWERS[t].element === element)
     const prim = ale[0]
     if (prim === undefined) continue
-    const baza = ale.reduce((sum, t) => sum + Math.floor((TOWERS[t].dauna * R) / TOWERS[t].reincarcare), 0)
+    const baza = ale.reduce((sum, t) => sum + Math.floor((dauna(t) * R) / reincarcare(t)), 0)
     // R / reîncărcare, rotunjit la cel mai apropiat întreg, pe întregi: ⌊(2R + r) / 2r⌋.
-    const lovituri = ale.reduce((sum, t) => sum + Math.max(1, Math.floor((2 * R + TOWERS[t].reincarcare) / (2 * TOWERS[t].reincarcare))), 0)
+    const lovituri = ale.reduce((sum, t) => sum + Math.max(1, Math.floor((2 * R + reincarcare(t)) / (2 * reincarcare(t)))), 0)
     out.push({ element, dauna: Math.floor((baza * bonus) / 100), aplica: TOWERS[prim].aplica, lovituri, ...(penetrare > 0 ? { penetrare } : {}) })
   }
   return out
@@ -343,6 +410,57 @@ export function checkCombine(state: GameState, id: number, activ: boolean): Resu
   return ok(true)
 }
 
+/**
+ * Oferta draftului pentru pregătirea curentă (`state.val`): `DRAFT.marime` cărți diferite, trase din fluxul
+ * „draft/<val>”. `DRAFT.dinAfara` dintre ele sunt pentru tipuri de turn pe care jucătorul nu le are; restul, din stilul
+ * lui (tipurile pe care le are, relicvele, traseul). Relicvele deja luate nu mai apar. Dacă un fel se termină, se ia
+ * din celălalt. Ordinea: întâi cele din stil, apoi cele din afară.
+ */
+export function draftOffer(state: Pick<GameState, 'seed' | 'val' | 'turnuri' | 'carti'>): CardId[] {
+  const rng = createRng(state.seed, `draft/${state.val}`)
+  const owned = new Set(state.turnuri.map((t) => t.tip))
+  const available = CARD_IDS.filter((id) => !(CARDS[id].efect.tip === 'relicva' && state.carti.includes(id)))
+  const outside = (id: CardId): boolean => {
+    const t = cardTower(id)
+    return t !== undefined && owned.size > 0 && !owned.has(t)
+  }
+  const inStyle = available.filter((id) => !outside(id))
+  const other = available.filter(outside)
+  const take = (pool: CardId[], n: number): CardId[] => {
+    const out: CardId[] = []
+    while (out.length < n && pool.length > 0) out.push(...pool.splice(rng.int(pool.length), 1))
+    return out
+  }
+  const fromOther = take(other, DRAFT.dinAfara)
+  const fromStyle = take(inStyle, DRAFT.marime - fromOther.length)
+  return [...fromStyle, ...fromOther, ...take([...inStyle, ...other], DRAFT.marime - fromStyle.length - fromOther.length)]
+}
+
+/** Se poate alege cartea `carte` acum? Dacă nu, de ce. */
+export function checkPick(state: GameState, carte: CardId): Result<true> {
+  if (state.faza !== 'pregatire') return fail('cărțile se aleg doar între valuri')
+  if (state.oferta.length === 0) return fail('nu e nicio carte de ales acum — draftul vine după fiecare val')
+  if (!state.oferta.includes(carte)) return fail('cartea nu e în oferta de acum')
+  return ok(true)
+}
+
+/** Efectul unei cărți asupra stării. */
+function applyCard(state: GameState, efect: CardEffect): GameState {
+  switch (efect.tip) {
+    case 'turn':
+      return { ...state, gratuite: { ...state.gratuite, [efect.turn]: (state.gratuite[efect.turn] ?? 0) + 1 } }
+    case 'imbunatatire': {
+      const cur = state.imbunatatiri[efect.turn] ?? { dauna: 0, reincarcare: 0 }
+      const next = { dauna: cur.dauna + (efect.dauna ?? 0), reincarcare: cur.reincarcare + (efect.reincarcare ?? 0) }
+      return { ...state, imbunatatiri: { ...state.imbunatatiri, [efect.turn]: next } }
+    }
+    case 'relicva':
+      return { ...state, ocoluriPeVal: state.ocoluriPeVal + (efect.ocoluriPeVal ?? 0), vieti: state.vieti + (efect.vieti ?? 0) }
+    case 'traseu':
+      return { ...state, ocoluriBonus: state.ocoluriBonus + efect.ocoluri }
+  }
+}
+
 /** Se poate construi turnul `tip` pe hexagonul `hex` acum? Dacă nu, de ce. Folosit și de previzualizare. */
 export function checkBuild(state: GameState, tip: TowerType, hex: string): Result<true> {
   if (state.faza !== 'pregatire') return fail('turnurile se construiesc doar între valuri')
@@ -373,7 +491,7 @@ export function applyDecision(state: GameState, d: Decision): Result<GameState> 
       // Turnurile încep fiecare val încărcate.
       const turnuri = state.turnuri.map((t) => (t.reincarcare === 0 ? t : { ...t, reincarcare: 0 }))
       return ok(
-        logged({ ...state, faza: 'val', turnuri, ocoluriFolosite: 0, evenimente: [], deGenerat: spawnSchedule(state.val, state.tick) }),
+        logged({ ...state, faza: 'val', turnuri, ocoluriFolosite: 0, ocoluriBonus: 0, evenimente: [], deGenerat: spawnSchedule(state.val, state.tick) }),
       )
     }
     case 'turn': {
@@ -388,9 +506,12 @@ export function applyDecision(state: GameState, d: Decision): Result<GameState> 
       const vecini = state.turnuri.filter((t) => distance(fromKey(t.hex), at) === 1)
       const grup = groupOf(turnuri, tower.id)
       const combinat = vecini.length > 0 && vecini.every((t) => t.combinat) && !incompatiblePair(grup.map((t) => t.tip))
+      // Un turn gratuit din draft se consumă la construcție.
+      const gratuit = (state.gratuite[d.turn] ?? 0) > 0
       return ok(
         logged({
           ...state,
+          gratuite: gratuit ? { ...state.gratuite, [d.turn]: (state.gratuite[d.turn] ?? 0) - 1 } : state.gratuite,
           aur: state.aur - towerCost(state, d.turn, d.hex),
           turnuri: withMode(turnuri, grup, combinat),
           urmatorulTurn: state.urmatorulTurn + 1,
@@ -411,6 +532,11 @@ export function applyDecision(state: GameState, d: Decision): Result<GameState> 
       if (t.tintire === d.mod) return fail(combinat ? 'grupul țintește deja așa' : 'turnul țintește deja așa')
       const ids = new Set(combinat ? grup.map((x) => x.id) : [t.id])
       return ok(logged({ ...state, turnuri: state.turnuri.map((x) => (ids.has(x.id) ? { ...x, tintire: d.mod } : x)) }))
+    }
+    case 'alege': {
+      const allowed = checkPick(state, d.carte)
+      if (!allowed.ok) return fail(allowed.reason)
+      return ok(logged(applyCard({ ...state, oferta: [], carti: [...state.carti, d.carte] }, CARDS[d.carte].efect)))
     }
     case 'combina': {
       // Ca ținta, modul se poate schimba și în timpul valului.
@@ -491,6 +617,7 @@ export function pathContacts(state: Pick<GameState, 'map' | 'path'>): readonly (
 }
 
 const TERRAIN_ORDER = Object.keys(TERRAIN) as Terrain[]
+const TOWERS_ORDER = Object.keys(TOWERS) as TowerType[]
 
 /** Inamicul în timpul unui pas: obiect nou, modificabil; `fost` = hexagonul de drum de la începutul pasului. */
 type LiveEnemy = { -readonly [K in keyof Enemy]: Enemy[K] } & { stari: States; fost: number }
@@ -501,7 +628,6 @@ export function step(state: GameState): GameState {
   const tick = state.tick + 1
   const end = pathLength(state)
   const valIndex = state.val
-  const multiplier = WAVES[valIndex]?.viata ?? 1
   const indexOf = (progres: number): number => Math.min(state.path.length - 1, Math.floor((progres + MILI_HEX / 2) / MILI_HEX))
 
   // 1. Inamicii existenți merg înainte, cu viteza dată de stări (răcit încetinește, înghețat oprește);
@@ -519,7 +645,8 @@ export function step(state: GameState): GameState {
   let urmatorulId = state.urmatorulId
   while (i < state.deGenerat.length && (state.deGenerat[i] as Spawn).tick <= tick) {
     const sp = state.deGenerat[i] as Spawn
-    live.push({ id: urmatorulId++, tip: sp.tip, viata: Math.round(ENEMIES[sp.tip].viata * multiplier), progres: 0, stari: {}, fost: -1 })
+    const nou = { id: urmatorulId++, tip: sp.tip, viata: enemyHealth(sp.tip, valIndex), progres: 0, stari: {}, fost: -1 }
+    live.push(sp.trasaturi ? { ...nou, trasaturi: sp.trasaturi } : nou)
     i++
   }
   const deGenerat = state.deGenerat.slice(i)
@@ -573,8 +700,8 @@ export function step(state: GameState): GameState {
     } else if (grup) {
       const target = pickTarget(inRangeOf(grup.map((m) => coverage(state.path, m.hex, towerRange(state, m.tip, m.hex)))), t.tintire)
       if (target) {
-        for (const c of combinedContacts(grup.map((m) => m.tip))) if (target.viata > 0) applyContact(target, c, ctx)
-        const R = groupReload(grup.map((m) => m.tip))
+        for (const c of combinedContacts(grup.map((m) => m.tip), state.imbunatatiri)) if (target.viata > 0) applyContact(target, c, ctx)
+        const R = groupReload(grup.map((m) => m.tip), state.imbunatatiri)
         urmatoarea = (m) => ({ ...m, reincarcare: R, lovitura: { tick, tinte: [target.id] } })
       } else urmatoarea = (m) => (m.reincarcare === 0 ? m : { ...m, reincarcare: 0 })
     } else {
@@ -583,9 +710,10 @@ export function step(state: GameState): GameState {
       const target = info.zona ? undefined : pickTarget(inRange, t.tintire)
       const tinte = info.zona ? inRange : target ? [target] : []
       if (tinte.length > 0) {
-        const lovitura: Contact = { element: info.element, dauna: info.dauna, aplica: info.aplica }
+        const lovitura: Contact = { element: info.element, dauna: towerDamage(state, t.tip), aplica: info.aplica }
         for (const e of tinte) applyContact(e, lovitura, ctx)
-        urmatoarea = (m) => ({ ...m, reincarcare: info.reincarcare, lovitura: { tick, tinte: tinte.map((e) => e.id) } })
+        const R = towerReload(state, t.tip)
+        urmatoarea = (m) => ({ ...m, reincarcare: R, lovitura: { tick, tinte: tinte.map((e) => e.id) } })
       } else urmatoarea = (m) => (m.reincarcare === 0 ? m : { ...m, reincarcare: 0 })
     }
     for (const m of membri) decise.set(m.id, urmatoarea(m))
@@ -597,7 +725,10 @@ export function step(state: GameState): GameState {
   const inamici: Enemy[] = []
   for (const e of live) {
     if (e.viata <= 0) aur += ENEMIES[e.tip].aur
-    else inamici.push({ id: e.id, tip: e.tip, viata: e.viata, progres: e.progres, stari: e.stari })
+    else {
+      const { fost: _fost, ...enemy } = e
+      inamici.push(enemy)
+    }
   }
 
   // 7. Sfârșitul valului sau al partidei.
@@ -605,7 +736,9 @@ export function step(state: GameState): GameState {
   if (vieti <= 0) return { ...next, vieti: 0, faza: 'pierdut' }
   if (deGenerat.length === 0 && inamici.length === 0) {
     const val = valIndex + 1
-    return { ...next, val, faza: val >= WAVES.length ? 'castigat' : 'pregatire' }
+    if (val >= WAVES.length) return { ...next, val, faza: 'castigat' }
+    // Valul s-a încheiat: urmează draftul (1 din 3) pentru pregătirea următoare.
+    return { ...next, val, faza: 'pregatire', oferta: draftOffer({ ...next, val }) }
   }
   return next
 }
@@ -642,7 +775,11 @@ export function fingerprint(state: GameState): string {
     `val=${state.val}`,
     `vieti=${state.vieti}`,
     `aur=${state.aur}`,
-    `ocoluri=${state.ocoluriFolosite}/${state.ocoluriPeVal}`,
+    `ocoluri=${state.ocoluriFolosite}/${state.ocoluriPeVal}+${state.ocoluriBonus}`,
+    `oferta=${state.oferta.join(',')}`,
+    `carti=${state.carti.join(',')}`,
+    `gratuite=${TOWERS_ORDER.map((t) => state.gratuite[t] ?? 0).join(',')}`,
+    `imbunatatiri=${TOWERS_ORDER.map((t) => `${state.imbunatatiri[t]?.dauna ?? 0}/${state.imbunatatiri[t]?.reincarcare ?? 0}`).join(',')}`,
     // Contoarele de id sunt stare cu viitor: de îndată ce un turn va putea dispărea (vânzare, de exemplu),
     // `urmatorulTurn` nu mai e „numărul de turnuri + 1”, deci intră separat în amprentă.
     `urmatorulTurn=${state.urmatorulTurn}`,
@@ -654,7 +791,7 @@ export function fingerprint(state: GameState): string {
     STATE_ORDER.filter((st) => e.stari[st] !== undefined)
       .map((st) => `${st}:${e.stari[st]}`)
       .join(',')
-  parts.push(`inamici=${state.inamici.map((e) => `${e.id}/${e.tip}/${e.viata}/${e.progres}/${stari(e)}`).join(';')}`)
+  parts.push(`inamici=${state.inamici.map((e) => `${e.id}/${e.tip}/${e.viata}/${e.progres}/${stari(e)}/${(e.trasaturi ?? []).join('+')}`).join(';')}`)
   const reactii = Object.entries(state.reactii).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0))
   parts.push(`reactii=${reactii.map(([r, n]) => `${r}:${n}`).join(',')}`)
   parts.push(`deGenerat=${state.deGenerat.length}`)

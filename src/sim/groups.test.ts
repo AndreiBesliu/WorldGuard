@@ -163,19 +163,19 @@ describe('lovitura combinată', () => {
   })
 
   it('fiecare turn dă ce ar fi dat singur într-o reîncărcare a grupului, plus bonusul pe elemente; în ordinea fixă', () => {
-    // Fizic 40 la 30 de tick-uri, Fulger 36 la 24: grupul trage la 30; Fulger ar fi dat 36 × 30/24 = 45.
+    // Fizic 40 la 30 de tick-uri, Fulger 30 la 24: grupul trage la 30; Fulger ar fi dat 30 × 30/24 = 37,5 → 37.
     // Două elemente diferite: +15%. Fulgerul lovește întâi.
     expect(groupReload(['fizic', 'fulger'])).toBe(30)
     // Fiecare atingere ține locul loviturilor de atunci: Fulger 30/24 = 1,25 → 1, Fizic 1.
     expect(combinedContacts(['fizic', 'fulger'])).toEqual([
-      { element: 'fulger', dauna: Math.floor((45 * 115) / 100), aplica: undefined, lovituri: 1 },
+      { element: 'fulger', dauna: Math.floor((37 * 115) / 100), aplica: undefined, lovituri: 1 },
       { element: 'impact', dauna: Math.floor((40 * 115) / 100), aplica: undefined, lovituri: 1 },
     ])
     // Același element de două ori se adună, fără bonus; Foc lasă arsura.
     expect(combinedContacts(['foc', 'foc'])).toEqual([{ element: 'foc', dauna: 18, aplica: 'arde', lovituri: 2 }])
     // Trei elemente: +30%; Foc cu reîncărcare 5 contribuie 9 × 30/5 = 54.
     expect(combinedContacts(['foc', 'fizic', 'fulger']).map((c) => [c.element, c.dauna])).toEqual([
-      ['fulger', Math.floor((45 * 130) / 100)],
+      ['fulger', Math.floor((37 * 130) / 100)],
       ['impact', Math.floor((40 * 130) / 100)],
       ['foc', Math.floor((54 * 130) / 100)],
     ])
