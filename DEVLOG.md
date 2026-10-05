@@ -1574,3 +1574,44 @@ i-ar aduce / doar 3 amfibi.
    - tipurile de planete (ocean, vulcanică, junglă, gheață);
    - botul care semnalează regiunile devenite banale și reluarea unei regiuni de la zero;
    - favoarea zeilor sau cronica.
+
+---
+
+## 05.10.2026 (18) — Răspunsurile owner-ului la felia 10: amfibi și din apa naturală
+
+**Răspunsuri:**
+1. „Noroiul să și ude?”: **rămâne** o capcană simplă — doar încetinește.
+2. „Amfibii să vină și din apa naturală?”: **da**.
+3. „Ce urmează?”: **modificatorii** (GDD §9.2). E felia 11, în PR-ul ei.
+
+**Făcut — amfibii din apa naturală** (cifrele, în `AMFIBII.apaNaturala`, sunt propunerea mea):
+- pe orice hartă, cu sau fără planetă, apa naturală de lângă drumul vechi aduce un amfibiu pe val la fiecare 4
+  hexagoane, cel mult 3, de la valul 3; cu cei din canalele săpate, cel mult 6 pe val;
+- se socotește pe harta generată (`naturalAmphibians`), deci un canal săpat lângă drum nu numără de două ori;
+- cardul regiunii spune de unde vin: „Amfibi în fiecare val, de la al treilea: 4 (apa de lângă drum: 3, canalele
+  săpate: 1)”.
+
+**Măsurat:**
+- **Câtă apă e lângă drum**, pe 40 de hărți: mediana 9 hexagoane, între 2 și 28. Cu „unul la 3” (prima idee), o
+  hartă obișnuită ar fi avut 3 amfibi pe val, iar una udă 6. Am ales „unul la 4, cel mult 3”, ca hărțile ude să nu fie
+  mult mai grele și ca, cu plafonul general de 6, canalele săpate să conteze în continuare.
+- **Botul**, câștiguri din 20, fără și cu amfibii din apa naturală:
+
+  | strategie | răsfirate | lipite, combinate |
+  |---|---|---|
+  | doar Fizic | 20 / 19 | 18 / 15 |
+  | doar Foc | 19 / 18 | 20 / 20 |
+  | Frig + Fulger | 20 / 20 | 19 / 19 |
+  | Frig + Fizic | 19 / 19 | 19 / 18 |
+  | Fizic + Foc | 18 / 17 | 19 / 18 |
+  | toate, pe rând | 10 / 12 | 12 / 13 |
+
+  Costul e mic: 106 → 105 câștiguri din 120 răsfirat, 107 → 103 combinat.
+- **Testele: 185** (de la 183): pragul de hexagoane, apa departe de drum, plafonul apei naturale, canalul care nu
+  numără de două ori.
+- **În browser:**
+  - partida liberă pe harta 2026 are acum 3 amfibi pe val de la valul 3 și merge fără erori (aurul diferă de la valul
+    3, viețile nu);
+  - cardul planetei arată sursele.
+
+**Propuneri ale mele, nedecise:** unul la 4 hexagoane, cel mult 3 din apa naturală.

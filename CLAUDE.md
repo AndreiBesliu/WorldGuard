@@ -232,5 +232,5 @@ Felia 6, decisă de owner (05.10.2026). Cifrele în `src/data/economie.ts`.
   roiuri); doar partidele câștigate lasă urme pe teren. 173 de teste.
 - **Felia 10 (05.10.2026):** urmele cu două tăișuri — noroiul (cenușă + apă, împotmolește) și amfibii (canalele săpate
   îi aduc; apa îi grăbește). Reguli pe date: `AMESTECURI` (terenuri), `EnemyInfo.inLoc` (stări primite altfel),
-  `StateInfo.grabire`. 183 de teste.
+  `StateInfo.grabire`. Amfibii vin și din apa naturală de lângă drum (`naturalAmphibians`, decis de owner). 185 de teste.
 - **Următorul:** de ales cu owner-ul (vezi DEVLOG).

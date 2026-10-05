@@ -4,7 +4,7 @@ import { AMFIBII, EVOLUTIE, LUME } from '../data/lume'
 import { STATES } from '../data/reactions'
 import type { Terrain } from '../data/terrain'
 import { TOWERS } from '../data/towers'
-import { enemySpeed, fingerprint, newGame, pathContacts, spawnSchedule, step, waveAt, type Enemy, type GameState } from './game'
+import { enemySpeed, fingerprint, naturalAmphibians, newGame, pathContacts, spawnSchedule, step, waveAt, type Enemy, type GameState } from './game'
 import { key, neighbors } from './hex'
 import { commitRun, dugCanals, newWorld, regionAmphibians, startRun } from './lume'
 import { mixTerrain } from './map'
@@ -138,14 +138,38 @@ describe('amfibii: canalul săpat îi aduce (GDD §9.1)', () => {
     l = commitRun(l, START, { ...jucata, faza: 'castigat', tick: 1000 })
     expect(dugCanals(l, START)).toBe(3)
     expect(regionAmphibians(l, START)).toBe(3 * AMFIBII.peCanal)
+    // În partidă: cei din canale, plus cei din apa naturală a hărții regiunii.
     const next = startRun(l, START)
-    expect(next.ok && next.value.state.amfibii).toBe(3)
+    expect(next.ok && next.value.start.amfibii).toBe(3)
+    expect(next.ok && next.value.state.amfibii).toBe(Math.min(AMFIBII.maxim, 3 + naturalAmphibians(s.map, s.path)))
     // Colmatate, nu mai aduc pe nimeni.
     const colmatat = { ...l, ceas: l.ceas + EVOLUTIE.canal[1]!.dupa }
     expect(regionAmphibians(colmatat, START)).toBe(0)
     // Un canal acoperit apoi de un deal (ultima editare câștigă) nu mai e canal.
     const cuDeal = { ...l, regiuni: { [START]: { ...l.regiuni[START]!, editari: [...l.regiuni[START]!.editari, { hex: libere[0]!, actiune: 'deal' as const, la: l.ceas }] } } }
     expect(dugCanals(cuDeal, START)).toBe(2)
+  })
+
+  it('și apa naturală îi aduce (owner): unul la fiecare câteva hexagoane de apă de lângă drum, cu plafonul ei', () => {
+    const k = AMFIBII.apaNaturala.hexagoane
+    // Apă pe rândul de deasupra drumului, departe de capete: k − 1 hexagoane nu aduc niciunul, k aduc unul.
+    const lac = (n: number): GameState => arena(Object.fromEntries(Array.from({ length: n }, (_, i) => [`${i - 4},-1`, 'apa' as const])))
+    expect(naturalAmphibians(lac(k - 1).map, lac(k - 1).path)).toBe(0)
+    expect(naturalAmphibians(lac(k).map, lac(k).path)).toBe(1)
+    expect(naturalAmphibians(lac(9).map, lac(9).path)).toBe(Math.min(AMFIBII.apaNaturala.maxim, Math.floor(9 / k)))
+    // Apa departe de drum nu contează.
+    expect(naturalAmphibians(arena({ '0,-5': 'apa', '1,-5': 'apa', '2,-5': 'apa', '3,-5': 'apa' }).map, lac(0).path)).toBe(0)
+    // Plafonul apei naturale.
+    const mare = arena(Object.fromEntries(Array.from({ length: 16 }, (_, i) => [`${i - 8},-1`, 'apa' as const])))
+    expect(naturalAmphibians(mare.map, mare.path)).toBe(AMFIBII.apaNaturala.maxim)
+  })
+
+  it('apa naturală se socotește pe harta generată: un canal săpat lângă drum nu numără de două ori', () => {
+    const s = newGame(11)
+    const gol = [...s.map.terrain].filter(([h, t]) => t === 'campie' && !s.path.some((p) => key(p) === h)).map(([h]) => h)
+    const langaDrum = gol.filter((h) => s.path.some((p) => neighbors(p).some((n) => key(n) === h))).slice(0, 8)
+    const cuCanale = newGame(11, { teren: new Map(langaDrum.map((h): [string, Terrain] => [h, 'apa'])) })
+    expect(cuCanale.amfibii).toBe(s.amfibii)
   })
 
   it('plafonul: oricâte canale, cel mult `AMFIBII.maxim` amfibi pe val', () => {

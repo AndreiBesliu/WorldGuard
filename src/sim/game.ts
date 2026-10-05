@@ -238,8 +238,26 @@ export function newGame(seed: number, start: Start = {}): GameState {
     pamant: ECONOMIE.pamant.start,
     mine: [],
     inima: start.inima ?? false,
-    amfibii: Math.max(0, Math.min(AMFIBII.maxim, start.amfibii ?? 0)),
+    // Amfibii: din apa naturală de lângă drum (pe orice hartă) și din canalele săpate pe regiune (`start.amfibii`).
+    amfibii: Math.max(0, Math.min(AMFIBII.maxim, naturalAmphibians(gen.map, path) + (start.amfibii ?? 0))),
   }
+}
+
+/**
+ * Câți amfibi aduce apa naturală a hărții: câte unul la fiecare `AMFIBII.apaNaturala.hexagoane` hexagoane de apă vecine
+ * cu drumul inițial, cel mult `AMFIBII.apaNaturala.maxim`. Se socotește pe harta generată, nu pe terenul regiunii, ca
+ * un canal săpat să nu numere de două ori.
+ */
+export function naturalAmphibians(map: GameMap, path: readonly Hex[]): number {
+  const drum = new Set(path.map(key))
+  const apa = new Set<string>()
+  for (const h of path) {
+    for (const n of neighbors(h)) {
+      const k = key(n)
+      if (!drum.has(k) && map.terrain.get(k) === 'apa') apa.add(k)
+    }
+  }
+  return Math.min(AMFIBII.apaNaturala.maxim, Math.floor(apa.size / AMFIBII.apaNaturala.hexagoane))
 }
 
 /** Valul `i` al partidei: pe inima planetei, ultimul e `VAL_INIMA`; cu amfibi, fiecare val îi are la coadă. */

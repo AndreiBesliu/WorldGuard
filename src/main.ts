@@ -44,6 +44,7 @@ import {
   type Lume,
 } from './sim/lume'
 import { createPlanetScreen, type PlanetView } from './ui/planeta'
+import { generateMap } from './sim/map'
 import { draw, fitLayout, hexToPixel, pixelToHex, resetRenderCaches, type Layout, type Overlay } from './render/canvas'
 import { Fx, toWorld } from './render/fx'
 import {
@@ -63,6 +64,7 @@ import {
   groupReload,
   incompatiblePair,
   isCombined,
+  naturalAmphibians,
   newGame,
   pathLength,
   replay,
@@ -929,18 +931,23 @@ function planetView(l: Lume): PlanetView {
     const st = l.regiuni[r.cheie]
     const teren = regionTerrain(l, r.cheie)
     // Terenul de pe hartă, nu doar etapa editării: cenușa de lângă apă e deja noroi.
-    const harta = newGame(r.seed, { teren }).map
+    const din = regionAmphibians(l, r.cheie)
+    const partida = newGame(r.seed, { teren, amfibii: din })
+    const harta = partida.map
+    const naturali = naturalAmphibians(generateMap(r.seed).map, partida.path)
     const numar = new Map<Terrain, number>()
     for (const k of teren.keys()) {
       const t = harta.terrain.get(k)
       if (t) numar.set(t, (numar.get(t) ?? 0) + 1)
     }
-    const amfibii = regionAmphibians(l, r.cheie)
+    const surse = [naturali > 0 ? `apa de lângă drum: ${naturali}` : '', din > 0 ? `canalele săpate: ${din}` : ''].filter(Boolean).join(', ')
     const randuri = [
       teren.size > 0
         ? `Terenul schimbat: ${[...numar].map(([t, n]) => `${n} × ${TERRAIN[t].nume.toLowerCase()}`).join(', ')}`
         : 'Terenul e neatins.',
-      ...(amfibii > 0 ? [`Canalele săpate aduc ${amfibii} ${amfibii === 1 ? 'amfibiu' : 'amfibi'} în fiecare val: apa nu-i udă, îi grăbește.`] : []),
+      ...(partida.amfibii > 0
+        ? [`Amfibi în fiecare val, de la al treilea: ${partida.amfibii} (${surse}). Apa nu-i udă, îi grăbește.`]
+        : []),
       `Partide jucate aici: ${st?.partide ?? 0}`,
       ...(r.inima ? ['Ultima regiune: cine îi salvează inima salvează planeta.'] : []),
     ]
