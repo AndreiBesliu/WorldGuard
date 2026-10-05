@@ -5,7 +5,7 @@ import { MILI_HEX } from '../data/joc'
 import { STATES } from '../data/reactions'
 import { TERRAIN } from '../data/terrain'
 import { TOWERS, type TowerInfo, type TowerType } from '../data/towers'
-import { enemySpeed, pathContacts, type Enemy, type GameState } from '../sim/game'
+import { enemySpeed, isCombined, pathContacts, towerGroups, type Enemy, type GameState } from '../sim/game'
 import { distance, fromKey, type Hex } from '../sim/hex'
 import { STATE_ORDER } from '../sim/reactions'
 
@@ -18,13 +18,20 @@ export interface Layout {
   readonly originY: number
 }
 
-/** Hexagoanele „pointy-top” încap pe ecran, centrate. */
-export function fitLayout(radius: number, width: number, height: number, topReserve: number): Layout {
-  const usableH = height - topReserve
-  const sizeByW = width / (SQRT3 * (2 * radius + 1) + 2)
-  const sizeByH = usableH / (1.5 * (2 * radius) + 2 + 1)
+/** Zona ecranului rămasă liberă pentru hartă (între barele și panoul interfeței), în pixeli CSS. */
+export interface Rect {
+  readonly x: number
+  readonly y: number
+  readonly w: number
+  readonly h: number
+}
+
+/** Hexagoanele „pointy-top” încap în `area`, centrate. */
+export function fitLayout(radius: number, area: Rect): Layout {
+  const sizeByW = area.w / (SQRT3 * (2 * radius + 1) + 1)
+  const sizeByH = area.h / (1.5 * (2 * radius) + 2 + 0.5)
   const size = Math.max(6, Math.min(sizeByW, sizeByH))
-  return { size, originX: width / 2, originY: topReserve + usableH / 2 }
+  return { size, originX: area.x + area.w / 2, originY: area.y + area.h / 2 }
 }
 
 export function hexToPixel(h: Hex, l: Layout): { x: number; y: number } {
@@ -70,21 +77,24 @@ export interface Overlay {
   readonly span?: number
   /** Ocolul propus, desenat ca fantomă. */
   readonly preview?: readonly Hex[]
-  readonly lines: readonly string[]
-  readonly message?: string
   /**
    * Cât din tick-ul următor a trecut deja (0..1). Doar desenul îl folosește, ca mișcarea să fie lină între
    * două tick-uri; simularea rămâne pe pas fix.
    */
   readonly alpha?: number
-  /** Raza unui turn (cel de sub mouse sau cel care urmează să fie construit). */
-  readonly range?: { readonly hex: Hex; readonly raza: number; readonly culoare: string }
+  /**
+   * Raza arătată: a turnului de sub mouse, a celui de construit, sau — pentru un grup combinat — reuniunea razelor
+   * turnurilor lui (un hexagon e luminat dacă îl acoperă oricare).
+   */
+  readonly range?: { readonly cercuri: readonly { readonly hex: Hex; readonly raza: number }[]; readonly culoare: string }
   /** Turnul care s-ar construi aici, ca fantomă; `ok: false` = nu se poate (motivul e în text). */
   readonly ghost?: { readonly hex: Hex; readonly tip: TowerType; readonly ok: boolean }
   /** Textele reacțiilor de pe hartă: unde (pe drum), ce scrie și cât de vechi sunt (0 = proaspete, 1 = dispar). */
   readonly popups?: readonly { readonly text: string; readonly culoare: string; readonly progres: number; readonly varsta: number }[]
-  /** Anunțul unei reacții descoperite acum, în mijlocul hărții. */
-  readonly banner?: string
+  /** Legăturile fantomei cu turnurile vecine: grupul în care ar intra, combinat sau nu. */
+  readonly ghostLinks?: readonly { readonly to: Hex; readonly combinat: boolean }[]
+  /** Turnul ales (click): un inel în jurul lui. */
+  readonly selected?: Hex
 }
 
 function drawCross(ctx: CanvasRenderingContext2D, x: number, y: number, size: number): void {
@@ -98,7 +108,23 @@ function drawCross(ctx: CanvasRenderingContext2D, x: number, y: number, size: nu
   ctx.stroke()
 }
 
-function drawTower(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, info: TowerInfo, alpha = 1): void {
+/** Culorile grupurilor: auriu = combinat (un singur turn), alb-transparent = turnuri vecine care trag individual. */
+const LINK_COMBINAT = 'rgba(245, 215, 110, 0.95)'
+const LINK_INDIVIDUAL = 'rgba(232, 230, 227, 0.45)'
+
+function drawLink(ctx: CanvasRenderingContext2D, a: { x: number; y: number }, b: { x: number; y: number }, size: number, combinat: boolean, dashed = false): void {
+  ctx.beginPath()
+  ctx.moveTo(a.x, a.y)
+  ctx.lineTo(b.x, b.y)
+  ctx.strokeStyle = combinat ? LINK_COMBINAT : LINK_INDIVIDUAL
+  ctx.lineWidth = combinat ? Math.max(4, size * 0.24) : Math.max(2, size * 0.09)
+  ctx.lineCap = 'round'
+  if (dashed) ctx.setLineDash([5, 4])
+  ctx.stroke()
+  ctx.setLineDash([])
+}
+
+function drawTower(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, info: TowerInfo, alpha = 1, contur = '#12161c'): void {
   const r = size * 0.62
   ctx.globalAlpha = alpha
   ctx.beginPath()
@@ -125,8 +151,8 @@ function drawTower(ctx: CanvasRenderingContext2D, x: number, y: number, size: nu
   }
   ctx.fillStyle = info.culoare
   ctx.fill()
-  ctx.strokeStyle = '#12161c'
-  ctx.lineWidth = 2
+  ctx.strokeStyle = contur
+  ctx.lineWidth = contur === '#12161c' ? 2 : 3
   ctx.stroke()
   ctx.globalAlpha = 1
 }
@@ -143,22 +169,34 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     hexPath(ctx, x, y, l.size * 0.97)
     ctx.fillStyle = TERRAIN[t].culoare
     ctx.fill()
+    if (t === 'ulei') {
+      // Luciul uleiului, ca balta să nu se confunde cu un teren închis oarecare.
+      ctx.beginPath()
+      ctx.ellipse(x - l.size * 0.15, y - l.size * 0.1, l.size * 0.42, l.size * 0.2, -0.4, 0, Math.PI * 2)
+      ctx.fillStyle = 'rgba(170, 130, 255, 0.22)'
+      ctx.fill()
+      ctx.beginPath()
+      ctx.ellipse(x + l.size * 0.2, y + l.size * 0.18, l.size * 0.25, l.size * 0.1, -0.4, 0, Math.PI * 2)
+      ctx.fillStyle = 'rgba(120, 220, 170, 0.18)'
+      ctx.fill()
+    }
   }
 
   // Traseul: hexagoane deschise la culoare + linia prin centre, ca să se vadă ordinea. Hexagoanele de lângă apă
-  // au un contur albastru: acolo inamicii se udă (terenul participă la reacții, și regula se vede).
+  // au un contur albastru (acolo inamicii se udă), cele de lângă ulei unul maro-auriu (acolo se ung): terenul
+  // participă la reacții, și regula se vede.
   const contacts = pathContacts(s)
   s.path.forEach((h, i) => {
     const { x, y } = hexToPixel(h, l)
     hexPath(ctx, x, y, l.size * 0.97)
     ctx.fillStyle = '#d9c7a0'
     ctx.fill()
-    if (contacts[i]) {
-      hexPath(ctx, x, y, l.size * 0.78)
-      ctx.strokeStyle = 'rgba(74, 163, 255, 0.85)'
-      ctx.lineWidth = 2
+    ;(contacts[i] ?? []).forEach((c, j) => {
+      hexPath(ctx, x, y, l.size * (0.8 - j * 0.16))
+      ctx.strokeStyle = c.element === 'ulei' ? 'rgba(214, 138, 40, 1)' : 'rgba(74, 163, 255, 0.85)'
+      ctx.lineWidth = c.element === 'ulei' ? 2.5 : 2
       ctx.stroke()
-    }
+    })
   })
   if (o.start !== undefined && o.span !== undefined) {
     // Capetele ocolului: conturul galben. Porțiunea care dispare: hașurată.
@@ -216,11 +254,12 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     }
   }
 
-  // Raza turnului de sub mouse (sau a celui de construit): hexagoanele acoperite, ușor luminate.
+  // Raza turnului de sub mouse (sau a celui de construit, sau a grupului): hexagoanele acoperite, ușor luminate.
   if (o.range) {
+    const { cercuri } = o.range
     for (const k of s.map.terrain.keys()) {
       const h = fromKey(k)
-      if (distance(h, o.range.hex) > o.range.raza) continue
+      if (!cercuri.some((c) => distance(h, c.hex) <= c.raza)) continue
       const { x, y } = hexToPixel(h, l)
       hexPath(ctx, x, y, l.size * 0.97)
       ctx.fillStyle = 'rgba(255, 255, 255, 0.24)'
@@ -231,10 +270,34 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     }
   }
 
-  // Turnurile
+  // Grupurile (sub turnuri): o legătură între fiecare două turnuri vecine din grup — aurie dacă grupul e combinat.
+  const combinate = new Set<number>()
+  for (const g of towerGroups(s.turnuri)) {
+    if (g.length < 2) continue
+    const combinat = isCombined(g)
+    if (combinat) for (const t of g) combinate.add(t.id)
+    for (const a of g) {
+      for (const b of g) {
+        if (a.id < b.id && distance(fromKey(a.hex), fromKey(b.hex)) === 1) drawLink(ctx, hexToPixel(fromKey(a.hex), l), hexToPixel(fromKey(b.hex), l), l.size, combinat)
+      }
+    }
+  }
+  if (o.ghost) for (const link of o.ghostLinks ?? []) drawLink(ctx, hexToPixel(o.ghost.hex, l), hexToPixel(link.to, l), l.size, link.combinat, true)
+
+  // Turnurile; cele dintr-un grup combinat au conturul auriu.
   for (const t of s.turnuri) {
     const { x, y } = hexToPixel(fromKey(t.hex), l)
-    drawTower(ctx, x, y, l.size, TOWERS[t.tip])
+    drawTower(ctx, x, y, l.size, TOWERS[t.tip], 1, combinate.has(t.id) ? '#f5d76e' : '#12161c')
+  }
+  if (o.selected) {
+    const { x, y } = hexToPixel(o.selected, l)
+    ctx.beginPath()
+    ctx.arc(x, y, l.size * 0.9, 0, Math.PI * 2)
+    ctx.setLineDash([4, 3])
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 2
+    ctx.stroke()
+    ctx.setLineDash([])
   }
   if (o.ghost) {
     const { x, y } = hexToPixel(o.ghost.hex, l)
@@ -296,13 +359,14 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     }
   }
 
-  // Loviturile din ultimele două tick-uri: o linie spre țintă, sau un inel pentru turnul de zonă.
+  // Loviturile din ultimele două tick-uri: o linie spre țintă, sau un inel pentru turnul de zonă. Un grup combinat
+  // trage cu toate turnurile în aceeași țintă — și un Frig din el, care acolo nu mai lovește în zonă.
   for (const t of s.turnuri) {
     if (s.faza !== 'val' || !t.lovitura || s.tick - t.lovitura.tick > 1) continue
     const info = TOWERS[t.tip]
     const from = hexToPixel(fromKey(t.hex), l)
     ctx.strokeStyle = info.culoare
-    if (info.zona) {
+    if (info.zona && !combinate.has(t.id)) {
       ctx.beginPath()
       ctx.arc(from.x, from.y, l.size * (0.9 + info.raza * 1.2), 0, Math.PI * 2)
       ctx.lineWidth = 2
@@ -352,32 +416,5 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     ctx.fillStyle = pop.culoare
     ctx.fillText(pop.text, p0.x + (p1.x - p0.x) * frac, p0.y + (p1.y - p0.y) * frac - l.size * (0.6 + pop.varsta))
     ctx.globalAlpha = 1
-  }
-
-  // Anunțul unei reacții noi.
-  if (o.banner) {
-    ctx.font = 'bold 18px system-ui, sans-serif'
-    const w = ctx.measureText(o.banner).width + 32
-    const y = l.originY - l.size * 1.5 * (s.map.radius + 0.6)
-    ctx.fillStyle = 'rgba(18, 22, 28, 0.88)'
-    ctx.fillRect(l.originX - w / 2, y - 18, w, 36)
-    ctx.strokeStyle = '#f5d76e'
-    ctx.lineWidth = 2
-    ctx.strokeRect(l.originX - w / 2, y - 18, w, 36)
-    ctx.fillStyle = '#f5d76e'
-    ctx.fillText(o.banner, l.originX, y)
-  }
-
-  // Textul de sus
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'top'
-  ctx.font = '15px system-ui, sans-serif'
-  o.lines.forEach((line, i) => {
-    ctx.fillStyle = i === 0 ? '#ffffff' : '#c9c5bf'
-    ctx.fillText(line, 16, 12 + i * 20)
-  })
-  if (o.message) {
-    ctx.fillStyle = '#f0a35e'
-    ctx.fillText(o.message, 16, 12 + o.lines.length * 20 + 4)
   }
 }

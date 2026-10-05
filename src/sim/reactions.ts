@@ -28,6 +28,13 @@ export interface Contact {
   readonly dauna: number
   /** Starea pe care o lasă atingerea, dacă nicio reacție n-o blochează. */
   readonly aplica?: StateType
+  /**
+   * De câte ori se scade armura din daună (implicit 1). O lovitură combinată ține locul mai multor lovituri, deci
+   * armura se scade de câte ori ar fi lovit turnurile separat.
+   */
+  readonly lovituri?: number
+  /** Câtă armură nu contează la atingerea asta (implicit 0; `Infinity` = armura nu contează deloc). */
+  readonly penetrare?: number
 }
 
 export interface ReactionContext<V extends Victim> {
@@ -37,8 +44,12 @@ export interface ReactionContext<V extends Victim> {
   emit(tip: ReactionType, v: V): void
 }
 
-/** Dauna care trece de armură. Minimum 1: orice lovitură contează. */
-export const damageAfterArmor = (dauna: number, tip: EnemyType): number => Math.max(1, dauna - ENEMIES[tip].armura)
+/**
+ * Dauna care trece de armură: armura (minus ce străpunge lovitura) se scade o dată pentru fiecare lovitură pe care o
+ * ține locul atingerea. Minimum 1 pe lovitură: orice lovitură contează.
+ */
+export const damageAfterArmor = (dauna: number, tip: EnemyType, lovituri = 1, penetrare = 0): number =>
+  Math.max(lovituri, dauna - Math.max(0, ENEMIES[tip].armura - penetrare) * lovituri)
 
 export function hasTag(v: Pick<Victim, 'stari'>, tag: Tag): boolean {
   return STATE_ORDER.some((s) => v.stari[s] !== undefined && STATES[s].etichete.includes(tag))
@@ -53,8 +64,8 @@ function applyState(v: Victim, s: StateType): void {
   v.stari[s] = STATES[s].durata
 }
 
-function hurt(v: Victim, dauna: number): void {
-  if (dauna > 0) v.viata -= damageAfterArmor(dauna, v.tip)
+function hurt(v: Victim, dauna: number, lovituri = 1, penetrare = 0): void {
+  if (dauna > 0) v.viata -= damageAfterArmor(dauna, v.tip, lovituri, penetrare)
 }
 
 /**
@@ -99,7 +110,8 @@ export function applyContact<V extends Victim>(target: V, contact: Contact, ctx:
       if (rule.lant?.daunaAtingerii && v !== target) hurt(v, Math.floor((contact.dauna * (rule.lant.procent ?? 100)) / 100))
     }
   }
-  hurt(target, dauna)
+  // Lovitura însăși (cu armura ei: de câte ori se scade, cât străpunge). Dauna din reacții e o lovitură separată.
+  hurt(target, dauna, contact.lovituri ?? 1, contact.penetrare ?? 0)
   if (stare !== undefined && !blocata) applyState(target, stare)
 }
 

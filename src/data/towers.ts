@@ -103,6 +103,57 @@ export const TARGET_NAMES: Readonly<Record<TargetMode, string>> = {
 }
 
 /**
+ * Grupurile de turnuri (decis de owner, 05.10.2026). Turnurile puse unul lângă altul, de orice tip, formează un
+ * GRUP, iar grupul se comută între INDIVIDUAL (fiecare trage singur, ca până acum) și COMBINAT: un singur turn,
+ * cu o singură lovitură, la o singură țintă, aleasă din razele tuturor turnurilor lui.
+ *
+ * Lovitura combinată: fiecare turn contribuie cu dauna pe care ar fi dat-o singur într-o reîncărcare a grupului
+ * (a celui mai lent turn), iar elementele lovesc pe rând, în `ordine`. Cifrele sunt o propunere, de măsurat.
+ */
+/**
+ * O combinație de elemente care schimbă armura la lovitura combinată (decis de owner, 05.10.2026: „unele combinații
+ * cresc armor piercing sau fac bypass”). Care combinații și cu cât e propunerea mea, de măsurat.
+ */
+export interface ArmorCombo {
+  readonly nume: string
+  /** Elementele care trebuie să fie toate în grup. */
+  readonly elemente: readonly Element[]
+  /** Câtă armură nu mai contează, la fiecare lovitură. */
+  readonly penetrare?: number
+  /** Armura nu mai contează deloc. */
+  readonly ignora?: boolean
+  readonly descriere: string
+}
+
+export const COMBINARE: {
+  /** Procente de daună în plus pentru fiecare element diferit din grup, peste primul. */
+  readonly bonusPeElement: number
+  /** Câte elemente în plus contează la bonus, cel mult. */
+  readonly elementeInPlus: number
+  /**
+   * Ordinea elementelor într-o lovitură combinată: fulgerul întâi (sare pe inamicii uzi), frigul (îngheață udul),
+   * impactul (sparge gheața), focul la urmă (aprinde; pe un inamic uns, explozie).
+   */
+  readonly ordine: readonly Element[]
+  /** Tipurile care nu se pot combina în același grup (decis de owner, 05.10.2026: focul și frigul sunt incompatibile). */
+  readonly incompatibile: readonly (readonly [TowerType, TowerType])[]
+  /**
+   * Armura la lovitura combinată se scade de câte ori ar fi lovit turnurile separat — combinarea singură NU trece de
+   * armură (decis de owner, 05.10.2026). Doar combinațiile de aici o străpung sau o ignoră; mai multe se adună.
+   */
+  readonly armura: readonly ArmorCombo[]
+} = {
+  bonusPeElement: 15,
+  elementeInPlus: 3,
+  ordine: ['fulger', 'frig', 'impact', 'foc'],
+  incompatibile: [['foc', 'frig']],
+  armura: [
+    { nume: 'Fier încins', elemente: ['impact', 'foc'], ignora: true, descriere: 'focul înroșește metalul: armura nu mai contează' },
+    { nume: 'Metal fragil', elemente: ['impact', 'frig'], penetrare: 5, descriere: 'frigul face armura casantă: 5 armură nu mai contează' },
+  ],
+}
+
+/**
  * Aurul cu care pornești. Economia completă (dobânda, pământul) vine în felia 5; până atunci aurul
  * vine doar din inamicii uciși (GDD §7) și se cheltuie doar pe turnuri.
  */

@@ -185,11 +185,50 @@ describe('terenul în reacții', () => {
     return { ...s0, map: { ...s0.map, terrain }, ocoluriPeVal: 0 }
   }
 
+  it('un hexagon de drum vecin cu apă și cu ulei primește amândouă atingerile, în ordinea terenurilor', () => {
+    const terrainOf: Record<string, 'apa' | 'ulei'> = { '-3,-1': 'ulei', '-3,1': 'apa' }
+    const s0 = newGame(4)
+    const onPath = new Set(s0.path.map(key))
+    const terrain = new Map([...s0.map.terrain].map(([k]) => [k, onPath.has(k) ? ('campie' as const) : (terrainOf[k] ?? ('campie' as const))]))
+    const s: GameState = { ...s0, map: { ...s0.map, terrain } }
+    const at = (k: string): string[] => (pathContacts(s)[s.path.findIndex((h) => key(h) === k)] ?? []).map((c) => `${c.element}:${c.aplica}`)
+    expect(at('-3,0')).toEqual(['apa:ud', 'ulei:uns'])
+    expect(at('-4,0')).toEqual(['ulei:uns'])
+    expect(at('-2,0')).toEqual(['apa:ud'])
+    expect(at('0,0')).toEqual([])
+    // Și în simulare se aplică amândouă: în tick-ul în care primul inamic intră pe (-3,0), udul e proaspăt, iar
+    // uleiul (primit cu un hexagon înainte) e reîmprospătat și el.
+    let w = must({ ...s, ocoluriPeVal: 0 }, { tip: 'pornesteVal' })
+    let first: { ud?: number; uns?: number } | undefined
+    for (let t = 0; t < 2000 && w.faza === 'val' && !first; t++) {
+      w = step(w)
+      const e = w.inamici.find((x) => x.id === 1)
+      if (e?.stari.ud === STATES.ud.durata) first = e.stari
+    }
+    expect(first).toEqual({ ud: STATES.ud.durata, uns: STATES.uns.durata })
+  })
+
+  it('uleiul de pe hartă unge inamicii, iar focul îi aprinde: explozie', () => {
+    const s0 = newGame(4)
+    const onPath = new Set(s0.path.map(key))
+    const terrain = new Map([...s0.map.terrain].map(([k]) => [k, onPath.has(k) ? ('campie' as const) : k === '-3,-1' ? ('ulei' as const) : ('campie' as const)]))
+    let s: GameState = { ...s0, map: { ...s0.map, terrain }, ocoluriPeVal: 0 }
+    s = must(s, { tip: 'turn', turn: 'foc', hex: '-1,-1' })
+    s = must(s, { tip: 'pornesteVal' })
+    let uns = false
+    for (let t = 0; t < 20_000 && s.faza === 'val'; t++) {
+      s = step(s)
+      if (s.inamici.some((e) => e.stari.uns !== undefined)) uns = true
+    }
+    expect(uns).toBe(true)
+    expect(s.reactii.explozie ?? 0).toBeGreaterThan(0)
+  })
+
   it('apa udă inamicul exact când intră pe un hexagon de drum vecin cu ea', () => {
     const wet = new Set(neighbors({ q: -3, r: 0 }).map(key).filter((k) => k.endsWith(',-1')))
     let s = must(setup(4, (k) => wet.has(k)), { tip: 'pornesteVal' })
     const contacts = pathContacts(s)
-    const expected = s.path.map((_, i) => i).filter((i) => contacts[i] !== undefined)
+    const expected = s.path.map((_, i) => i).filter((i) => (contacts[i] ?? []).length > 0)
     expect(expected.length).toBeGreaterThan(0)
     // Primul inamic: la ce hexagon a primit udul proaspăt?
     const freshAt: number[] = []

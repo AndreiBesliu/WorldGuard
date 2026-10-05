@@ -40,7 +40,7 @@ describe('construcția', () => {
   it('turnul costă aur, primește un id și țintește implicit pe primul', () => {
     const s = build(newGame(3), 'fizic')
     expect(s.aur).toBe(AUR_START - TOWERS.fizic.cost)
-    expect(s.turnuri).toEqual([{ id: 1, tip: 'fizic', hex: s.turnuri[0]!.hex, tintire: 'primul', reincarcare: 0 }])
+    expect(s.turnuri).toEqual([{ id: 1, tip: 'fizic', hex: s.turnuri[0]!.hex, tintire: 'primul', reincarcare: 0, combinat: false }])
     expect(s.jurnal.at(-1)!.d.tip).toBe('turn')
   })
 

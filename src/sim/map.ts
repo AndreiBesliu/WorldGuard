@@ -4,7 +4,7 @@
 // (cicatrici, canale, păduri arse), iar traseul și turnurile se reiau de la zero la fiecare partidă.
 
 import { MAP_GEN, TERRAIN, type Terrain } from '../data/terrain'
-import { hexesInRadius, key, lineBetween, neighbors, type Hex } from './hex'
+import { distance, hexesInRadius, key, lineBetween, neighbors, type Hex } from './hex'
 import { createRng } from './rng'
 
 export interface GameMap {
@@ -60,6 +60,46 @@ export interface GeneratedMap {
   readonly path: readonly Hex[]
 }
 
+/**
+ * Bălțile de ulei (decis de owner, 05.10.2026: uleiul se găsește pe hartă). Fiecare baltă pornește dintr-un
+ * hexagon de câmpie sau pădure aflat la exact `departareBalta` de drumul inițial și crește în vecini, la cel
+ * puțin aceeași distanță — deci la început nimic nu e uns, iar un ocol spre baltă o aduce lângă drum.
+ * Fluxul aleator e al lor („harta/ulei”), deci restul hărții rămâne același cu sau fără ele.
+ */
+function placeOil(cells: readonly Hex[], terrain: Map<string, Terrain>, path: readonly Hex[], seed: number): void {
+  const rng = createRng(seed, 'harta/ulei')
+  const fromPath = (h: Hex): number => Math.min(...path.map((p) => distance(h, p)))
+  const free = (h: Hex): boolean => {
+    const t = terrain.get(key(h))
+    return (t === 'campie' || t === 'padure') && fromPath(h) >= MAP_GEN.departareBalta
+  }
+  let centers = cells.filter((h) => free(h) && fromPath(h) === MAP_GEN.departareBalta)
+  for (let b = 0; b < MAP_GEN.balti && centers.length > 0; b++) {
+    const center = rng.pick(centers)
+    const pool = [center]
+    terrain.set(key(center), 'ulei')
+    while (pool.length < MAP_GEN.marimeBalta) {
+      // Vecinii liberi ai bălții, fiecare o dată, în ordinea fixă a hexagoanelor din baltă și a vecinilor lor.
+      const seen = new Set<string>()
+      const edge: Hex[] = []
+      for (const h of pool) {
+        for (const n of neighbors(h)) {
+          const k = key(n)
+          if (!seen.has(k) && free(n)) {
+            seen.add(k)
+            edge.push(n)
+          }
+        }
+      }
+      if (edge.length === 0) break
+      const next = rng.pick(edge)
+      pool.push(next)
+      terrain.set(key(next), 'ulei')
+    }
+    centers = centers.filter((h) => distance(h, center) >= MAP_GEN.intreBalti && free(h))
+  }
+}
+
 export function generateMap(seed: number, radius: number = MAP_GEN.raza): GeneratedMap {
   const cells = hexesInRadius(radius)
   const umiditate = smoothField(cells, seed, 'harta/umiditate', MAP_GEN.netezire)
@@ -89,6 +129,8 @@ export function generateMap(seed: number, radius: number = MAP_GEN.raza): Genera
     const t = terrain.get(key(h))
     if (t === undefined || !TERRAIN[t].permiteTraseu) terrain.set(key(h), 'campie')
   }
+
+  placeOil(cells, terrain, path, seed)
 
   return { map: { seed, radius, terrain, spawn, base }, path }
 }
