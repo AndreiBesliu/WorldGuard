@@ -56,7 +56,11 @@ npm run build
   (`regionTerrain`). **Doar o partidă câștigată lasă urme** (decis de owner); una pierdută sau părăsită doar
   înaintează ceasul. O partidă pe o regiune pornește cu `newGame(seed, start)` — `start` = terenul regiunii și dacă e
   inima (al cărei ultim val, `VAL_INIMA`, are Paznicul inimii) —, iar `replay` primește același `start`. Valul unei
-  partide se ia prin `waveAt`, nu din `WAVES` direct.
+  partide se ia prin `waveAt`, nu din `WAVES` direct (pe inimă are Paznicul, pe o regiune cu canale săpate are și
+  amfibii — `Start.amfibii`, din `regionAmphibians`).
+- **Amestecurile de teren** (`AMESTECURI` în `data/terrain.ts`, aplicate de `mixTerrain`): cenușa de lângă apă e
+  noroi. Se aplică la începutul partidei (`newGame`) și după fiecare terraformare — nu altundeva, ca harta unei
+  partide să nu se schimbe pe ascuns.
   `src/ui/planeta.ts` e ecranul planetei; `main.ts` ține lumea în `localStorage` (`worldguard.lume`).
 - `src/events.ts` — ce s-a întâmplat într-un pas (lovituri, reacții, loviți, uciși, scăpați, apăruți, sfârșitul
   valului), citit din starea de dinainte și cea de după. Pur. Din el se hrănesc și efectele de pe ecran, și sunetul:
@@ -226,4 +230,7 @@ Felia 6, decisă de owner (05.10.2026). Cifrele în `src/data/economie.ts`.
   Fără `?seed=`, jocul pornește pe planetă. 168 de teste.
 - **Răspunsurile owner-ului la felia 9 (05.10.2026):** bossul inimii (Paznicul inimii: mai greu, iar pulsul lui naște
   roiuri); doar partidele câștigate lasă urme pe teren. 173 de teste.
+- **Felia 10 (05.10.2026):** urmele cu două tăișuri — noroiul (cenușă + apă, împotmolește) și amfibii (canalele săpate
+  îi aduc; apa îi grăbește). Reguli pe date: `AMESTECURI` (terenuri), `EnemyInfo.inLoc` (stări primite altfel),
+  `StateInfo.grabire`. 183 de teste.
 - **Următorul:** de ales cu owner-ul (vezi DEVLOG).

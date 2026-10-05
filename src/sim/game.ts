@@ -14,12 +14,13 @@
 import { CARD_IDS, CARDS, cardTower, DRAFT, type CardEffect, type CardId } from '../data/draft'
 import { ECONOMIE, TERRAFORMARI, type Terraform } from '../data/economie'
 import { CRESTERE_VIATA, ENEMIES, VAL_INIMA, WAVES, type EnemyType, type Trait, type Wave } from '../data/enemies'
+import { AMFIBII } from '../data/lume'
 import { MILI_HEX, VIETI_BAZA } from '../data/joc'
 import type { ReactionType } from '../data/reactions'
 import { INSERARE, TERRAIN, type Terrain } from '../data/terrain'
 import { AUR_START, COMBINARE, TARGET_MODES, TOWERS, type ArmorCombo, type TargetMode, type TowerType } from '../data/towers'
 import { distance, fromKey, key, lineBetween, neighbors, type Hex } from './hex'
-import { generateMap, type GameMap } from './map'
+import { generateMap, mixTerrain, type GameMap } from './map'
 import { detourOptions, insertDetour } from './path'
 import { applyContact, enemySpeed, STATE_ORDER, tickStates, type Contact, type ReactionContext, type States } from './reactions'
 import { fail, ok, type Result } from './result'
@@ -169,6 +170,8 @@ export interface GameState {
   readonly venit?: { readonly aur: number; readonly pamant: number }
   /** Partida e pe inima planetei: ultimul val e `VAL_INIMA`, cu Paznicul inimii (felia 9). */
   readonly inima: boolean
+  /** Câți amfibi în plus are fiecare val (canalele săpate pe regiune îi aduc — felia 10). */
+  readonly amfibii: number
 }
 
 /**
@@ -178,6 +181,8 @@ export interface GameState {
 export interface Start {
   readonly teren?: ReadonlyMap<string, Terrain>
   readonly inima?: boolean
+  /** Câți amfibi în plus pe val (`AMFIBII`). */
+  readonly amfibii?: number
 }
 
 /** Îmbunătățirile unui tip de turn: +`dauna`% daună, trage cu `reincarcare`% mai des. */
@@ -199,8 +204,10 @@ export function newGame(seed: number, start: Start = {}): GameState {
   let map = gen.map
   const path = gen.path
   if (teren && teren.size > 0) {
-    const t = new Map(map.terrain)
-    for (const [k, v] of teren) if (t.has(k)) t.set(k, v)
+    const merged = new Map(map.terrain)
+    for (const [k, v] of teren) if (merged.has(k)) merged.set(k, v)
+    // Amestecurile (cenușa de lângă apă e noroi) se fac după ce terenul regiunii e pus peste cel generat.
+    const t = mixTerrain(merged)
     for (const h of path) if (!TERRAIN[t.get(key(h)) ?? 'campie'].permiteTraseu) t.set(key(h), 'campie')
     map = { ...map, terrain: t }
   }
@@ -231,12 +238,15 @@ export function newGame(seed: number, start: Start = {}): GameState {
     pamant: ECONOMIE.pamant.start,
     mine: [],
     inima: start.inima ?? false,
+    amfibii: Math.max(0, Math.min(AMFIBII.maxim, start.amfibii ?? 0)),
   }
 }
 
-/** Valul `i` al partidei: pe inima planetei, ultimul e `VAL_INIMA`. */
-export function waveAt(s: Pick<GameState, 'inima'>, i: number): Wave | undefined {
-  return s.inima && i === WAVES.length - 1 ? VAL_INIMA : WAVES[i]
+/** Valul `i` al partidei: pe inima planetei, ultimul e `VAL_INIMA`; cu amfibi, fiecare val îi are la coadă. */
+export function waveAt(s: { readonly inima?: boolean; readonly amfibii?: number }, i: number): Wave | undefined {
+  const w = s.inima && i === WAVES.length - 1 ? VAL_INIMA : WAVES[i]
+  if (!w || !s.amfibii || i < AMFIBII.dinValul) return w
+  return { ...w, grupuri: [...w.grupuri, { tip: 'amfibiu', numar: s.amfibii, interval: AMFIBII.interval, intarziere: AMFIBII.intarziere }] }
 }
 
 /** Cât de lung e drumul, în unitățile simulării. Un inamic ajunge la bază când îl parcurge. */
@@ -255,8 +265,8 @@ export function enemyHealth(tip: EnemyType, valIndex: number): number {
 export const waveHealth = (valIndex: number): number => (Math.round((WAVES[valIndex]?.viata ?? 1) * 100) * (100 + CRESTERE_VIATA * valIndex)) / 10_000
 
 /** Programul de apariție al unui val, pornit la `startTick`. Ordine stabilă: tick, apoi ordinea grupurilor. */
-export function spawnSchedule(valIndex: number, startTick: number, inima = false): Spawn[] {
-  const wave = waveAt({ inima }, valIndex)
+export function spawnSchedule(valIndex: number, startTick: number, s: { readonly inima?: boolean; readonly amfibii?: number } = {}): Spawn[] {
+  const wave = waveAt(s, valIndex)
   if (!wave) return []
   const out: { tick: number; tip: EnemyType; trasaturi?: readonly Trait[]; ordine: number }[] = []
   let ordine = 0
@@ -598,7 +608,7 @@ export function applyDecision(state: GameState, d: Decision): Result<GameState> 
       // Turnurile încep fiecare val încărcate.
       const turnuri = state.turnuri.map((t) => (t.reincarcare === 0 ? t : { ...t, reincarcare: 0 }))
       return ok(
-        logged({ ...state, faza: 'val', turnuri, ocoluriFolosite: 0, ocoluriBonus: 0, evenimente: [], deGenerat: spawnSchedule(state.val, state.tick, state.inima) }),
+        logged({ ...state, faza: 'val', turnuri, ocoluriFolosite: 0, ocoluriBonus: 0, evenimente: [], deGenerat: spawnSchedule(state.val, state.tick, state) }),
       )
     }
     case 'turn': {
@@ -650,7 +660,8 @@ export function applyDecision(state: GameState, d: Decision): Result<GameState> 
       if (!allowed.ok) return fail(allowed.reason)
       const info = TERRAFORMARI[d.actiune]
       // Harta e imuabilă: terenul nou intră într-o hartă nouă (ordinea hexagoanelor rămâne, deci și amprenta).
-      const terrain = new Map(state.map.terrain).set(d.hex, info.in)
+      // Și amestecurile: un canal săpat lângă cenușă o face noroi pe loc.
+      const terrain = mixTerrain(new Map(state.map.terrain).set(d.hex, info.in))
       return ok(logged({ ...state, map: { ...state.map, terrain }, pamant: state.pamant - info.costPamant }))
     }
     case 'mina': {
@@ -916,6 +927,7 @@ export function fingerprint(state: GameState): string {
     `urmatorulTurn=${state.urmatorulTurn}`,
     `urmatorulId=${state.urmatorulId}`,
     `inima=${state.inima}`,
+    `amfibii=${state.amfibii}`,
   ]
   for (const [k, t] of state.map.terrain) parts.push(`${k}:${t}`)
   parts.push(`path=${state.path.map(key).join(';')}`)

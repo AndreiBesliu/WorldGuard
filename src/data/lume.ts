@@ -39,3 +39,10 @@ export const EVOLUTIE: Readonly<Record<Terraform, readonly { readonly dupa: numb
   ],
   deal: [{ dupa: 0, teren: 'deal' }],
 }
+
+/**
+ * Regiunea reacționează (GDD §9.1: „canalul săpat aduce inamici amfibii”; felia 10, propunere): fiecare canal săpat
+ * care e încă apă aduce un amfibiu în plus în fiecare val al regiunii, până la `maxim`, de la valul `dinValul` + 1
+ * (primele valuri rămân cele din date: atunci jucătorul abia își pune apărarea — măsurat, DEVLOG felia 10).
+ */
+export const AMFIBII = { peCanal: 1, maxim: 6, dinValul: 2, interval: 16, intarziere: 40 } as const

@@ -7,12 +7,12 @@
 // Unități: durate în tick-uri (20 pe secundă), încetinirea în procente din viteză.
 // Cifrele sunt o primă trecere (propunere), măsurată cu botul — nu un balans.
 
-export type StateType = 'arde' | 'ud' | 'racit' | 'inghetat' | 'uns'
+export type StateType = 'arde' | 'ud' | 'racit' | 'inghetat' | 'uns' | 'impotmolit' | 'grabit'
 
 export type Tag = 'fierbinte' | 'ud' | 'conductor' | 'rece' | 'fragil' | 'inflamabil'
 
 /** Ce atinge un inamic: lovitura unui turn sau terenul de lângă drum. */
-export type Element = 'impact' | 'foc' | 'frig' | 'fulger' | 'apa' | 'ulei'
+export type Element = 'impact' | 'foc' | 'frig' | 'fulger' | 'apa' | 'ulei' | 'noroi'
 
 export interface StateInfo {
   readonly nume: string
@@ -21,6 +21,8 @@ export interface StateInfo {
   readonly etichete: readonly Tag[]
   /** Cu câte procente încetinește inamicul (100 = stă pe loc). */
   readonly incetinire?: number
+  /** Cu câte procente îl grăbește (se înmulțește cu încetinirea: unul înghețat tot stă pe loc). */
+  readonly grabire?: number
   /** Daună în timp: `dauna` la fiecare `la` tick-uri. Trece de armură (propunere). */
   readonly arsura?: { readonly la: number; readonly dauna: number }
   readonly culoare: string
@@ -33,6 +35,9 @@ export const STATES: Readonly<Record<StateType, StateInfo>> = {
   racit: { nume: 'Răcit', durata: 40, etichete: ['rece'], incetinire: 25, culoare: '#bfefff' },
   inghetat: { nume: 'Înghețat', durata: 15, etichete: ['rece', 'fragil'], incetinire: 100, culoare: '#ffffff' },
   uns: { nume: 'Uns cu ulei', durata: 200, etichete: ['inflamabil'], culoare: '#6b4f2a' },
+  // Urmele cu două tăișuri (felia 10, propunere): noroiul de lângă drum încetinește; apa îi grăbește pe amfibii.
+  impotmolit: { nume: 'Împotmolit', durata: 60, etichete: [], incetinire: 35, culoare: '#7a5c3a' },
+  grabit: { nume: 'Grăbit', durata: 40, etichete: [], grabire: 40, culoare: '#3fbfa0' },
 }
 
 /** Cum se citește o etichetă în textele din joc („… pe un inamic ud”). */
@@ -52,6 +57,7 @@ export const ELEMENT_NAMES: Readonly<Record<Element, string>> = {
   fulger: 'fulger',
   apa: 'apă',
   ulei: 'ulei',
+  noroi: 'noroi',
 }
 
 export type ReactionType = 'explozie' | 'abur' | 'dezghet' | 'inghet' | 'spargere' | 'electrocutare'

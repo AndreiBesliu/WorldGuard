@@ -36,6 +36,7 @@ import {
   planetRegions,
   planetSaved,
   regionAccess,
+  regionAmphibians,
   regionOf,
   regionTerrain,
   savedRing,
@@ -446,7 +447,7 @@ function contextView(): { view: HudView['context']; overlay: Partial<Overlay> } 
         ...COMBINARE.armura.map((c) => ({ k: `Combinat ${comboTowers(c)}`, v: `${c.nume}: ${comboEffect(c)}` })),
       ],
       nota:
-        'Ocolul e obligatoriu înainte de fiecare val. Uleiul de pe hartă unge inamicii: du drumul pe lângă el cu un ocol, apoi aprinde-i cu Foc. Focul și Frigul sunt incompatibile — se anulează și nu se combină.',
+        'Ocolul e obligatoriu înainte de fiecare val. Uleiul de pe hartă unge inamicii: du drumul pe lângă el cu un ocol, apoi aprinde-i cu Foc. Focul și Frigul sunt incompatibile — se anulează și nu se combină. Pe planetă, cenușa de lângă apă devine noroi (încetinește), iar canalele săpate aduc amfibi.',
     },
     overlay: {},
   }
@@ -927,12 +928,19 @@ function planetView(l: Lume): PlanetView {
   if (r) {
     const st = l.regiuni[r.cheie]
     const teren = regionTerrain(l, r.cheie)
+    // Terenul de pe hartă, nu doar etapa editării: cenușa de lângă apă e deja noroi.
+    const harta = newGame(r.seed, { teren }).map
     const numar = new Map<Terrain, number>()
-    for (const t of teren.values()) numar.set(t, (numar.get(t) ?? 0) + 1)
+    for (const k of teren.keys()) {
+      const t = harta.terrain.get(k)
+      if (t) numar.set(t, (numar.get(t) ?? 0) + 1)
+    }
+    const amfibii = regionAmphibians(l, r.cheie)
     const randuri = [
       teren.size > 0
         ? `Terenul schimbat: ${[...numar].map(([t, n]) => `${n} × ${TERRAIN[t].nume.toLowerCase()}`).join(', ')}`
         : 'Terenul e neatins.',
+      ...(amfibii > 0 ? [`Canalele săpate aduc ${amfibii} ${amfibii === 1 ? 'amfibiu' : 'amfibi'} în fiecare val: apa nu-i udă, îi grăbește.`] : []),
       `Partide jucate aici: ${st?.partide ?? 0}`,
       ...(r.inima ? ['Ultima regiune: cine îi salvează inima salvează planeta.'] : []),
     ]
@@ -944,7 +952,7 @@ function planetView(l: Lume): PlanetView {
       stare: a === 'salvata' ? 'Salvată — te poți întoarce oricând' : a === 'accesibila' ? 'Se poate apăra' : 'Încă închisă',
       randuri,
       motiv: pornire.ok ? undefined : pornire.reason,
-      harta: newGame(r.seed, { teren }).map,
+      harta,
       editate: [...teren.keys()],
     }
   }

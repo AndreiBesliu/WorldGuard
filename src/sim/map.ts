@@ -3,7 +3,7 @@
 // Terenul e separat de traseu, intenționat: în design, terenul unei regiuni PERSISTĂ între partide
 // (cicatrici, canale, păduri arse), iar traseul și turnurile se reiau de la zero la fiecare partidă.
 
-import { MAP_GEN, TERRAIN, type Terrain } from '../data/terrain'
+import { AMESTECURI, MAP_GEN, TERRAIN, type Terrain } from '../data/terrain'
 import { distance, hexesInRadius, key, lineBetween, neighbors, type Hex } from './hex'
 import { createRng } from './rng'
 
@@ -133,4 +133,22 @@ export function generateMap(seed: number, radius: number = MAP_GEN.raza): Genera
   placeOil(cells, terrain, path, seed)
 
   return { map: { seed, radius, terrain, spawn, base }, path }
+}
+
+/**
+ * Amestecurile de teren (`AMESTECURI`: cenușa de lângă apă devine noroi), pe o copie a terenului. Vecinii se citesc din
+ * terenul de dinainte, deci rezultatul nu depinde de ordinea hexagoanelor.
+ */
+export function mixTerrain(terrain: ReadonlyMap<string, Terrain>): Map<string, Terrain> {
+  const out = new Map(terrain)
+  for (const [k, t] of terrain) {
+    const [q, r] = k.split(',').map(Number) as [number, number]
+    for (const a of AMESTECURI) {
+      if (t === a.din && neighbors({ q, r }).some((n) => terrain.get(key(n)) === a.langa)) {
+        out.set(k, a.devine)
+        break
+      }
+    }
+  }
+  return out
 }

@@ -2,7 +2,7 @@
 
 import type { Element, StateType } from './reactions'
 
-export type Terrain = 'campie' | 'apa' | 'padure' | 'deal' | 'filon' | 'ulei' | 'jar' | 'cenusa' | 'puiet'
+export type Terrain = 'campie' | 'apa' | 'padure' | 'deal' | 'filon' | 'ulei' | 'jar' | 'cenusa' | 'puiet' | 'noroi'
 
 export interface TerrainInfo {
   readonly nume: string
@@ -38,7 +38,19 @@ export const TERRAIN: Readonly<Record<Terrain, TerrainInfo>> = {
   // apoi iar pădure (`EVOLUTIE`, `data/lume.ts`). Cenușa nu mai arde; amândouă țin drum și turn, ca o câmpie.
   cenusa: { nume: 'Cenușă', culoare: '#5f5a55', permiteTraseu: true, permiteTurn: true },
   puiet: { nume: 'Puieți', culoare: '#6f8f5a', permiteTraseu: true, permiteTurn: true },
+  // Urmele cu două tăișuri (GDD §9.1, felia 10): cenușa de lângă apă devine noroi (`AMESTECURI`). Noroiul încetinește
+  // inamicii de pe drumul vecin, dar nu ține nici drum, nici turn.
+  noroi: { nume: 'Noroi', culoare: '#5b4a36', permiteTraseu: false, permiteTurn: false, atingere: { element: 'noroi', aplica: 'impotmolit' } },
 }
+
+/**
+ * Amestecurile de teren (GDD §9.1: „cenușă + apă = noroi care încetinește”): un hexagon `din` cu un vecin `langa`
+ * devine `devine`. Se aplică la începutul fiecărei partide și după fiecare terraformare, deci și un canal săpat lângă
+ * cenușă o face noroi pe loc.
+ */
+export const AMESTECURI: readonly { readonly din: Terrain; readonly langa: Terrain; readonly devine: Terrain }[] = [
+  { din: 'cenusa', langa: 'apa', devine: 'noroi' },
+]
 
 /** Parametrii generatorului de hartă. */
 export const MAP_GEN = {

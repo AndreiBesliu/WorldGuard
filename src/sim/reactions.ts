@@ -64,10 +64,14 @@ function removeTag(v: Victim, tag: Tag): void {
 /** Inamicul e imun la starea `s` (o trăsătură a lui o oprește)? */
 export const isImmune = (v: Pick<Victim, 'trasaturi'>, s: StateType): boolean => (v.trasaturi ?? []).some((t) => TRAITS[t].imun.includes(s))
 
-/** Aplică (sau reîmprospătează) o stare: durata ei pornește de la capăt; nu se adună. Imunitatea o oprește. */
+/**
+ * Aplică (sau reîmprospătează) o stare: durata ei pornește de la capăt; nu se adună. Unii inamici primesc altă stare în
+ * locul ei (amfibiul: grăbit în loc de ud). Imunitatea o oprește.
+ */
 function applyState(v: Victim, s: StateType): void {
-  if (isImmune(v, s)) return
-  v.stari[s] = STATES[s].durata
+  const st = ENEMIES[v.tip].inLoc?.[s] ?? s
+  if (isImmune(v, st)) return
+  v.stari[st] = STATES[st].durata
 }
 
 function hurt(v: Victim, dauna: number, lovituri = 1, penetrare = 0): void {
@@ -134,9 +138,17 @@ export function tickStates(v: Victim): void {
   }
 }
 
-/** Viteza efectivă, în mili-hexagoane pe tick: cea mai mare încetinire dintre stări se aplică (nu se adună). */
+/**
+ * Viteza efectivă, în mili-hexagoane pe tick: cea mai mare încetinire și cea mai mare grăbire dintre stări se aplică
+ * (nu se adună), înmulțite — unul înghețat stă pe loc și grăbit.
+ */
 export function enemySpeed(v: { readonly tip: EnemyType; readonly stari: States }): number {
   let slow = 0
-  for (const s of STATE_ORDER) if (v.stari[s] !== undefined) slow = Math.max(slow, STATES[s].incetinire ?? 0)
-  return Math.floor((ENEMIES[v.tip].viteza * (100 - slow)) / 100)
+  let fast = 0
+  for (const s of STATE_ORDER) {
+    if (v.stari[s] === undefined) continue
+    slow = Math.max(slow, STATES[s].incetinire ?? 0)
+    fast = Math.max(fast, STATES[s].grabire ?? 0)
+  }
+  return Math.floor((ENEMIES[v.tip].viteza * (100 - slow) * (100 + fast)) / 10_000)
 }
