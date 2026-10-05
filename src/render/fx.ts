@@ -141,6 +141,13 @@ export class Fx {
     this.burst(w, now, 10, { speed: [0.4, 1.1], color, size: 0.16, life: 520, kind: 'fum', g: -0.3 })
   }
 
+  /** Pulsul Paznicului inimii: un inel roșu-aprins care se lărgește și o scuturare scurtă. */
+  puls(w: { x: number; y: number }, now: number): void {
+    this.particles.push({ x: w.x, y: w.y, vx: 0, vy: 0, g: 0, born: now, life: 650, size: 2.2, color: '#ff3d6e', kind: 'inel', angle: 0, spin: 0 })
+    this.burst(w, now, 10, { speed: [0.6, 1.6], color: '#ff8fab', size: 0.08, life: 500 })
+    this.shake(2, 160, now)
+  }
+
   /** Baza lovită: inel roșu, scuturare, margine roșie. */
   baza(w: { x: number; y: number }, now: number): void {
     this.particles.push({ x: w.x, y: w.y, vx: 0, vy: 0, g: 0, born: now, life: 450, size: 1.0, color: '#f06250', kind: 'inel', angle: 0, spin: 0 })

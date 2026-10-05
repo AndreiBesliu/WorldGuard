@@ -129,6 +129,35 @@ function tile(ctx: CanvasRenderingContext2D, k: string, t: Terrain, l: Layout): 
       ctx.fillStyle = 'rgba(120, 220, 170, 0.16)'
       ctx.fill()
       break
+    case 'cenusa':
+      // Cenușă: pete deschise și cioturi carbonizate.
+      for (let i = 0; i < 4; i++) {
+        const p = at(i)
+        ctx.beginPath()
+        ctx.ellipse(p.x, p.y, s * 0.16, s * 0.07, hash01(k, i + 40) * Math.PI, 0, Math.PI * 2)
+        ctx.fillStyle = shade(base, 0.25, 0.5)
+        ctx.fill()
+      }
+      for (let i = 4; i < 6; i++) {
+        const p = at(i)
+        ctx.fillStyle = '#2a2420'
+        ctx.fillRect(p.x - s * 0.04, p.y - s * 0.16, s * 0.08, s * 0.16)
+      }
+      break
+    case 'puiet':
+      // Puieți: copaci mici, deschiși la culoare.
+      for (let i = 0; i < 4; i++) {
+        const p = at(i)
+        const h = s * (0.14 + hash01(k, i + 9) * 0.06)
+        ctx.beginPath()
+        ctx.moveTo(p.x, p.y - h)
+        ctx.lineTo(p.x + h * 0.5, p.y + h * 0.3)
+        ctx.lineTo(p.x - h * 0.5, p.y + h * 0.3)
+        ctx.closePath()
+        ctx.fillStyle = shade(base, -0.25)
+        ctx.fill()
+      }
+      break
     case 'apa':
     case 'jar':
       break // animate, în `drawTerrainAnimations`

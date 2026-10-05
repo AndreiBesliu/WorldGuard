@@ -50,6 +50,14 @@ npm run build
   - **Nu crea gradienți la fiecare cadru** (`createRadialGradient` per inamic și fundalul pe tot ecranul triplau
     costul desenului, DEVLOG felia 7): desenează forma în coordonate locale și refolosește gradientul din
     `gradient(ctx, cheie, …)`.
+- `src/sim/lume.ts` — lumea care ține minte (GDD §9.1): planeta, regiunile, accesul, terenul care rămâne și evoluează
+  după ceasul lumii, salvarea (verificată la citire). Determinist, sub aceleași reguli ca nucleul. Se salvează DOAR
+  planeta (seed + versiunea generatorului) și jurnalul editărilor fiecărei regiuni; terenul de oricând se recalculează
+  (`regionTerrain`). **Doar o partidă câștigată lasă urme** (decis de owner); una pierdută sau părăsită doar
+  înaintează ceasul. O partidă pe o regiune pornește cu `newGame(seed, start)` — `start` = terenul regiunii și dacă e
+  inima (al cărei ultim val, `VAL_INIMA`, are Paznicul inimii) —, iar `replay` primește același `start`. Valul unei
+  partide se ia prin `waveAt`, nu din `WAVES` direct.
+  `src/ui/planeta.ts` e ecranul planetei; `main.ts` ține lumea în `localStorage` (`worldguard.lume`).
 - `src/events.ts` — ce s-a întâmplat într-un pas (lovituri, reacții, loviți, uciși, scăpați, apăruți, sfârșitul
   valului), citit din starea de dinainte și cea de după. Pur. Din el se hrănesc și efectele de pe ecran, și sunetul:
   **nu deduce evenimente a doua oară în altă parte**.
@@ -73,7 +81,10 @@ Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
   server și datele de playtest. Nicio schimbare de stare pe lângă jurnal.
 - **O verificare întoarce motivul, nu doar „nu”** (`Result` din `result.ts`). Din asta iese panoul „De ce nu?”.
 - **Terenul e separat de traseu.** Traseul și turnurile se reiau la fiecare partidă; terenul unei
-  regiuni persistă între partide (vezi GDD §9.1). Nu amesteca cele două.
+  regiuni persistă între partide (vezi GDD §9.1, implementat în felia 9). Nu amesteca cele două. De aici și regula
+  „drumul vechi”: linia dreaptă intrare–bază nu se terraformează (`isOldRoad`), fiindcă drumul se reface pe ea.
+- **Schimbi generatorul de hărți? Crește `LUME.versiuneGenerator`.** Planetele salvate își refac terenul din seed:
+  un generator schimbat pe tăcute le-ar muta pădurile și apele de sub editările vechi.
 
 ## Mecanica de traseu (implementată)
 Capete fixe (intrare `I`, bază `B`). O bucată înlocuiește o porțiune de 1–3 hexagoane cu un ocol mai lung
@@ -210,4 +221,9 @@ Felia 6, decisă de owner (05.10.2026). Cifrele în `src/data/economie.ts`.
 - **Felia 8 (05.10.2026):** sunetul, sintetizat fără fișiere: loviturile pe turn, reacțiile, morțile, bossul, baza,
   valul, deciziile, refuzurile; stereo după hartă; volumul pe S. Evenimentele pasului (`src/events.ts`), comune pentru
   efecte și sunet. Fundalul muzical discret (decis de owner): acorduri lungi după starea jocului, tasta B. 154 de teste.
+- **Felia 9 (05.10.2026):** meta-progresia, stratul C — planeta cu 7 regiuni, terenul care ține minte (jurnalul
+  editărilor) și evoluează după ceasul lumii (cenușă, puieți, canale colmatate), ecranul planetei, salvarea în browser.
+  Fără `?seed=`, jocul pornește pe planetă. 168 de teste.
+- **Răspunsurile owner-ului la felia 9 (05.10.2026):** bossul inimii (Paznicul inimii: mai greu, iar pulsul lui naște
+  roiuri); doar partidele câștigate lasă urme pe teren. 173 de teste.
 - **Următorul:** de ales cu owner-ul (vezi DEVLOG).

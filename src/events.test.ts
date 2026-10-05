@@ -90,6 +90,23 @@ describe('evenimentele unui pas', () => {
     expect(of(stepEvents(lost, step(lost)), 'sfarsit')).toEqual([{ tip: 'sfarsit', faza: 'pierdut' }])
   })
 
+  it('pulsul Paznicului: un eveniment de puls, cei născuți apar, iar cei uciși chiar la naștere se refac', () => {
+    const puls = ENEMIES.paznic.puls!
+    const paznic: Enemy = { id: 9, tip: 'paznic', viata: 1e9, progres: 9000, stari: {} }
+    // Un Frig (lovește pe zonă) cu o daună uriașă lângă Paznic: toți cei născuți mor în același tick, el nu.
+    const s = build(arena(), ['frig', '0,-1'])
+    const w = inWave({ ...s, imbunatatiri: { frig: { dauna: 1e7, reincarcare: 0 } } }, [paznic], { tick: puls.interval - 1 })
+    const after = step(w)
+    expect(after.inamici.map((e) => e.id)).toEqual([9])
+    const evs = stepEvents(w, after)
+    const unde = after.inamici[0]!.progres
+    expect(of(evs, 'puls')).toEqual([{ tip: 'puls', progres: unde }])
+    expect(of(evs, 'aparut').map((e) => [e.inamic.id, e.inamic.tip])).toEqual(Array.from({ length: puls.numar }, (_, i) => [100 + i, puls.tip]))
+    expect(of(evs, 'ucis').map((e) => [e.inamic.id, e.inamic.tip, e.inamic.progres])).toEqual(
+      Array.from({ length: puls.numar }, (_, i) => [100 + i, puls.tip, unde]),
+    )
+  })
+
   it('fără pas (același tick), nimic', () => {
     const s = inWave(build(arena(), ['fizic', '0,-1']), [foe(1, 9)])
     const after = step(s)

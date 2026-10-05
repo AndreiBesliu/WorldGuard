@@ -570,6 +570,34 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
       ctx.fill()
       ctx.restore()
     }
+    // Paznicul inimii: o aură care bate ca o inimă (mai repede spre puls) și o coroană aurie dublă, în sens invers.
+    if (e.tip === 'paznic') {
+      const puls = info.puls?.interval ?? 80
+      const faza = ((s.tick + alpha) % puls) / puls
+      const bataie = Math.pow(faza, 6)
+      ctx.beginPath()
+      ctx.arc(0, 0, r * (1.5 + 0.35 * bataie), 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(255, 61, 110, ${0.12 + 0.3 * bataie})`
+      ctx.fill()
+      for (const [dir, n, rr0, rr1, col] of [
+        [1, 12, 1.1, 1.45, '#f5d76e'],
+        [-1, 8, 0.95, 1.2, '#a8203f'],
+      ] as const) {
+        ctx.save()
+        ctx.rotate((dir * now) / 1800)
+        ctx.beginPath()
+        for (let i = 0; i < n * 2; i++) {
+          const a = (i / (n * 2)) * Math.PI * 2
+          const rr = i % 2 ? r * rr0 : r * rr1
+          if (i === 0) ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr)
+          else ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr)
+        }
+        ctx.closePath()
+        ctx.fillStyle = col
+        ctx.fill()
+        ctx.restore()
+      }
+    }
     enemyPath(ctx, e.tip, r)
     ctx.fillStyle = gradient(ctx, `corp|${info.culoare}|${r}`, (c) => {
       const g = c.createRadialGradient(-r * 0.35, -r * 0.35, r * 0.1, 0, 0, r * 1.2)
@@ -578,8 +606,9 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
       return g
     })
     ctx.fill()
-    ctx.strokeStyle = e.tip === 'boss' ? '#ffffff' : 'rgba(0, 0, 0, 0.6)'
-    ctx.lineWidth = e.tip === 'boss' ? 2 : 1
+    const mare = e.tip === 'boss' || e.tip === 'paznic'
+    ctx.strokeStyle = mare ? '#ffffff' : 'rgba(0, 0, 0, 0.6)'
+    ctx.lineWidth = mare ? 2 : 1
     ctx.stroke()
     if (e.tip === 'blindat') {
       // Plăcile armurii.
@@ -664,7 +693,7 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     if (e.viata < max) {
       const f = Math.max(0, e.viata) / max
       const w = Math.max(16, r * 2.4)
-      const top = p.y - r * (e.tip === 'boss' ? 1.4 : 1) - 7
+      const top = p.y - r * (e.tip === 'boss' || e.tip === 'paznic' ? 1.5 : 1) - 7
       ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
       ctx.beginPath()
       ctx.roundRect(p.x - w / 2 - 1, top - 1, w + 2, 5, 2)

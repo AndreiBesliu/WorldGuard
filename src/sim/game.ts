@@ -13,12 +13,12 @@
 
 import { CARD_IDS, CARDS, cardTower, DRAFT, type CardEffect, type CardId } from '../data/draft'
 import { ECONOMIE, TERRAFORMARI, type Terraform } from '../data/economie'
-import { CRESTERE_VIATA, ENEMIES, WAVES, type EnemyType, type Trait } from '../data/enemies'
+import { CRESTERE_VIATA, ENEMIES, VAL_INIMA, WAVES, type EnemyType, type Trait, type Wave } from '../data/enemies'
 import { MILI_HEX, VIETI_BAZA } from '../data/joc'
 import type { ReactionType } from '../data/reactions'
 import { INSERARE, TERRAIN, type Terrain } from '../data/terrain'
 import { AUR_START, COMBINARE, TARGET_MODES, TOWERS, type ArmorCombo, type TargetMode, type TowerType } from '../data/towers'
-import { distance, fromKey, key, neighbors, type Hex } from './hex'
+import { distance, fromKey, key, lineBetween, neighbors, type Hex } from './hex'
 import { generateMap, type GameMap } from './map'
 import { detourOptions, insertDetour } from './path'
 import { applyContact, enemySpeed, STATE_ORDER, tickStates, type Contact, type ReactionContext, type States } from './reactions'
@@ -167,6 +167,17 @@ export interface GameState {
   readonly mine: readonly string[]
   /** Ce a adus ultimul val încheiat (dobânda și pământul). Doar interfața îl citește. */
   readonly venit?: { readonly aur: number; readonly pamant: number }
+  /** Partida e pe inima planetei: ultimul val e `VAL_INIMA`, cu Paznicul inimii (felia 9). */
+  readonly inima: boolean
+}
+
+/**
+ * Cu ce pornește o partidă, în afară de seed: terenul pe care o regiune îl are deja de la partidele dinainte (lumea
+ * care ține minte, `lume.ts`) și dacă e inima planetei. `replay` primește același lucru, ca rejucarea să iasă identică.
+ */
+export interface Start {
+  readonly teren?: ReadonlyMap<string, Terrain>
+  readonly inima?: boolean
 }
 
 /** Îmbunătățirile unui tip de turn: +`dauna`% daună, trage cu `reincarcare`% mai des. */
@@ -177,8 +188,22 @@ export interface Improvement {
 
 export type Improvements = Readonly<Partial<Record<TowerType, Improvement>>>
 
-export function newGame(seed: number): GameState {
-  const { map, path } = generateMap(seed)
+/**
+ * O partidă nouă pe harta generată din `seed`. `start.teren` înlocuiește, hexagon cu hexagon, terenul generat. Drumul
+ * inițial rămâne legal: unde trece și terenul nu-l ține, devine câmpie, ca la generare (cu regula „drumul vechi”, nu
+ * se ajunge aici).
+ */
+export function newGame(seed: number, start: Start = {}): GameState {
+  const { teren } = start
+  const gen = generateMap(seed)
+  let map = gen.map
+  const path = gen.path
+  if (teren && teren.size > 0) {
+    const t = new Map(map.terrain)
+    for (const [k, v] of teren) if (t.has(k)) t.set(k, v)
+    for (const h of path) if (!TERRAIN[t.get(key(h)) ?? 'campie'].permiteTraseu) t.set(key(h), 'campie')
+    map = { ...map, terrain: t }
+  }
   return {
     seed,
     map,
@@ -205,7 +230,13 @@ export function newGame(seed: number): GameState {
     ocoluriBonus: 0,
     pamant: ECONOMIE.pamant.start,
     mine: [],
+    inima: start.inima ?? false,
   }
+}
+
+/** Valul `i` al partidei: pe inima planetei, ultimul e `VAL_INIMA`. */
+export function waveAt(s: Pick<GameState, 'inima'>, i: number): Wave | undefined {
+  return s.inima && i === WAVES.length - 1 ? VAL_INIMA : WAVES[i]
 }
 
 /** Cât de lung e drumul, în unitățile simulării. Un inamic ajunge la bază când îl parcurge. */
@@ -224,8 +255,8 @@ export function enemyHealth(tip: EnemyType, valIndex: number): number {
 export const waveHealth = (valIndex: number): number => (Math.round((WAVES[valIndex]?.viata ?? 1) * 100) * (100 + CRESTERE_VIATA * valIndex)) / 10_000
 
 /** Programul de apariție al unui val, pornit la `startTick`. Ordine stabilă: tick, apoi ordinea grupurilor. */
-export function spawnSchedule(valIndex: number, startTick: number): Spawn[] {
-  const wave = WAVES[valIndex]
+export function spawnSchedule(valIndex: number, startTick: number, inima = false): Spawn[] {
+  const wave = waveAt({ inima }, valIndex)
   if (!wave) return []
   const out: { tick: number; tip: EnemyType; trasaturi?: readonly Trait[]; ordine: number }[] = []
   let ordine = 0
@@ -497,6 +528,11 @@ export function checkBuild(state: GameState, tip: TowerType, hex: string): Resul
   return ok(true)
 }
 
+/** Drumul vechi: linia dreaptă de la intrare la bază, pe care pornește drumul la începutul fiecărei partide. */
+export function isOldRoad(map: GameMap, hex: string): boolean {
+  return lineBetween(map.spawn, map.base).some((h) => key(h) === hex)
+}
+
 /** Ce nu se poate terraforma și nu se poate săpa: drumul, turnurile, minele. Motivul, sau `undefined` dacă e liber. */
 function occupied(state: GameState, hex: string): string | undefined {
   if (state.path.some((h) => key(h) === hex)) return 'pe drum nu se poate'
@@ -513,8 +549,12 @@ export function checkTerraform(state: GameState, actiune: Terraform, hex: string
   if (t === undefined) return fail(`${hex} e în afara hărții`)
   const busy = occupied(state, hex)
   if (busy) return fail(busy)
+  // Terenul unei regiuni rămâne de la o partidă la alta, dar drumul se reface la fiecare partidă pe linia dreaptă de la
+  // intrare la bază. O terraformare pe linia aia, făcută după ce un ocol a mutat drumul, n-ar avea cum să rămână.
+  if (isOldRoad(state.map, hex)) return fail('pe drumul vechi nu se poate: drumul se reface pe aici la fiecare partidă')
   if (!info.din.includes(t)) {
-    const unde = info.din.map((x) => TERRAIN[x].nume.toLowerCase()).join(' sau ')
+    const nume = info.din.map((x) => TERRAIN[x].nume.toLowerCase())
+    const unde = nume.length > 1 ? `${nume.slice(0, -1).join(', ')} sau ${nume.at(-1)}` : (nume[0] ?? '')
     return fail(`${info.verb} se poate doar pe ${unde}, nu pe ${TERRAIN[t].nume.toLowerCase()}`)
   }
   if (state.pamant < info.costPamant) return fail(`nu ajunge pământul: ${info.nume.toLowerCase()} costă ${info.costPamant}, ai ${state.pamant}`)
@@ -558,7 +598,7 @@ export function applyDecision(state: GameState, d: Decision): Result<GameState> 
       // Turnurile încep fiecare val încărcate.
       const turnuri = state.turnuri.map((t) => (t.reincarcare === 0 ? t : { ...t, reincarcare: 0 }))
       return ok(
-        logged({ ...state, faza: 'val', turnuri, ocoluriFolosite: 0, ocoluriBonus: 0, evenimente: [], deGenerat: spawnSchedule(state.val, state.tick) }),
+        logged({ ...state, faza: 'val', turnuri, ocoluriFolosite: 0, ocoluriBonus: 0, evenimente: [], deGenerat: spawnSchedule(state.val, state.tick, state.inima) }),
       )
     }
     case 'turn': {
@@ -731,6 +771,16 @@ export function step(state: GameState): GameState {
   }
   const deGenerat = state.deGenerat.slice(i)
 
+  // 2b. Pulsul (Paznicul inimii): la fiecare `puls.interval` tick-uri, naște inamici acolo unde se află. Cei născuți
+  // stau pe hexagonul lui, deci nu primesc o atingere de teren până nu trec pe altul.
+  for (const e of live.slice()) {
+    const puls = ENEMIES[e.tip].puls
+    if (!puls || e.viata <= 0 || tick % puls.interval !== 0) continue
+    for (let n = 0; n < puls.numar; n++) {
+      live.push({ id: urmatorulId++, tip: puls.tip, viata: enemyHealth(puls.tip, valIndex), progres: e.progres, stari: {}, fost: indexOf(e.progres) })
+    }
+  }
+
   // 3. Stările trec cu un tick: arsura lovește, cele expirate dispar.
   for (const e of live) tickStates(e)
 
@@ -828,8 +878,8 @@ export function step(state: GameState): GameState {
  * Reconstruiește starea din seed și jurnal: rulează simularea până la tick-ul fiecărei decizii, o aplică,
  * apoi continuă până la `panaLaTick` (dacă e dat). Aruncă eroare dacă o decizie nu mai e validă.
  */
-export function replay(seed: number, jurnal: readonly LoggedDecision[], panaLaTick?: number): GameState {
-  let state = newGame(seed)
+export function replay(seed: number, jurnal: readonly LoggedDecision[], panaLaTick?: number, start: Start = {}): GameState {
+  let state = newGame(seed, start)
   const advanceTo = (target: number): void => {
     while (state.tick < target) {
       const next = step(state)
@@ -865,6 +915,7 @@ export function fingerprint(state: GameState): string {
     // `urmatorulTurn` nu mai e „numărul de turnuri + 1”, deci intră separat în amprentă.
     `urmatorulTurn=${state.urmatorulTurn}`,
     `urmatorulId=${state.urmatorulId}`,
+    `inima=${state.inima}`,
   ]
   for (const [k, t] of state.map.terrain) parts.push(`${k}:${t}`)
   parts.push(`path=${state.path.map(key).join(';')}`)

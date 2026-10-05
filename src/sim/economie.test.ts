@@ -109,7 +109,7 @@ describe('terraformarea', () => {
     expect(checkTerraform({ ...s, faza: 'val' }, 'canal', '1,-2')).toEqual({ ok: false, reason: 'terenul se modelează doar între valuri' })
     expect(checkTerraform(s, 'canal', '0,0')).toEqual({ ok: false, reason: 'pe drum nu se poate' })
     expect(checkTerraform(s, 'canal', '0,-1')).toEqual({ ok: false, reason: 'aici e un turn' })
-    expect(checkTerraform(s, 'canal', '2,-2')).toEqual({ ok: false, reason: 'sapi un canal se poate doar pe câmpie sau pădure, nu pe deal' })
+    expect(checkTerraform(s, 'canal', '2,-2')).toEqual({ ok: false, reason: 'sapi un canal se poate doar pe câmpie, pădure, cenușă sau puieți, nu pe deal' })
     expect(checkTerraform(s, 'arde', '1,-2')).toEqual({ ok: false, reason: 'aprinzi pădurea se poate doar pe pădure, nu pe câmpie' })
     expect(checkTerraform({ ...s, pamant: 1 }, 'deal', '1,-2')).toEqual({
       ok: false,

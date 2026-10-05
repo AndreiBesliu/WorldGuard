@@ -1,0 +1,60 @@
+/* Ecranul planetei: peste tot jocul, între partide. */
+
+.planeta {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 24px;
+  background: radial-gradient(ellipse at 40% 45%, #1b2430 0%, #0d1014 70%);
+  color: var(--text);
+  font: 14px/1.4 system-ui, sans-serif;
+  overflow: auto;
+}
+.planeta.vizibil { display: flex; }
+.planeta-cap h1 { margin: 0; font-size: 26px; color: var(--accent); }
+.planeta-cap .sub { margin: 4px 0 0; color: var(--sters); }
+.planeta.salvata .planeta-cap h1::after { content: ' — salvată'; color: var(--bun); }
+
+.planeta-corp { flex: 1; display: flex; gap: 24px; align-items: center; justify-content: center; flex-wrap: wrap; min-height: 0; }
+.harta-planetei { width: min(560px, 90vw); height: auto; max-height: 70vh; }
+
+.regiune polygon { fill: #232a33; stroke: #3a434f; stroke-width: 2; transition: fill 0.15s; }
+.regiune text { text-anchor: middle; pointer-events: none; fill: var(--sters); }
+.regiune .semn { font-size: 20px; }
+.regiune .eticheta { font-size: 11px; }
+.regiune.accesibila { cursor: pointer; }
+.regiune.accesibila polygon { fill: #2c3a2c; stroke: var(--accent); }
+.regiune.accesibila text { fill: var(--text); }
+.regiune.salvata { cursor: pointer; }
+.regiune.salvata polygon { fill: #2f5a37; stroke: var(--bun); }
+.regiune.salvata text { fill: #d8f5dd; }
+.regiune.blocata { cursor: pointer; }
+.regiune.blocata polygon { fill: #1a1f26; stroke: #2b333d; }
+.regiune.inima polygon { stroke-width: 3; }
+.regiune.inima.blocata polygon { fill: #2a1a1a; stroke: #6b2e28; }
+.regiune.inima.accesibila polygon { fill: #4a1c17; stroke: var(--rau); }
+.regiune:hover polygon { filter: brightness(1.25); }
+.regiune.aleasa polygon, .regiune.inima.aleasa polygon { stroke: #ffffff; stroke-width: 3.5; }
+
+.regiune-card {
+  width: 300px;
+  background: var(--panou);
+  border: 1px solid var(--margine);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.regiune-card.gol { visibility: hidden; }
+.regiune-card h2 { margin: 0 0 4px; font-size: 18px; }
+.regiune-card .stare { margin: 0 0 10px; color: var(--sters); }
+.regiune-card .mini { display: block; border-radius: 8px; margin: 0 auto 10px; }
+.regiune-card .randuri { margin: 0 0 10px; padding-left: 18px; color: #c9ced4; }
+.regiune-card .motiv { margin: 0 0 10px; color: #ffb4a8; min-height: 0; }
+.regiune-card .motiv:empty { display: none; }
+.regiune-card .joaca { width: 100%; justify-content: center; }
+
+.planeta-jos { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--sters); }
+.planeta-jos .noua { display: none; }
+.planeta.salvata .planeta-jos .noua { display: inline-flex; }

@@ -5,6 +5,7 @@
 // tragă concluzii diferite despre același pas. E pur și determinist: nu schimbă nimic, nu știe de ecran sau de
 // difuzoare, iar simularea nu-l folosește.
 
+import { ENEMIES } from './data/enemies'
 import type { ReactionType } from './data/reactions'
 import type { TowerType } from './data/towers'
 import { enemySpeed, groupOf, pathLength, type Enemy, type GameState } from './sim/game'
@@ -25,6 +26,8 @@ export type StepEvent =
   | { readonly tip: 'scapat'; readonly inamic: Enemy }
   /** Un inamic nou, apărut la intrare. */
   | { readonly tip: 'aparut'; readonly inamic: Enemy }
+  /** Pulsul Paznicului inimii: a născut inamici acolo unde e (`progres`). */
+  | { readonly tip: 'puls'; readonly progres: number }
   /** Valul s-a încheiat: urmează pregătirea, sau partida s-a terminat. */
   | { readonly tip: 'sfarsit'; readonly faza: 'pregatire' | 'castigat' | 'pierdut' }
 
@@ -68,6 +71,19 @@ export function stepEvents(before: GameState, after: GameState): StepEvent[] {
     const e = vii.get(id) ?? { id, tip: sp.tip, viata: 0, progres: 0, stari: {}, ...(sp.trasaturi ? { trasaturi: sp.trasaturi } : {}) }
     out.push({ tip: 'aparut', inamic: e })
     if (!vii.has(id)) out.push({ tip: 'ucis', inamic: e })
+  }
+  // Cei născuți de un puls: id-urile de după programări. Și aici, unul ucis chiar la naștere se reface (viața 0).
+  const nascuti = after.urmatorulId - before.urmatorulId - aparuti
+  if (nascuti > 0) {
+    const parinte = after.inamici.find((e) => ENEMIES[e.tip].puls) ?? before.inamici.find((e) => ENEMIES[e.tip].puls)
+    const progres = parinte?.progres ?? 0
+    out.push({ tip: 'puls', progres })
+    for (let i = 0; i < nascuti; i++) {
+      const id = before.urmatorulId + aparuti + i
+      const e = vii.get(id) ?? { id, tip: (parinte && ENEMIES[parinte.tip].puls?.tip) || 'roi', viata: 0, progres, stari: {} }
+      out.push({ tip: 'aparut', inamic: e })
+      if (!vii.has(id)) out.push({ tip: 'ucis', inamic: e })
+    }
   }
 
   if (before.faza === 'val' && after.faza !== 'val') out.push({ tip: 'sfarsit', faza: after.faza })

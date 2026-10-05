@@ -5,7 +5,7 @@
 
 import type { StateType } from './reactions'
 
-export type EnemyType = 'normal' | 'rapid' | 'blindat' | 'roi' | 'boss'
+export type EnemyType = 'normal' | 'rapid' | 'blindat' | 'roi' | 'boss' | 'paznic'
 
 export interface EnemyInfo {
   readonly nume: string
@@ -21,6 +21,8 @@ export interface EnemyInfo {
   readonly culoare: string
   /** mărimea desenului, ca fracție din raza unui hexagon */
   readonly marime: number
+  /** Pulsul: la fiecare `interval` tick-uri, naște `numar` inamici de tipul `tip` acolo unde e (Paznicul inimii). */
+  readonly puls?: { readonly interval: number; readonly tip: EnemyType; readonly numar: number }
 }
 
 export const ENEMIES: Readonly<Record<EnemyType, EnemyInfo>> = {
@@ -30,6 +32,20 @@ export const ENEMIES: Readonly<Record<EnemyType, EnemyInfo>> = {
   roi: { nume: 'Roi', viata: 30, viteza: 55, dauna: 1, armura: 0, aur: 2, culoare: '#c77dff', marime: 0.2 },
   // Bossul e mare și lent; ce-l face greu sunt trăsăturile din valul lui (vezi `TRAITS` și `WAVES`).
   boss: { nume: 'Boss', viata: 2000, viteza: 18, dauna: 10, armura: 5, aur: 100, culoare: '#e5533d', marime: 0.6 },
+  // Bossul inimii planetei (decis de owner, 05.10.2026: „mai greu și diferit”; cifrele sunt propunerea mea, măsurate cu
+  // botul — DEVLOG, felia 9). Mai greu: de trei ori viața unui boss, armură mai mare, și ia toate viețile bazei.
+  // Diferit: pulsul — naște roiuri unde se află, deci nu ajunge să-l ții în loc, trebuie ucis repede.
+  paznic: {
+    nume: 'Paznicul inimii',
+    viata: 6000,
+    viteza: 14,
+    dauna: 20,
+    armura: 10,
+    aur: 300,
+    culoare: '#ff3d6e',
+    marime: 0.72,
+    puls: { interval: 80, tip: 'roi', numar: 3 },
+  },
 }
 
 /**
@@ -122,6 +138,15 @@ export const WAVES: readonly Wave[] = [
     ],
   },
 ]
+
+/**
+ * Ultimul val al inimii planetei (felia 9): valul 25, cu cei trei bossi ai lui, iar după ei Paznicul inimii. Propunere,
+ * măsurată cu botul.
+ */
+export const VAL_INIMA: Wave = {
+  viata: 4.1,
+  grupuri: [...(WAVES[WAVES.length - 1] as Wave).grupuri, g('paznic', 1, 1, 640)],
+}
 
 /**
  * Cât crește viața inamicilor de la un val la altul, în procente, peste multiplicatorul valului (felia 5, măsurat cu

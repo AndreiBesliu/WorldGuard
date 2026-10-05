@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { TRAITS, WAVES, type Trait } from '../data/enemies'
+import { ENEMIES, TRAITS, VAL_INIMA, WAVES, type Trait } from '../data/enemies'
+import { VIETI_BAZA } from '../data/joc'
 import { STATES } from '../data/reactions'
 import { TOWERS } from '../data/towers'
-import { enemySpeed, fingerprint, newGame, spawnSchedule, step, type GameState } from './game'
+import { enemyHealth, enemySpeed, fingerprint, newGame, spawnSchedule, step, waveAt, type Enemy, type GameState } from './game'
 import { applyContact, type Contact, type ReactionContext, type Victim } from './reactions'
+import { startWave } from './testkit'
 
 type V = Victim & { pos: number }
 const foe = (id: number, pos: number, trasaturi?: readonly Trait[], stari: V['stari'] = {}): V => ({ id, tip: 'boss', viata: 5000, stari: { ...stari }, pos, ...(trasaturi ? { trasaturi } : {}) })
@@ -81,5 +83,63 @@ describe('bossul și trăsăturile', () => {
     expect(a.inamici[0]!.trasaturi).toEqual(['uscat'])
     expect(fingerprint(a)).not.toBe(fingerprint(wave()))
     expect(wave().inamici[0]!.trasaturi).toBeUndefined()
+  })
+})
+
+describe('inima planetei: Paznicul inimii (felia 9)', () => {
+  const last = WAVES.length - 1
+
+  it('pe inimă, ultimul val e cel al inimii: bossii valului 25, apoi Paznicul; pe celelalte regiuni, nu', () => {
+    expect(waveAt({ inima: true }, last)).toBe(VAL_INIMA)
+    expect(waveAt({ inima: true }, 3)).toBe(WAVES[3])
+    expect(waveAt({ inima: false }, last)).toBe(WAVES[last])
+    const inima = spawnSchedule(last, 0, true)
+    expect(inima.filter((s) => s.tip === 'paznic')).toHaveLength(1)
+    expect(spawnSchedule(last, 0).some((s) => s.tip === 'paznic')).toBe(false)
+    // Paznicul vine după toți bossii.
+    const iP = inima.findIndex((s) => s.tip === 'paznic')
+    expect(inima.every((s, i) => s.tip !== 'boss' || i < iP)).toBe(true)
+    // Valul pornit pe inimă e chiar cel al inimii.
+    const pe = (inima: boolean): string[] => startWave({ ...newGame(5, { inima }), val: last, ocoluriPeVal: 0 }).deGenerat.map((x) => x.tip)
+    expect(pe(true)).toContain('paznic')
+    expect(pe(false)).not.toContain('paznic')
+    // Partida știe că e pe inimă, iar amprenta o deosebește.
+    expect(newGame(5, { inima: true }).inima).toBe(true)
+    expect(fingerprint(newGame(5, { inima: true }))).not.toBe(fingerprint(newGame(5)))
+  })
+
+  it('e mai greu decât un boss: mai multă viață, mai multă armură, ia toate viețile bazei', () => {
+    expect(ENEMIES.paznic.viata).toBeGreaterThan(ENEMIES.boss.viata)
+    expect(ENEMIES.paznic.armura).toBeGreaterThan(ENEMIES.boss.armura)
+    expect(ENEMIES.paznic.dauna).toBeGreaterThanOrEqual(VIETI_BAZA)
+  })
+
+  it('pulsul: la fiecare interval, Paznicul naște roiuri acolo unde e; un Paznic mort nu mai naște', () => {
+    const puls = ENEMIES.paznic.puls!
+    const s0 = newGame(7)
+    const paznic: Enemy = { id: 9, tip: 'paznic', viata: 50_000, progres: 5000, stari: {} }
+    // Tick-ul următor e multiplu de interval.
+    const s = { ...s0, faza: 'val' as const, val: last, tick: puls.interval * 3 - 1, inamici: [paznic], deGenerat: [{ tick: 1e6, tip: 'normal' as const }], urmatorulId: 50 }
+    const a = step(s)
+    const nascuti = a.inamici.filter((e) => e.tip === puls.tip)
+    const unde = a.inamici.find((e) => e.id === 9)!.progres
+    expect(nascuti.map((e) => [e.id, e.progres, e.viata])).toEqual(
+      Array.from({ length: puls.numar }, (_, i) => [50 + i, unde, enemyHealth(puls.tip, last)]),
+    )
+    // Până la următorul interval, nimic nou; la el, iar.
+    let c = a
+    for (let t = 1; t < puls.interval; t++) {
+      c = step(c)
+      expect(c.inamici, `tick-ul ${c.tick}`).toHaveLength(a.inamici.length)
+    }
+    expect(step(c).inamici).toHaveLength(a.inamici.length + puls.numar)
+    // Născuții nu primesc atingerea terenului pe hexagonul pe care s-au născut (abia când trec pe altul): lângă apă,
+    // rămân uscați.
+    const langaDrum = '-4,-1' // vecin cu hexagonul de drum 5, (−4, 0), pe care stă Paznicul
+    const lac = { ...s, map: { ...s.map, terrain: new Map(s.map.terrain).set(langaDrum, 'apa' as const) } }
+    expect(step(lac).inamici.filter((e) => e.tip === puls.tip).map((e) => e.stari)).toEqual(Array(puls.numar).fill({}))
+    // Mort, nu mai pulsează.
+    const mort = step({ ...s, inamici: [{ ...paznic, viata: 0 }] })
+    expect(mort.inamici.some((e) => e.tip === puls.tip)).toBe(false)
   })
 })

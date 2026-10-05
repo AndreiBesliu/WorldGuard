@@ -1312,3 +1312,173 @@ plafonul de 24 de sunete deodată.
 unei stări noi, fără rafală după o pauză).
 
 **Propuneri ale mele, nedecise:** acordurile și tonalitățile, volumul fundalului, tasta B.
+
+---
+
+## 05.10.2026 (15) — Felia 9: meta-progresia — lumea care ține minte
+
+**Cerut de owner:** „meta-progresia”. Încep cu stratul C, Lumea (GDD §9.1), cel decis să se construiască primul.
+Straturile A (favoarea zeilor), B (cronica), dificultatea cu modificatori și războiul galactic rămân pentru feliile
+următoare.
+
+**Făcut:**
+- **Planeta** (`src/sim/lume.ts`, cifrele în `src/data/lume.ts`):
+  - 7 regiuni: inima planetei în centru, 6 ținuturi în jur;
+  - fiecare regiune e o partidă, pe harta ei, generată din seed-ul planetei;
+  - pornești din vest; o regiune salvată deschide vecinele ei;
+  - inima se deschide după 5 regiuni salvate, deci o planetă înseamnă cel puțin 6 partide (GDD: 6–10);
+  - cine salvează inima salvează planeta; „Planetă nouă” o pune pe cea veche în arhivă (harta galaxiei vine mai
+    târziu).
+- **Terenul ține minte, hexagon cu hexagon** (persistența din GDD):
+  - nu se salvează harta, ci planeta (seed + versiunea generatorului) și, pe fiecare regiune, jurnalul editărilor:
+    hexagon, ce s-a făcut, ora lumii;
+  - terenul de oricând = generatorul + editările + timpul scurs, recalculat identic;
+  - ultima editare a unui hexagon câștigă;
+  - drumul și turnurile se reiau la fiecare partidă.
+- **Ceasul lumii** = timpul jucat pe planetă (GDD: ceasul personal). Terenul evoluează după el:
+  - pădurea arsă e jar tot restul partidei, cenușă de la partida următoare, puieți după 40 de minute jucate, pădure
+    din nou după 80;
+  - canalul se colmatează după 60 de minute și redevine câmpie;
+  - dealul rămâne.
+- **Două tereni noi:**
+  - cenușa: nu mai arde (urma cu două tăișuri din GDD);
+  - puieții.
+
+  Pe amândouă se construiește și se poate săpa sau ridica un deal.
+- **O regulă nouă: drumul vechi.** Linia dreaptă de la intrare la bază nu se mai terraformează, nici când un ocol a
+  mutat drumul de pe ea: la fiecare partidă drumul pornește iar pe acolo, deci schimbarea n-ar avea cum să rămână.
+- **Rejucarea:** o partidă pe o regiune modificată se rejoacă identic din (seed, teren, jurnal) — `newGame` și
+  `replay` primesc terenul regiunii. Pe asta stă verificarea pe server de mai târziu.
+- **Ecranul planetei** (`src/ui/planeta.ts`):
+  - regiunile: salvate, de apărat sau închise, cu motivul;
+  - ceasul lumii;
+  - pentru regiunea aleasă: o hartă mică a terenului ei, cu hexagoanele schimbate conturate cu auriu, ce s-a schimbat
+    și câte partide s-au jucat acolo;
+  - Enter o pornește.
+- **În partida de pe o regiune:**
+  - numele regiunii stă în bara de sus;
+  - N duce înapoi pe planetă, R reia regiunea;
+  - o partidă în desfășurare se părăsește abia la a doua apăsare și **se socotește jucată**: ce ai făcut terenului
+    rămâne, iar ceasul înaintează. Altfel, o terraformare încercată și apoi „anulată” prin repornire ar ocoli lumea
+    care ține minte;
+  - decizia anulată cu Z nu rămâne (editările vin din jurnal);
+  - o partidă deschisă și lăsată fără nimic făcut nu se socotește.
+- **Pagina închisă în timpul unei partide:** partida de pe regiune se ține minte la fiecare decizie și la sfârșitul
+  fiecărui val. La redeschidere se socotește jucată, ca una părăsită: ce i-ai făcut terenului rămâne, cu un mesaj.
+  - Altfel, închiderea filei ar fi fost o cale de a „anula” o terraformare.
+  - Partida se rejoacă din deciziile ei, deci o înregistrare stricată sau modificată nu ajunge în lume.
+  - Limită: timpul jucat în valul neterminat nu intră în ceasul lumii (cel mult un val).
+- **Salvarea:**
+  - în browser, verificată câmp cu câmp la citire;
+  - o salvare stricată nu se șterge: rămâne deoparte, cu un mesaj, iar planeta pornește nouă;
+  - cu `?seed=` în URL, jocul rămâne partida liberă de până acum, fără planetă.
+
+**Reparat pe drum (prins în browser):** tastele R și N chemau încă codul partidei libere. Pe o regiune, N încărca altă
+hartă în loc să ducă pe planetă. Butoanele erau corecte, tastele nu; acum trec amândouă prin aceleași funcții.
+
+**Teste: 168** (de la 154). `lume.test.ts`, 14 teste:
+- planeta și accesul;
+- ce rămâne pe teren și ceasul;
+- partida părăsită;
+- ora unei editări;
+- decizia anulată;
+- etapele evoluției;
+- cenușa pe hartă și „ultima editare câștigă”;
+- drumul vechi;
+- rejucarea identică;
+- salvarea și refuzurile ei.
+
+**Mutații (14):** toate prinse. Una scăpase la prima trecere: ora unei editări fără tick-ul deciziei, fiindcă toate
+testele editau la tick-ul 0. Acum e prinsă de un test cu o editare din mijlocul partidei.
+
+**Măsurat:**
+- **Mărimea salvării:** o planetă jucată intens (10 partide, câte 10 terraformări fiecare, 100 de editări) ocupă
+  4,8 KB — „câțiva KB pe planetă”, cum estima GDD-ul.
+- **În browser:**
+  - pe ecranul planetei, numai vestul se poate apăra; estul spune de ce e închis;
+  - în vest am ars o pădure și am plecat cu N de două ori: lumea a salvat arderea, iar după reîncărcarea paginii e
+    aceeași;
+  - la partida a doua, în locul pădurii e cenușă, iar harta mică o arată conturată;
+  - o partidă pierdută intenționat se încheie cu „Înapoi pe planetă” și se socotește (2 partide, ceasul înaintat);
+  - o lume cu 5 regiuni salvate deschide inima;
+  - o salvare stricată rămâne deoparte, cu mesajul ei;
+  - pagina închisă în timpul valului 1, după o pădure arsă: la redeschidere, partida s-a socotit jucată și arderea a
+    rămas;
+  - partida liberă (`?seed=2026`) iese identică cu felia 8 pe 8 valuri, la 60 de cadre pe secundă, fără erori.
+
+**Propuneri ale mele, nedecise:**
+- 7 regiuni, inima după 5 salvate;
+- timpii evoluției (40 / 80 / 60 de minute) și etapele ei;
+- cenușa și puieții ca terenuri obișnuite (fără efect);
+- regula drumului vechi;
+- o partidă părăsită se socotește jucată;
+- o regiune salvată se poate juca din nou;
+- inima are aceleași valuri ca celelalte regiuni (un boss al ei, deosebit, n-are încă);
+- numele regiunilor și al planetei.
+
+**Întrebări pentru owner:**
+1. **Inima planetei** are aceleași 25 de valuri ca orice regiune. Vrei un boss al ei, mai greu și diferit, la final?
+2. **Ce rămâne după o partidă pierdută:** acum, tot ce i-ai făcut terenului (și la o partidă părăsită). E bine, sau
+   doar partidele câștigate lasă urme?
+3. **Ce urmează din meta-progresie?** Variante, din GDD §9:
+   - urmele cu două tăișuri: cenușă + apă = noroi care încetinește, regiunea care reacționează (canalul aduce inamici
+     amfibii);
+   - modificatorii de dificultate la revenirea pe o regiune salvată (§9.2);
+   - tipurile de planete (ocean, vulcanică, junglă, gheață);
+   - favoarea zeilor (§9.3) sau cronica (§9.4).
+
+---
+
+## 05.10.2026 (16) — Răspunsurile owner-ului la felia 9: bossul inimii, doar câștigurile lasă urme
+
+**Răspunsuri:**
+1. „Vrei un boss al inimii, mai greu și diferit?”: **da**.
+2. „Ce rămâne după o partidă pierdută?”: **doar partidele câștigate lasă urme**.
+3. „Ce urmează?”: **urmele cu două tăișuri**. E felia 10, în PR-ul ei.
+
+**Făcut:**
+- **Paznicul inimii**, bossul inimii planetei (cifrele, în `ENEMIES.paznic` și `VAL_INIMA`, sunt propunerea mea):
+  - **mai greu:** de trei ori viața unui boss (6000), armură 10 (bossul are 5), iar dacă ajunge la bază ia toate cele
+    20 de vieți;
+  - **diferit — pulsul:** la fiecare 4 secunde naște 3 roiuri acolo unde se află, deci nu ajunge să-l ții în loc,
+    trebuie ucis repede. Cei născuți nu primesc atingerea terenului pe hexagonul pe care s-au născut;
+  - apare doar pe inimă, în ultimul val, după cei trei bossi ai valului 25;
+  - **pe hartă:** aura îi bate ca o inimă, din ce în ce mai repede spre puls, iar coroana e aurie și dublă;
+  - pulsul are un inel roșu pe ecran și o bătaie de inimă în sunet; fundalul muzical se întunecă și pentru el.
+- **Partida știe că e pe inimă** (`GameState.inima`, în amprentă). `newGame` și `replay` primesc acum un singur
+  `Start`: terenul regiunii și inima. Valul se ia mereu prin `waveAt`, inclusiv în previzualizare și în anunț.
+- **Doar partidele câștigate lasă urme pe teren.** Una pierdută, părăsită sau închisă la jumătate se socotește
+  jucată (ceasul lumii înaintează), dar fără urme. Textele o spun: „Doar partidele câștigate lasă urme pe teren.”
+
+**Măsurat — botul**, 25 de valuri, cărți alese bine, 20 de hărți. Câștiguri din 20, pe o regiune obișnuită și pe inimă:
+
+| strategie | turnuri răsfirate: obișnuită / inimă | turnuri lipite, combinate: obișnuită / inimă |
+|---|---|---|
+| doar Fizic | 20 / 19 | 18 / 18 |
+| doar Foc | 19 / 19 | 20 / 20 |
+| Frig + Fulger | 20 / 14 | 19 / 18 |
+| Frig + Fizic | 19 / 5 | 19 / 17 |
+| Fizic + Foc | 18 / 2 | 19 / 18 |
+| toate, pe rând | 10 / 0 | 12 / 0 |
+
+Inima e mult mai grea pentru construcțiile slabe sau răsfirate (Fizic + Foc răsfirat: de la 18 la 2), dar cele bune
+o câștigă tot (17–20 din 20). Aproape toate pierderile de pe inimă se întâmplă la ultimul val.
+
+**Verificat:**
+- **Testele: 173** (de la 168):
+  - valul inimii: Paznicul vine după bossi și numai pe inimă, iar valul pornit pe inimă chiar îl are;
+  - Paznicul e mai greu decât un boss;
+  - pulsul: exact o dată pe interval, nu și cât e mort, iar născuții nu primesc atingerea terenului;
+  - evenimentele pulsului, inclusiv născuții uciși chiar la naștere;
+  - sunetele;
+  - doar câștigurile lasă urme;
+  - partida pornită pe inimă știe că e pe inimă.
+- **Mutații (10):** toate prinse. Cinci scăpau la prima trecere: pulsul decalat, terenul la naștere, valul inimii
+  ignorat, inima pierdută la pornire, Paznicul care nu sună ca un boss. Fiecare are acum testul lui.
+- **În browser:**
+  - Paznicul desenat lângă un boss;
+  - partida părăsită și pagina închisă la jumătate nu lasă urme, iar mesajele o spun;
+  - fără erori.
+
+**Propuneri ale mele, nedecise:** cifrele Paznicului (viața, armura, pulsul la 4 s cu 3 roiuri, cele 20 de vieți) și
+locul lui în valul inimii.
