@@ -1622,3 +1622,114 @@ singur începutul partidei și uitase câmpul nou. Pe o regiune cu canale, rejuc
 Acum refacerea e `settleRun` în `lume.ts`, care pornește prin `startRun`, deci nu mai are un al doilea loc de ținut la
 zi. Testul joacă două valuri și jumătate pe o regiune cu canale (amfibii apar), apoi cere aceeași amprentă la rejucare;
 cu începutul vechi, amprenta iese alta. **Testele: 186.**
+
+---
+
+## 05.10.2026 (19) — Felia 11: modificatorii de dificultate
+
+**Cerut de owner:** „modificatorii” (răspunsul 3 la felia 10). Din GDD §9.2: dificultatea implicită rămâne fixă; după
+ce bați o regiune, la revenire alegi modificatori care o fac mai grea, pentru recompense; trepte cu puncte de
+Amenințare, presetări I / II / III, recompense o singură dată pe prag (sigilii de bronz, argint, aur), câte unul pe
+axă, preview pe hartă, alegerile blocate în partidă.
+
+**Făcut** (toate cifrele sunt propunerea mea, reglate cu botul):
+- **Șapte modificatori**, în `data/modificatori.ts`:
+
+  | modificator | fel | trepte | puncte |
+  |---|---|---|---|
+  | Hoardele | cifre | +20 / 40 / 60% inamici în fiecare grup (bossii rămân), în același ritm | 1 / 2 / 3 |
+  | Pielea groasă | cifre | +8 / 15 / 25% viață | 1 / 2 / 3 |
+  | Prada săracă | cifre | −10 / 20% aur pe inamicul ucis (dobânda rămâne) | 1 / 3 |
+  | Drumuri rare | reguli | ocolul vine doar înaintea valurilor 1, 3, 5… / 1, 4, 7… | 3 / 5 |
+  | Ceața | reguli | nu vezi valul următor / … și dealurile nu mai dau rază | 1 / 2 |
+  | Avangarda de cenușă | reguli | de la valul 2, 4 / 8 rapizi ignifugi în fața fiecărui val | 2 / 3 |
+  | Sezonul inundațiilor | teren | câmpiile de lângă apă se inundă; +2 amfibi pe val (peste plafon) | 2 |
+
+  Sezonul inundațiilor se poate alege doar pe o hartă cu cel puțin 4 hexagoane de apă naturală lângă drum (36 din 40
+  de hărți); inundă între 9 și 45 de câmpii (mediana 19).
+- **Praguri:** 4, 8, 12 → sigiliul de bronz, argint, aur. **Presetări**, fiecare exact la pragul ei:
+  - I = Hoardele 1, Pielea groasă 1, Prada săracă 1, Ceața 1;
+  - II = Hoardele 2, Pielea groasă 2, Drumuri rare 1, Ceața 1;
+  - III = Hoardele 3, Pielea groasă 2, Drumuri rare 1, Avangarda 2, Ceața 1.
+- **În simulare:** modificatorii intră la pornire (`Start.modificatori`), stau în stare și în amprentă, nu se schimbă
+  în partidă. Efectele trec prin funcțiile care le citesc deja: `waveAt`, `enemyHealth`, `enemyGold` (nouă),
+  `detourLimit`, `towerRange`, `newGame` (inundația, `floodPlains`). Rejucarea iese identică.
+- **Pe planetă:** cardul unei regiuni salvate are a doua coloană, „Amenințare”: presetările, treptele fiecărui
+  modificator (cu descrierea la hover), ce face fiecare ales, și ce aduce un câștig („Câștigată, partida aduce Sigiliul
+  de argint” sau „e deja al regiunii”). Harta mică arată inundația dinainte. Regiunile cu sigiliu au un cerc colorat pe
+  harta planetei.
+- **Lumea** ține pe regiune doar cea mai mare amenințare câștigată (`StareRegiune.amenintare`, opțional — salvările
+  vechi se citesc la fel); sigiliul se calculează din ea, deci se dă o singură dată și nu se pierde. Pierderile nu
+  contează. O partidă rămasă la jumătate își ține modificatorii, iar la reîncărcare se reface cu ei.
+- **În partidă:** pastila „⚠ Amenințare 8” în bara de sus (modificatorii, la hover); cu Ceața, previzualizarea valului
+  și semnul de boss lipsesc până pornește valul; cu Drumuri rare, panoul spune „fără ocol acum — următorul înaintea
+  valului 3”; la final, „Sigiliul de argint e acum al regiunii”.
+- **Partida liberă:** `?seed=123&mod=hoarde2,piele1` (pentru verificări; un modificator care nu merge pe hartă e
+  refuzat, cu motiv).
+
+**Măsurat — botul**, 25 de valuri, cărți alese bine, 20 de hărți, 6 strategii; câștiguri din 120.
+- **Prima variantă era mult prea grea.** Fiecare modificator singur, la treapta cea mai mare, cu turnuri răsfirate
+  (fără modificatori: 105):
+
+  | modificator, ultima treaptă | prima variantă | acum |
+  |---|---|---|
+  | Pielea groasă | +50%: 41 | +25%: 82 |
+  | Prada săracă | −50%: 43 | −20%: 85 |
+  | Hoardele | +60%, strânși în același timp: 75 | +60%, în același ritm: 87 |
+  | Drumuri rare | 73 (treapta 1: 87) | la fel; punctele, 3 / 5 în loc de 2 / 3 |
+  | Ceața | 94 | la fel |
+  | Avangarda | 101 (lipite, combinate: 64 din 103) | la fel |
+  | Inundațiile | 94 → 82 din 108, pe cele 18 hărți unde se pot alege | la fel |
+
+  - viața și aurul contează enorm: viața crește deja cu 20% pe val, iar aurul din ucideri e aproape tot venitul;
+  - la Hoarde, ce doare e densitatea: +45% strânși costa cât +60% strânși; în același ritm, +60% costă cât treapta a
+    treia a celorlalți;
+  - **Avangarda lovește un stil, nu pe toți:** aproape nimic cu turnuri răsfirate, mult cu turnuri lipite și
+    combinate (doar Fizic, lipit: 2 din 20). Pornită de la valul 4 în loc de 2, nu ajută (cu 12 rapizi: 50 din 120,
+    lipite). Am lăsat-o așa: e un modificator care cere alt stil.
+- **Presetările** (răsfirate / lipite, combinate; în paranteză, cea mai bună strategie):
+
+  | | răsfirate | lipite, combinate |
+  |---|---|---|
+  | fără | 105 | 103 |
+  | I (4) | 87 (Frig + Fulger 20/20) | 68 (Foc 18/20) |
+  | II (8) | 53 (Frig + Fulger 18/20) | 30 (Foc 14/20) |
+  | III (12) | 48 (Frig + Fulger 18/20) | 12 (Foc 10/20) |
+
+  Prima variantă: I 46 / 31, II 37 / 8, III 26 / 4 — strategiile pierdeau la valul 2. Acum fiecare prag e mai greu
+  decât cel dinainte, iar cea mai bună strategie câștigă și la III. Botul nu-și schimbă stilul după modificatori; un
+  jucător o face, deci cifrele lui sunt o margine de jos.
+
+**Verificat:**
+- **Testele: 215** (de la 186). `modificatori.test.ts`, 28 de teste: amenințarea, pragurile, sigiliile, presetările;
+  textul scurt și verificarea alegerii; Hoardele și Avangarda pe valuri (bossii, Paznicul, amfibii neatinși); viața
+  (și a roiurilor din puls) și aurul (rotunjit în jos); Drumuri rare (relicva, cartea „Ocol în plus”, mesajul); Ceața și
+  dealul; inundația (un inel, drumul neatins, în jurul canalelor săpate, noroiul de lângă apa nouă, amfibii peste
+  plafon); amprenta și rejucarea; pe planetă: doar pe regiuni salvate, inundația doar pe hărți ude, cea mai mare
+  amenințare câștigată, salvarea, partida refăcută cu modificatorii ei.
+- **Mutații (36):** toate prinse (una scăpase — rotunjirea aurului —, acum are test).
+- **În browser:**
+  - partida liberă cu `?mod=`: pastila, Ceața ascunde valul, Drumuri rare fără ocol la valul 2;
+  - planeta: sigiliul de bronz pe hartă, cardul cu presetările, inundația pe harta mică, partida pornită cu III;
+  - o partidă cu II, lăsată la mijlocul valului 2 și reîncărcată, se socotește, fără erori;
+  - cardul încape fără derulare la 1366×720, 1600×1000, 1920×1080 (la prima încercare, cu o singură coloană, avea 950
+    px și trebuia derulat chiar și la 1080).
+
+**Propuneri ale mele, nedecise:**
+- cei șapte modificatori, treptele și punctele lor, pragurile 4 / 8 / 12 și presetările;
+- Sezonul inundațiilor doar pe hărți cu 4+ hexagoane de apă lângă drum;
+- lumea ține doar cea mai mare amenințare câștigată; pierderile nu contează;
+- **încă nu:** Al doilea front (cere o a doua intrare și un al doilea drum — o felie a lui), recompensele de dincolo
+  de sigilii, lore-ul deblocat de modificatorul-semnătură.
+
+**Întrebări pentru owner:**
+1. **Ce aduce un prag**, pe lângă sigiliu? GDD-ul spune „recompense o singură dată pe prag”; acum e doar sigiliul.
+   Variante: puncte pentru favoarea zeilor (stratul A, când ajungem la el), o relicvă sau o carte în plus la începutul
+   partidelor de pe planetă, sau deocamdată nimic în afară de sigiliu.
+2. **Avangarda pedepsește turnurile lipite** și aproape că nu atinge turnurile răsfirate. Îți place un modificator care
+   cere alt stil, sau vrei ca toți să apese la fel pe toate stilurile?
+3. **Ce urmează?** Variante din GDD §9:
+   - Al doilea front (o a doua intrare și un al doilea drum, ca modificator);
+   - tipurile de planete (ocean, vulcanică, junglă, gheață);
+   - favoarea zeilor sau cronica;
+   - botul care semnalează regiunile devenite banale și reluarea unei regiuni de la zero.

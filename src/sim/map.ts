@@ -152,3 +152,18 @@ export function mixTerrain(terrain: ReadonlyMap<string, Terrain>): Map<string, T
   }
   return out
 }
+
+/**
+ * Sezonul inundațiilor (modificatorul `inundatii`): apa crește cu un inel — fiecare câmpie vecină cu o apă devine apă,
+ * în afară de drum. Vecinii se citesc din terenul de dinainte, deci apa nouă nu se întinde mai departe.
+ */
+export function floodPlains(terrain: ReadonlyMap<string, Terrain>, path: readonly Hex[]): Map<string, Terrain> {
+  const out = new Map(terrain)
+  const drum = new Set(path.map(key))
+  for (const [k, t] of terrain) {
+    if (t !== 'campie' || drum.has(k)) continue
+    const [q, r] = k.split(',').map(Number) as [number, number]
+    if (neighbors({ q, r }).some((v) => terrain.get(key(v)) === 'apa')) out.set(k, 'apa')
+  }
+  return out
+}

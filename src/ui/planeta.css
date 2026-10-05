@@ -18,7 +18,8 @@
 .planeta-cap .sub { margin: 4px 0 0; color: var(--sters); }
 .planeta.salvata .planeta-cap h1::after { content: ' — salvată'; color: var(--bun); }
 
-.planeta-corp { flex: 1; display: flex; gap: 24px; align-items: center; justify-content: center; flex-wrap: wrap; min-height: 0; }
+/* Nu se strânge sub conținut: când cardul e mai înalt decât fereastra, se derulează tot ecranul, nu se suprapune peste subsol. */
+.planeta-corp { flex: 1 0 auto; display: flex; gap: 24px; align-items: center; justify-content: center; flex-wrap: wrap; }
 .harta-planetei { width: min(560px, 90vw); height: auto; max-height: 70vh; }
 
 .regiune polygon { fill: #232a33; stroke: #3a434f; stroke-width: 2; transition: fill 0.15s; }
@@ -40,7 +41,8 @@
 .regiune.aleasa polygon, .regiune.inima.aleasa polygon { stroke: #ffffff; stroke-width: 3.5; }
 
 .regiune-card {
-  width: 300px;
+  display: flex;
+  gap: 16px;
   background: var(--panou);
   border: 1px solid var(--margine);
   border-radius: 12px;
@@ -53,7 +55,38 @@
 .regiune-card .randuri { margin: 0 0 10px; padding-left: 18px; color: #c9ced4; }
 .regiune-card .motiv { margin: 0 0 10px; color: #ffb4a8; min-height: 0; }
 .regiune-card .motiv:empty { display: none; }
+.regiune-card .stanga { width: 300px; }
 .regiune-card .joaca { width: 100%; justify-content: center; }
+
+/* Modificatorii de dificultate (GDD §9.2): doar pe o regiune salvată, în a doua coloană a cardului. */
+.regiune-card .amenintare { width: 270px; padding-left: 16px; border-left: 1px solid var(--margine); }
+.regiune-card .amenintare[hidden] { display: none; }
+.amenintare h3 { margin: 0 0 6px; font-size: 14px; color: var(--sters); font-weight: 600; }
+.amenintare h3 .total { color: var(--accent); font-size: 16px; }
+.amenintare .presetari { display: flex; gap: 4px; margin-bottom: 6px; }
+.amenintare .presetari .btn { flex: 1; justify-content: center; padding: 3px 0; }
+.amenintare .modificatori { list-style: none; margin: 0 0 6px; padding: 0; }
+.amenintare .modificatori li { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 2px 0; color: var(--sters); }
+.amenintare .modificatori li.ales { color: var(--text); }
+.amenintare .modificatori li.indisponibil { opacity: 0.5; }
+.amenintare .trepte { display: flex; gap: 2px; }
+.amenintare .treapta {
+  width: 24px; height: 22px; padding: 0;
+  background: #1b2128; color: var(--sters); border: 1px solid var(--margine); border-radius: 5px;
+  font: inherit; font-size: 12px; cursor: pointer;
+}
+.amenintare .treapta:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
+.amenintare .treapta.activ { background: #4a3a1a; border-color: var(--accent); color: #ffe6a8; }
+.amenintare .treapta:disabled { cursor: not-allowed; }
+.amenintare .efecte { margin: 0 0 6px; padding-left: 16px; font-size: 12px; color: #c9ced4; }
+.amenintare .efecte:empty { display: none; }
+.amenintare .rezumat { margin: 0; color: #ffe6a8; }
+.amenintare .record { margin: 2px 0 0; font-size: 12px; color: var(--sters); }
+
+.regiune .sigiliu { stroke: #0d1014; stroke-width: 1.5; }
+.regiune .sigiliu.bronz { fill: #c0874a; }
+.regiune .sigiliu.argint { fill: #d5dde5; }
+.regiune .sigiliu.aur { fill: #f5c542; }
 
 .planeta-jos { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--sters); }
 .planeta-jos .noua { display: none; }

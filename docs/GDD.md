@@ -149,6 +149,21 @@ boss la valurile 5, 10 și 15 (în prototip); din 05.10.2026, 25 de valuri, cu b
   - **modificatori care schimbă reguli, nu doar cifre:** Sezonul inundațiilor, Avangarda de cenușă, Drumuri rare, Al doilea front, Ceață;
   - **recompensele se plătesc o singură dată pe prag**, per regiune; peste un prag, doar cosmetice (sigiliu de bronz, argint sau aur pe hartă); modificatorul-semnătură deblochează lore;
   - un singur modificator pe axă; preview pe hartă înainte de start; alegerile sunt blocate în partidă.
+- **În prototip (felia 11, 05.10.2026 — cifrele sunt propunere, măsurate cu botul):**
+  - șapte modificatori, fiecare cu treptele lui și cu puncte de Amenințare pe treaptă:
+    - **cifre:** Hoardele (+20 / 40 / 60% inamici în fiecare grup, în afară de bossi; 1 / 2 / 3 puncte),
+      Pielea groasă (+8 / 15 / 25% viață; 1 / 2 / 3), Prada săracă (−10 / 20% aur pe inamicul ucis; 1 / 3);
+    - **reguli:** Drumuri rare (ocolul vine doar înaintea fiecărui al doilea / al treilea val; 3 / 5), Ceața (nu vezi
+      valul următor; la treapta a doua, nici dealurile nu mai dau rază; 1 / 2), Avangarda de cenușă (de la valul 2,
+      4 / 8 rapizi ignifugi în fața fiecărui val; 2 / 3);
+    - **de teren:** Sezonul inundațiilor (câmpiile de lângă apă se inundă, iar apa aduce 2 amfibi în plus pe val; 2) —
+      doar pe regiunile cu cel puțin 4 hexagoane de apă lângă drum;
+  - praguri: 4 (sigiliul de bronz), 8 (argint), 12 (aur); presetările I / II / III ajung exact la ele;
+  - se aleg doar pe o regiune salvată, pe cardul ei de pe planetă; harta mică arată inundația dinainte;
+  - lumea ține minte, pe regiune, doar cea mai mare amenințare câștigată; sigiliul se calculează din ea, deci se dă o
+    singură dată pe prag și nu se pierde;
+  - **încă nu:** Al doilea front (cere o a doua intrare și un al doilea drum), recompensele de dincolo de sigilii,
+    lore-ul deblocat de modificatorul-semnătură.
 
 ### 9.3 Stratul A — Favoarea zeilor (decis în principiu; detaliile când ajungem la el)
 
@@ -306,3 +321,7 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | Amfibii vin și din apa naturală (05.10.2026) | decis |
 | Din apa naturală: unul la fiecare 4 hexagoane de apă de lângă drumul vechi, cel mult 3 | propunere |
 | Felia 11: modificatorii de dificultate (05.10.2026) | decis |
+| Șapte modificatori (Hoardele, Pielea groasă, Prada săracă, Drumuri rare, Ceața, Avangarda de cenușă, Sezonul inundațiilor), cu treptele și punctele din §9.2 | propunere |
+| Praguri 4 / 8 / 12 → sigiliu de bronz / argint / aur, o dată pe regiune; presetările I / II / III ajung la ele | propunere |
+| Modificatorii se aleg doar la revenire, pe o regiune salvată; lumea ține doar cea mai mare amenințare câștigată | propunere |
+| Al doilea front, recompensele de dincolo de sigilii și lore-ul, mai târziu | propunere |

@@ -9,6 +9,7 @@ import { MILI_HEX, VIETI_BAZA } from '../data/joc'
 import { TERRAIN, type Terrain } from '../data/terrain'
 import { TOWERS, type TowerInfo, type TowerType } from '../data/towers'
 import { enemyHealth, enemySpeed, isCombined, pathContacts, towerGroups, type Enemy, type GameState } from '../sim/game'
+import { modValue } from '../sim/modificatori'
 import { distance, fromKey, type Hex } from '../sim/hex'
 import type { Fx } from './fx'
 import { drawTerrain, drawTerrainAnimations, FUNDAL, shade } from './terrain'
@@ -725,7 +726,7 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
       ctx.fillText(label, p.x, p.y - r * 1.4 - 9)
     }
     // Bara de viață, după prima lovitură: verde, galbenă, roșie.
-    const max = enemyHealth(e.tip, s.val)
+    const max = enemyHealth(e.tip, s.val, modValue(s.modificatori, 'piele'))
     if (e.viata < max) {
       const f = Math.max(0, e.viata) / max
       const w = Math.max(16, r * 2.4)

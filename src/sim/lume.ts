@@ -9,9 +9,11 @@
 import type { Terraform } from '../data/economie'
 import { AMFIBII, EVOLUTIE, LUME } from '../data/lume'
 import type { Terrain } from '../data/terrain'
-import { newGame, replay, type GameState, type LoggedDecision, type Start } from './game'
+import type { Modificatori } from '../data/modificatori'
+import { naturalRoadsideWater, newGame, replay, type GameState, type LoggedDecision, type Start } from './game'
 import { distance, hexesInRadius, key, type Hex } from './hex'
 import { generateMap } from './map'
+import { checkModifiers, threat } from './modificatori'
 import { fail, ok, type Result } from './result'
 import { createRng } from './rng'
 
@@ -28,6 +30,12 @@ export interface StareRegiune {
   /** Câte partide s-au jucat aici (câștigate, pierdute sau părăsite). */
   readonly partide: number
   readonly editari: readonly Editare[]
+  /**
+   * Cea mai mare Amenințare (suma treptelor modificatorilor) cu care s-a câștigat aici (GDD §9.2, felia 11). Lipsește
+   * până la primul câștig cu modificatori. Sigiliul regiunii se calculează din ea (`sealOf`), deci se dă o singură dată
+   * pe prag.
+   */
+  readonly amenintare?: number
 }
 
 /** Ce se salvează: tot ce trebuie ca lumea să se refacă identic. */
@@ -139,14 +147,19 @@ export function regionOf(l: Lume, cheie: string): Regiune | undefined {
 
 /**
  * O partidă nouă pe regiune: harta ei, cu terenul pe care i l-au lăsat partidele de dinainte; pe inimă, cu valul ei.
- * `start` e ce trebuie dat și rejucării (`replay`).
+ * Modificatorii de dificultate se aleg doar la revenire, pe o regiune salvată (GDD §9.2). `start` e ce trebuie dat și
+ * rejucării (`replay`).
  */
-export function startRun(l: Lume, cheie: string): Result<{ state: GameState; start: Start }> {
+export function startRun(l: Lume, cheie: string, modificatori: Modificatori = {}): Result<{ state: GameState; start: Start }> {
   const r = regionOf(l, cheie)
   if (!r) return fail(`nu există regiunea ${cheie}`)
   const acces = regionAccess(l, cheie)
   if (acces === 'blocata') return fail(r.inima ? `inima se deschide după ${LUME.pentruInima} regiuni salvate` : 'regiunea se deschide după ce salvezi o vecină')
-  const start: Start = { teren: regionTerrain(l, cheie), inima: r.inima, amfibii: regionAmphibians(l, cheie) }
+  const ales = Object.keys(modificatori).length > 0
+  if (ales && acces !== 'salvata') return fail('modificatorii se aleg la revenire, după ce salvezi regiunea')
+  const m = checkModifiers(modificatori, naturalRoadsideWater(r.seed))
+  if (!m.ok) return fail(m.reason)
+  const start: Start = { teren: regionTerrain(l, cheie), inima: r.inima, amfibii: regionAmphibians(l, cheie), ...(ales ? { modificatori: m.value } : {}) }
   return ok({ state: newGame(r.seed, start), start })
 }
 
@@ -159,6 +172,8 @@ export function startRun(l: Lume, cheie: string): Result<{ state: GameState; sta
 export function commitRun(l: Lume, cheie: string, final: GameState): Lume {
   const vechi = stareOf(l, cheie)
   const castigata = final.faza === 'castigat'
+  // Amenințarea se ține doar din câștiguri și doar cea mai mare: un prag se atinge o singură dată.
+  const amenintare = Math.max(vechi.amenintare ?? 0, castigata ? threat(final.modificatori) : 0)
   const noi: Editare[] = []
   if (castigata) for (const { la, d } of final.jurnal) if (d.tip === 'teren') noi.push({ hex: d.hex, actiune: d.actiune, la: l.ceas + la })
   return {
@@ -166,16 +181,23 @@ export function commitRun(l: Lume, cheie: string, final: GameState): Lume {
     ceas: l.ceas + Math.max(1, final.tick),
     regiuni: {
       ...l.regiuni,
-      [cheie]: { salvata: vechi.salvata || castigata, partide: vechi.partide + 1, editari: [...vechi.editari, ...noi] },
+      [cheie]: {
+        salvata: vechi.salvata || castigata,
+        partide: vechi.partide + 1,
+        editari: [...vechi.editari, ...noi],
+        ...(amenintare > 0 ? { amenintare } : {}),
+      },
     },
   }
 }
 
-/** O partidă rămasă la jumătate (pagina închisă în timpul ei): regiunea, deciziile și tick-ul la care a rămas. */
+/** O partidă rămasă la jumătate (pagina închisă în timpul ei): regiunea, modificatorii, deciziile și tick-ul la care a rămas. */
 export interface PartidaSalvata {
   readonly cheie: string
   readonly tick: number
   readonly jurnal: readonly LoggedDecision[]
+  /** Lipsește la partidele salvate înainte de felia 11 (= fără modificatori). */
+  readonly modificatori?: Modificatori
 }
 
 /**
@@ -184,7 +206,7 @@ export interface PartidaSalvata {
  * partidă neîncheiată nu i-a dat încă nimic. Rejucarea o și verifică: o înregistrare stricată sau modificată se refuză.
  */
 export function settleRun(l: Lume, p: PartidaSalvata): Result<{ lume: Lume; final: GameState }> {
-  const r = startRun(l, p.cheie)
+  const r = startRun(l, p.cheie, p.modificatori ?? {})
   if (!r.ok) return fail(r.reason)
   let final: GameState
   try {
@@ -224,6 +246,7 @@ export function decodeWorld(text: string): Result<Lume> {
   for (const [k, r] of Object.entries(o.regiuni)) {
     if (!chei.has(k)) return fail(`regiune necunoscută: ${k}`)
     if (typeof r?.salvata !== 'boolean' || !intreg(r.partide) || !Array.isArray(r.editari)) return fail(`regiunea ${k} e stricată`)
+    if (r.amenintare !== undefined && (!intreg(r.amenintare) || !r.salvata)) return fail(`amenințarea regiunii ${k} e stricată`)
     const harta = generateMap(regionOf(o as Lume, k)?.seed ?? 0).map.terrain
     for (const e of r.editari as unknown[]) {
       const ed = e as Partial<Editare> | null

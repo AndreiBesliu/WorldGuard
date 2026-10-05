@@ -1,8 +1,9 @@
 # World Guard
 
 Tower defense roguelite pe hexagoane: modelezi pământul unor planete vii, iar ele țin minte ce le-ai făcut.
-**Stare:** prototip în browser, pentru desktop — feliile 1–10: valuri, turnuri, reacții, grupuri de turnuri, draftul și
-bossul, economia, finisarea vizuală, sunetul, planeta cu terenul care ține minte, urmele cu două tăișuri.
+**Stare:** prototip în browser, pentru desktop — feliile 1–11: valuri, turnuri, reacții, grupuri de turnuri, draftul și
+bossul, economia, finisarea vizuală, sunetul, planeta cu terenul care ține minte, urmele cu două tăișuri, modificatorii
+de dificultate.
 Fiecare PR are un link de previzualizare; `main` se publică pe Firebase Hosting.
 
 ```bash
@@ -17,6 +18,11 @@ dintr-o partidă câștigată rămân pe regiune și se schimbă cu timpul jucat
 colmatează). Urmele au două tăișuri: cenușa de lângă apă devine noroi, care încetinește inamicii, iar canalele săpate
 (și apa naturală de lângă drum) aduc amfibi, pe care apa nu-i udă, ci îi grăbește. Pe o regiune, `N` te duce înapoi pe planetă, iar `R` o reia. Cu `?seed=123` în URL joci o partidă liberă,
 fără planetă.
+
+**Modificatorii:** pe o regiune salvată, cardul ei îți lasă să o faci mai grea — Hoardele, Pielea groasă, Prada săracă,
+Drumuri rare, Ceața, Avangarda de cenușă și, unde e apă lângă drum, Sezonul inundațiilor —, fiecare cu trepte care dau
+puncte de **Amenințare**. Presetările I / II / III ajung la praguri; o partidă câștigată peste un prag îi dă regiunii
+sigiliul lui (bronz, argint, aur), o singură dată. În partida liberă: `?seed=123&mod=hoarde2,piele1`.
 
 **Cum se joacă:** apără baza `B` de inamicii care pleacă din `I`. Înainte de fiecare val pui **un ocol**
 (obligatoriu), construiești turnuri și pornești valul.
