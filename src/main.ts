@@ -36,13 +36,17 @@ import {
   planetRegions,
   planetSaved,
   regionAccess,
+  regionAmphibians,
   regionOf,
   regionTerrain,
   savedRing,
+  settleRun,
   startRun,
   type Lume,
+  type PartidaSalvata,
 } from './sim/lume'
 import { createPlanetScreen, type PlanetView } from './ui/planeta'
+import { generateMap } from './sim/map'
 import { draw, fitLayout, hexToPixel, pixelToHex, resetRenderCaches, type Layout, type Overlay } from './render/canvas'
 import { Fx, toWorld } from './render/fx'
 import {
@@ -62,6 +66,7 @@ import {
   groupReload,
   incompatiblePair,
   isCombined,
+  naturalAmphibians,
   newGame,
   pathLength,
   replay,
@@ -446,7 +451,7 @@ function contextView(): { view: HudView['context']; overlay: Partial<Overlay> } 
         ...COMBINARE.armura.map((c) => ({ k: `Combinat ${comboTowers(c)}`, v: `${c.nume}: ${comboEffect(c)}` })),
       ],
       nota:
-        'Ocolul e obligatoriu înainte de fiecare val. Uleiul de pe hartă unge inamicii: du drumul pe lângă el cu un ocol, apoi aprinde-i cu Foc. Focul și Frigul sunt incompatibile — se anulează și nu se combină.',
+        'Ocolul e obligatoriu înainte de fiecare val. Uleiul de pe hartă unge inamicii: du drumul pe lângă el cu un ocol, apoi aprinde-i cu Foc. Focul și Frigul sunt incompatibile — se anulează și nu se combină. Pe planetă, cenușa de lângă apă devine noroi (încetinește), iar canalele săpate aduc amfibi.',
     },
     overlay: {},
   }
@@ -867,11 +872,13 @@ function settleUnfinishedRun(): void {
   }
   if (text === null) return
   try {
-    const p = JSON.parse(text) as { cheie: string; tick: number; jurnal: GameState['jurnal'] }
+    const p = JSON.parse(text) as PartidaSalvata
     const r = regionOf(lume, p.cheie)
     if (!r) throw new Error(`regiune necunoscută: ${p.cheie}`)
-    const final = replay(r.seed, p.jurnal, p.tick, { teren: regionTerrain(lume, p.cheie), inima: r.inima })
-    lume = commitRun(lume, p.cheie, final)
+    const refacuta = settleRun(lume, p)
+    if (!refacuta.ok) throw new Error(refacuta.reason)
+    const { final } = refacuta.value
+    lume = refacuta.value.lume
     saveWorld()
     const urme = final.faza === 'castigat' ? 'câștigată: ce ai făcut terenului a rămas' : 'jucată, fără urme pe teren (doar câștigurile lasă urme)'
     window.setTimeout(() => hud.toast(`Partida neterminată din ${r.nume.replace('Ținutul', 'ținutul')} s-a socotit ${urme}.`, 'info'), 500)
@@ -927,12 +934,24 @@ function planetView(l: Lume): PlanetView {
   if (r) {
     const st = l.regiuni[r.cheie]
     const teren = regionTerrain(l, r.cheie)
+    // Terenul de pe hartă, nu doar etapa editării: cenușa de lângă apă e deja noroi.
+    const din = regionAmphibians(l, r.cheie)
+    const partida = newGame(r.seed, { teren, amfibii: din })
+    const harta = partida.map
+    const naturali = naturalAmphibians(generateMap(r.seed).map, partida.path)
     const numar = new Map<Terrain, number>()
-    for (const t of teren.values()) numar.set(t, (numar.get(t) ?? 0) + 1)
+    for (const k of teren.keys()) {
+      const t = harta.terrain.get(k)
+      if (t) numar.set(t, (numar.get(t) ?? 0) + 1)
+    }
+    const surse = [naturali > 0 ? `apa de lângă drum: ${naturali}` : '', din > 0 ? `canalele săpate: ${din}` : ''].filter(Boolean).join(', ')
     const randuri = [
       teren.size > 0
         ? `Terenul schimbat: ${[...numar].map(([t, n]) => `${n} × ${TERRAIN[t].nume.toLowerCase()}`).join(', ')}`
         : 'Terenul e neatins.',
+      ...(partida.amfibii > 0
+        ? [`Amfibi în fiecare val, de la al treilea: ${partida.amfibii} (${surse}). Apa nu-i udă, îi grăbește.`]
+        : []),
       `Partide jucate aici: ${st?.partide ?? 0}`,
       ...(r.inima ? ['Ultima regiune: cine îi salvează inima salvează planeta.'] : []),
     ]
@@ -944,7 +963,7 @@ function planetView(l: Lume): PlanetView {
       stare: a === 'salvata' ? 'Salvată — te poți întoarce oricând' : a === 'accesibila' ? 'Se poate apăra' : 'Încă închisă',
       randuri,
       motiv: pornire.ok ? undefined : pornire.reason,
-      harta: newGame(r.seed, { teren }).map,
+      harta,
       editate: [...teren.keys()],
     }
   }

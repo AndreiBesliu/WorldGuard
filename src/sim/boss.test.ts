@@ -93,7 +93,7 @@ describe('inima planetei: Paznicul inimii (felia 9)', () => {
     expect(waveAt({ inima: true }, last)).toBe(VAL_INIMA)
     expect(waveAt({ inima: true }, 3)).toBe(WAVES[3])
     expect(waveAt({ inima: false }, last)).toBe(WAVES[last])
-    const inima = spawnSchedule(last, 0, true)
+    const inima = spawnSchedule(last, 0, { inima: true })
     expect(inima.filter((s) => s.tip === 'paznic')).toHaveLength(1)
     expect(spawnSchedule(last, 0).some((s) => s.tip === 'paznic')).toBe(false)
     // Paznicul vine după toți bossii.

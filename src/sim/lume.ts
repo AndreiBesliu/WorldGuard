@@ -7,9 +7,9 @@
 // orice mașină, iar o partidă se poate verifica rejucând-o din (seed, teren, jurnal).
 
 import type { Terraform } from '../data/economie'
-import { EVOLUTIE, LUME } from '../data/lume'
+import { AMFIBII, EVOLUTIE, LUME } from '../data/lume'
 import type { Terrain } from '../data/terrain'
-import { newGame, type GameState, type Start } from './game'
+import { newGame, replay, type GameState, type LoggedDecision, type Start } from './game'
 import { distance, hexesInRadius, key, type Hex } from './hex'
 import { generateMap } from './map'
 import { fail, ok, type Result } from './result'
@@ -111,11 +111,26 @@ export function evolvedTerrain(e: Editare, acum: number): Terrain {
   return t
 }
 
-/** Terenul pe care regiunea îl are acum din partidele de dinainte: doar hexagoanele editate (ultima editare câștigă). */
-export function regionTerrain(l: Lume, cheie: string): Map<string, Terrain> {
+/** Ultima editare a fiecărui hexagon editat al regiunii. */
+function lastEdits(l: Lume, cheie: string): Map<string, Editare> {
   const ultima = new Map<string, Editare>()
   for (const e of stareOf(l, cheie).editari) ultima.set(e.hex, e)
-  return new Map([...ultima].map(([h, e]) => [h, evolvedTerrain(e, l.ceas)]))
+  return ultima
+}
+
+/** Terenul pe care regiunea îl are acum din partidele de dinainte: doar hexagoanele editate (ultima editare câștigă). */
+export function regionTerrain(l: Lume, cheie: string): Map<string, Terrain> {
+  return new Map([...lastEdits(l, cheie)].map(([h, e]) => [h, evolvedTerrain(e, l.ceas)]))
+}
+
+/** Canalele săpate pe regiune care sunt încă apă: cele colmatate sau acoperite de altă editare nu mai contează. */
+export function dugCanals(l: Lume, cheie: string): number {
+  return [...lastEdits(l, cheie).values()].filter((e) => e.actiune === 'canal' && evolvedTerrain(e, l.ceas) === 'apa').length
+}
+
+/** Câți amfibi aduc canalele săpate în fiecare val al regiunii (GDD §9.1: „regiunea reacționează”). */
+export function regionAmphibians(l: Lume, cheie: string): number {
+  return Math.min(AMFIBII.maxim, dugCanals(l, cheie) * AMFIBII.peCanal)
 }
 
 export function regionOf(l: Lume, cheie: string): Regiune | undefined {
@@ -131,7 +146,7 @@ export function startRun(l: Lume, cheie: string): Result<{ state: GameState; sta
   if (!r) return fail(`nu există regiunea ${cheie}`)
   const acces = regionAccess(l, cheie)
   if (acces === 'blocata') return fail(r.inima ? `inima se deschide după ${LUME.pentruInima} regiuni salvate` : 'regiunea se deschide după ce salvezi o vecină')
-  const start: Start = { teren: regionTerrain(l, cheie), inima: r.inima }
+  const start: Start = { teren: regionTerrain(l, cheie), inima: r.inima, amfibii: regionAmphibians(l, cheie) }
   return ok({ state: newGame(r.seed, start), start })
 }
 
@@ -154,6 +169,30 @@ export function commitRun(l: Lume, cheie: string, final: GameState): Lume {
       [cheie]: { salvata: vechi.salvata || castigata, partide: vechi.partide + 1, editari: [...vechi.editari, ...noi] },
     },
   }
+}
+
+/** O partidă rămasă la jumătate (pagina închisă în timpul ei): regiunea, deciziile și tick-ul la care a rămas. */
+export interface PartidaSalvata {
+  readonly cheie: string
+  readonly tick: number
+  readonly jurnal: readonly LoggedDecision[]
+}
+
+/**
+ * Reface o partidă rămasă la jumătate și o socotește jucată (`commitRun`). Pornește exact ca la `startRun` — terenul,
+ * inima, amfibii —, deci rejucarea iese identică cu partida de atunci: lumea nu s-a mișcat între timp, fiindcă o
+ * partidă neîncheiată nu i-a dat încă nimic. Rejucarea o și verifică: o înregistrare stricată sau modificată se refuză.
+ */
+export function settleRun(l: Lume, p: PartidaSalvata): Result<{ lume: Lume; final: GameState }> {
+  const r = startRun(l, p.cheie)
+  if (!r.ok) return fail(r.reason)
+  let final: GameState
+  try {
+    final = replay(r.value.state.seed, p.jurnal, p.tick, r.value.start)
+  } catch (e) {
+    return fail(e instanceof Error ? e.message : String(e))
+  }
+  return ok({ lume: commitRun(l, p.cheie, final), final })
 }
 
 // --- Salvarea --------------------------------------------------------------------------------------------------

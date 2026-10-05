@@ -5,7 +5,7 @@
 
 import type { StateType } from './reactions'
 
-export type EnemyType = 'normal' | 'rapid' | 'blindat' | 'roi' | 'boss' | 'paznic'
+export type EnemyType = 'normal' | 'rapid' | 'blindat' | 'roi' | 'boss' | 'paznic' | 'amfibiu'
 
 export interface EnemyInfo {
   readonly nume: string
@@ -21,6 +21,8 @@ export interface EnemyInfo {
   readonly culoare: string
   /** mărimea desenului, ca fracție din raza unui hexagon */
   readonly marime: number
+  /** Stările pe care le primește altfel: amfibiul, în loc să se ude, se grăbește. */
+  readonly inLoc?: Partial<Record<StateType, StateType>>
   /** Pulsul: la fiecare `interval` tick-uri, naște `numar` inamici de tipul `tip` acolo unde e (Paznicul inimii). */
   readonly puls?: { readonly interval: number; readonly tip: EnemyType; readonly numar: number }
 }
@@ -46,6 +48,10 @@ export const ENEMIES: Readonly<Record<EnemyType, EnemyInfo>> = {
     marime: 0.72,
     puls: { interval: 80, tip: 'roi', numar: 3 },
   },
+  // Regiunea reacționează (GDD §9.1, felia 10, propunere): canalele săpate aduc amfibi. Apa nu-i udă, ci îi grăbește,
+  // deci nici înghețul, nici electrocutarea nu pornesc de la ea pe ei. Fragili (măsurat: cu 140 de viață și armură,
+  // trei pe val dărâmau partida la valul 2–3); periculoși prin viteza din apă.
+  amfibiu: { nume: 'Amfibiu', viata: 70, viteza: 45, dauna: 1, armura: 0, aur: 5, culoare: '#3fbfa0', marime: 0.3, inLoc: { ud: 'grabit' } },
 }
 
 /**

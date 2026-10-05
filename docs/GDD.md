@@ -300,3 +300,9 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | Paznicul inimii: viață 6000, armură 10, ia toate viețile; pulsul naște 3 roiuri la 4 s; vine după bossii valului 25 | propunere |
 | Doar partidele câștigate lasă urme pe teren (05.10.2026) | decis |
 | Felia 10: urmele cu două tăișuri (05.10.2026) | decis |
+| Noroiul: cenușa de lângă apă (la începutul partidei sau după un canal săpat) devine noroi; împotmolește inamicii de pe drumul vecin (−35% viteză, 3 s); nu ține drum, nici turn | propunere |
+| Amfibii: fiecare canal săpat, încă apă, aduce un amfibiu în fiecare val al regiunii, de la valul 3, cel mult 6; fragili (viață 70); apa nu-i udă, îi grăbește (+40%, 2 s) | propunere |
+| Noroiul rămâne o capcană simplă: doar încetinește (05.10.2026) | decis |
+| Amfibii vin și din apa naturală (05.10.2026) | decis |
+| Din apa naturală: unul la fiecare 4 hexagoane de apă de lângă drumul vechi, cel mult 3 | propunere |
+| Felia 11: modificatorii de dificultate (05.10.2026) | decis |

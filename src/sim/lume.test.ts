@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EVOLUTIE, LUME } from '../data/lume'
 import { checkTerraform, fingerprint, isOldRoad, newGame, replay, step, type GameState } from './game'
-import { key } from './hex'
+import { fromKey, key, neighbors } from './hex'
 import {
   commitRun,
   decodeWorld,
@@ -30,12 +30,13 @@ function played(l: Lume, cheie: string, teren: { actiune: 'canal' | 'deal' | 'ar
   return { ...s, faza, tick: tickuri }
 }
 
-/** Un hexagon liber de pe harta regiunii (nu pe drumul vechi), cu terenul cerut. */
-function freeHex(l: Lume, cheie: string, teren: string): string {
+/** Un hexagon liber de pe harta regiunii (nu pe drumul vechi), cu terenul cerut; cu `departeDeApa`, fără apă vecină. */
+function freeHex(l: Lume, cheie: string, teren: string, departeDeApa = false): string {
   const r = startRun(l, cheie)
   if (!r.ok) throw new Error(r.reason)
   const s = r.value.state
-  const k = [...s.map.terrain].find(([h, t]) => t === teren && !isOldRoad(s.map, h) && !s.path.some((p) => key(p) === h))?.[0]
+  const uscat = (h: string): boolean => !neighbors(fromKey(h)).some((n) => s.map.terrain.get(key(n)) === 'apa')
+  const k = [...s.map.terrain].find(([h, t]) => t === teren && !isOldRoad(s.map, h) && !s.path.some((p) => key(p) === h) && (!departeDeApa || uscat(h)))?.[0]
   if (!k) throw new Error(`nu e ${teren} pe harta regiunii ${cheie}`)
   return k
 }
@@ -170,7 +171,7 @@ describe('terenul care ține minte', () => {
 
   it('pe hartă: pădurea arsă e cenușă la partida următoare; cenușa nu mai arde; ultima editare a unui hexagon câștigă', () => {
     let l = newWorld(42)
-    const hex = freeHex(l, START, 'padure')
+    const hex = freeHex(l, START, 'padure', true)
     l = commitRun(l, START, played(l, START, [{ actiune: 'arde', hex }], 'castigat'))
     const r = startRun(l, START)
     if (!r.ok) throw new Error(r.reason)

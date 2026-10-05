@@ -158,6 +158,24 @@ function tile(ctx: CanvasRenderingContext2D, k: string, t: Terrain, l: Layout): 
         ctx.fill()
       }
       break
+    case 'noroi':
+      // Noroi: bălți închise și câteva bule.
+      for (let i = 0; i < 3; i++) {
+        const p = at(i)
+        ctx.beginPath()
+        ctx.ellipse(p.x, p.y, s * (0.2 + hash01(k, i + 60) * 0.1), s * 0.09, hash01(k, i + 70) * Math.PI, 0, Math.PI * 2)
+        ctx.fillStyle = shade(base, -0.3, 0.8)
+        ctx.fill()
+      }
+      for (let i = 3; i < 6; i++) {
+        const p = at(i)
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, Math.max(1, s * 0.04), 0, Math.PI * 2)
+        ctx.strokeStyle = shade(base, 0.3, 0.7)
+        ctx.lineWidth = 1
+        ctx.stroke()
+      }
+      break
     case 'apa':
     case 'jar':
       break // animate, în `drawTerrainAnimations`

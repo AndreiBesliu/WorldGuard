@@ -1482,3 +1482,143 @@ o câștigă tot (17–20 din 20). Aproape toate pierderile de pe inimă se înt
 
 **Propuneri ale mele, nedecise:** cifrele Paznicului (viața, armura, pulsul la 4 s cu 3 roiuri, cele 20 de vieți) și
 locul lui în valul inimii.
+
+---
+
+## 05.10.2026 (17) — Felia 10: urmele cu două tăișuri
+
+**Cerut de owner:** „urmele cu două tăișuri” (răspunsul 3 la felia 9). Din GDD §9.1: „cenușa nu mai arde, dar cenușă
++ apă = noroi care încetinește” și „regiunea reacționează (canalul săpat aduce inamici amfibii)”.
+
+**Făcut:**
+- **Noroiul** (cifrele, în `data/terrain.ts` și `data/reactions.ts`, sunt propunerea mea):
+  - cenușa care are apă vecină devine noroi;
+  - se întâmplă la începutul fiecărei partide pe o regiune și după fiecare terraformare, deci un canal săpat lângă
+    cenușă o face noroi pe loc;
+  - noroiul împotmolește inamicii de pe drumul vecin (starea nouă „Împotmolit”: −35% viteză, 3 s);
+  - nu ține nici drum, nici turn;
+  - **cele două tăișuri:** pădurea arsă nu mai arde, dar lângă apă se face capcană; în schimb îți ia un loc de
+    construit și de ocolit.
+- **Amfibii** (cifrele, în `ENEMIES.amfibiu` și `AMFIBII`, sunt propunerea mea):
+  - fiecare canal săpat pe o regiune, cât e încă apă, aduce un amfibiu în fiecare val al ei;
+  - încep de la valul 3, cel mult 6 pe val;
+  - canalele colmatate sau acoperite de alt teren nu mai aduc nimic;
+  - **apa nu-i udă, îi grăbește** (starea nouă „Grăbit”: +40%, 2 s), deci înghețul și electrocutarea nu pornesc de la
+    apă pe ei;
+  - **cele două tăișuri:** canalul te ajută împotriva tuturor celorlalți, dar aduce inamici care îl folosesc.
+- **Reguli pe date, fără cazuri speciale în motor:**
+  - `AMESTECURI` (un teren lângă altul devine al treilea), aplicate de `mixTerrain`;
+  - `EnemyInfo.inLoc` (amfibiul primește „grăbit” în loc de „ud”);
+  - `StateInfo.grabire` (viteza: încetinirea și grăbirea se înmulțesc, deci un amfibiu înghețat tot stă pe loc).
+- **Pe ecran:**
+  - noroiul are bălți și bule;
+  - amfibiul e un corp alungit, cu coadă, întors spre drum;
+  - un împotmolit are o pată de noroi la picioare, un grăbit are dâre în urmă;
+  - inelul de pe drum de lângă noroi e maro.
+- **Planeta:** cardul regiunii arată terenul de pe hartă (deci și noroiul) și câți amfibi aduc canalele. Ajutorul din
+  joc o spune pe scurt.
+
+**Măsurat — botul**, 25 de valuri, cărți alese bine, 20 de hărți; câștiguri din 20. Coloanele: regiune obișnuită
+(din felia 9) / 3 hexagoane de noroi lângă mijlocul drumului / 3 canale lângă drum / 3 canale și cei 3 amfibi pe care
+i-ar aduce / doar 3 amfibi.
+
+| strategie | turnuri răsfirate | turnuri lipite, combinate |
+|---|---|---|
+| doar Fizic | 20 / 20 / 20 / 19 / 19 | 18 / 19 / 19 / 16 / 17 |
+| doar Foc | 19 / 20 / 20 / 20 / 18 | 20 / 20 / 20 / 20 / 20 |
+| Frig + Fulger | 20 / 20 / 20 / 20 / 20 | 19 / 20 / 18 / 17 / 19 |
+| Frig + Fizic | 19 / 19 / 19 / 19 / 19 | 19 / 19 / 19 / 17 / 16 |
+| Fizic + Foc | 18 / 18 / 16 / 17 / 17 | 19 / 20 / 18 / 18 / 16 |
+| toate, pe rând | 10 / 12 / 9 / 12 / 13 | 12 / 12 / 11 / 11 / 12 |
+
+- **Noroiul ajută puțin**, cum voiam: aceleași câștiguri sau cu 1–2 mai multe; Foc pierde la boss 20 de vieți în loc
+  de 40.
+- **Amfibii costă puțin** după reglaj: cel mult 7 câștiguri din 120.
+- **Prima variantă era mult prea grea:** 140 de viață, armură 2, de la primul val. Cu trei pe val, doar Fizic cădea
+  de la 18 la 4 câștiguri, iar partidele se pierdeau la valul 2–3: în primul val jucătorul are 1–2 turnuri, iar trei
+  amfibi adăugau jumătate din viața valului. Acum sunt fragili (70 de viață, fără armură) și vin de la valul 3.
+- **Ce nu poate arăta botul:** el nu caută dinadins inamicii uzi, deci partea bună a canalelor nu se vede în
+  cifrele lui (canalele de lângă drum îi iau și locuri de construit).
+
+**Verificat:**
+- **Testele: 183** (de la 173). `urme.test.ts`, 10 teste:
+  - amestecul de teren;
+  - noroiul la pornire și după un canal;
+  - împotmolirea pe drum;
+  - noroiul nu ține drum, nici turn;
+  - amfibiul în apă și sub frig;
+  - viteza cu grăbire;
+  - valurile cu amfibi (inclusiv inima);
+  - canalele de pe planetă: pierdute, câștigate, colmatate, acoperite;
+  - plafonul.
+- **Mutații (15):** toate prinse.
+- **În browser:**
+  - o scenă cu noroi, amfibi (unul grăbit) și inamici împotmoliți;
+  - pe planetă, o regiune cu un canal și o pădure arsă lângă el: cardul arată „1 × apă, 1 × noroi” și „aduc 1
+    amfibiu”; în partidă, pădurea e noroi, iar valul îl are pe amfibiu;
+  - partida liberă iese identică (8 valuri), la 60 de cadre pe secundă, fără erori.
+
+**Propuneri ale mele, nedecise:**
+- încetinirea noroiului (35%, 3 s);
+- amfibiul (viață 70, viteză 45, grăbirea +40%), câți vin (1 pe canal, cel mult 6), de la ce val (3);
+- noroiul fără drum și fără turn;
+- regula „cenușă lângă apă”.
+
+**Întrebări pentru owner:**
+1. **Noroiul** încetinește acum doar. Vrei să și ude (deci îngheț și electrocutare pe inamicii împotmoliți), sau rămâne
+   o capcană simplă?
+2. **Amfibii** vin din canalele tale. Mai trebuie să vină și din apa naturală a hărții, sau doar ce sapi tu
+   „trezește” regiunea?
+3. **Ce urmează?** Variante din GDD §9:
+   - modificatorii de dificultate la revenirea pe o regiune salvată;
+   - tipurile de planete (ocean, vulcanică, junglă, gheață);
+   - botul care semnalează regiunile devenite banale și reluarea unei regiuni de la zero;
+   - favoarea zeilor sau cronica.
+
+---
+
+## 05.10.2026 (18) — Răspunsurile owner-ului la felia 10: amfibi și din apa naturală
+
+**Răspunsuri:**
+1. „Noroiul să și ude?”: **rămâne** o capcană simplă — doar încetinește.
+2. „Amfibii să vină și din apa naturală?”: **da**.
+3. „Ce urmează?”: **modificatorii** (GDD §9.2). E felia 11, în PR-ul ei.
+
+**Făcut — amfibii din apa naturală** (cifrele, în `AMFIBII.apaNaturala`, sunt propunerea mea):
+- pe orice hartă, cu sau fără planetă, apa naturală de lângă drumul vechi aduce un amfibiu pe val la fiecare 4
+  hexagoane, cel mult 3, de la valul 3; cu cei din canalele săpate, cel mult 6 pe val;
+- se socotește pe harta generată (`naturalAmphibians`), deci un canal săpat lângă drum nu numără de două ori;
+- cardul regiunii spune de unde vin: „Amfibi în fiecare val, de la al treilea: 4 (apa de lângă drum: 3, canalele
+  săpate: 1)”.
+
+**Măsurat:**
+- **Câtă apă e lângă drum**, pe 40 de hărți: mediana 9 hexagoane, între 2 și 28. Cu „unul la 3” (prima idee), o
+  hartă obișnuită ar fi avut 3 amfibi pe val, iar una udă 6. Am ales „unul la 4, cel mult 3”, ca hărțile ude să nu fie
+  mult mai grele și ca, cu plafonul general de 6, canalele săpate să conteze în continuare.
+- **Botul**, câștiguri din 20, fără și cu amfibii din apa naturală:
+
+  | strategie | răsfirate | lipite, combinate |
+  |---|---|---|
+  | doar Fizic | 20 / 19 | 18 / 15 |
+  | doar Foc | 19 / 18 | 20 / 20 |
+  | Frig + Fulger | 20 / 20 | 19 / 19 |
+  | Frig + Fizic | 19 / 19 | 19 / 18 |
+  | Fizic + Foc | 18 / 17 | 19 / 18 |
+  | toate, pe rând | 10 / 12 | 12 / 13 |
+
+  Costul e mic: 106 → 105 câștiguri din 120 răsfirat, 107 → 103 combinat.
+- **Testele: 185** (de la 183): pragul de hexagoane, apa departe de drum, plafonul apei naturale, canalul care nu
+  numără de două ori.
+- **În browser:**
+  - partida liberă pe harta 2026 are acum 3 amfibi pe val de la valul 3 și merge fără erori (aurul diferă de la valul
+    3, viețile nu);
+  - cardul planetei arată sursele.
+
+**Propuneri ale mele, nedecise:** unul la 4 hexagoane, cel mult 3 din apa naturală.
+
+**Reparat după (găsit citind codul pentru felia 11):** o partidă rămasă la jumătate (pagina închisă în timpul ei) se
+rejuca la următoarea pornire **fără amfibii din canalele săpate** — `settleUnfinishedRun` din `main.ts` își construia
+singur începutul partidei și uitase câmpul nou. Pe o regiune cu canale, rejucarea ieșea altfel decât partida jucată.
+Acum refacerea e `settleRun` în `lume.ts`, care pornește prin `startRun`, deci nu mai are un al doilea loc de ținut la
+zi. Testul joacă două valuri și jumătate pe o regiune cu canale (amfibii apar), apoi cere aceeași amprentă la rejucare;
+cu începutul vechi, amprenta iese alta. **Testele: 186.**

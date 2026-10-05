@@ -39,3 +39,19 @@ export const EVOLUTIE: Readonly<Record<Terraform, readonly { readonly dupa: numb
   ],
   deal: [{ dupa: 0, teren: 'deal' }],
 }
+
+/**
+ * Regiunea reacționează (GDD §9.1: „canalul săpat aduce inamici amfibii”; felia 10, propunere): fiecare canal săpat
+ * care e încă apă aduce un amfibiu în plus în fiecare val al regiunii, până la `maxim`, de la valul `dinValul` + 1
+ * (primele valuri rămân cele din date: atunci jucătorul abia își pune apărarea — măsurat, DEVLOG felia 10).
+ * Și apa naturală îi aduce (decis de owner, 05.10.2026): câte unul la fiecare `apaNaturala.hexagoane` hexagoane de apă
+ * de lângă drumul vechi, cel mult `apaNaturala.maxim`, pe orice hartă.
+ */
+export const AMFIBII = {
+  peCanal: 1,
+  apaNaturala: { hexagoane: 4, maxim: 3 },
+  maxim: 6,
+  dinValul: 2,
+  interval: 16,
+  intarziere: 40,
+} as const

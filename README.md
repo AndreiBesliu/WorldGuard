@@ -1,8 +1,8 @@
 # World Guard
 
 Tower defense roguelite pe hexagoane: modelezi pământul unor planete vii, iar ele țin minte ce le-ai făcut.
-**Stare:** prototip în browser, pentru desktop — feliile 1–9: valuri, turnuri, reacții, grupuri de turnuri, draftul și
-bossul, economia, finisarea vizuală, sunetul, planeta cu terenul care ține minte.
+**Stare:** prototip în browser, pentru desktop — feliile 1–10: valuri, turnuri, reacții, grupuri de turnuri, draftul și
+bossul, economia, finisarea vizuală, sunetul, planeta cu terenul care ține minte, urmele cu două tăișuri.
 Fiecare PR are un link de previzualizare; `main` se publică pe Firebase Hosting.
 
 ```bash
@@ -14,7 +14,8 @@ npm run check    # typecheck + teste + build
 **Planeta:** jocul pornește pe o planetă de 7 regiuni; fiecare regiune e o partidă. Salvezi o regiune ca să le deschizi
 pe vecinele ei, iar după 5 se deschide inima planetei. **Terenul ține minte:** canalele, dealurile și pădurile arse
 dintr-o partidă câștigată rămân pe regiune și se schimbă cu timpul jucat (cenușa devine puieți, apoi pădure; canalele se
-colmatează). Pe o regiune, `N` te duce înapoi pe planetă, iar `R` o reia. Cu `?seed=123` în URL joci o partidă liberă,
+colmatează). Urmele au două tăișuri: cenușa de lângă apă devine noroi, care încetinește inamicii, iar canalele săpate
+(și apa naturală de lângă drum) aduc amfibi, pe care apa nu-i udă, ci îi grăbește. Pe o regiune, `N` te duce înapoi pe planetă, iar `R` o reia. Cu `?seed=123` în URL joci o partidă liberă,
 fără planetă.
 
 **Cum se joacă:** apără baza `B` de inamicii care pleacă din `I`. Înainte de fiecare val pui **un ocol**

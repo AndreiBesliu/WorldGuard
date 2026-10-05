@@ -122,6 +122,13 @@ function drawCross(ctx: CanvasRenderingContext2D, x: number, y: number, size: nu
   ctx.stroke()
 }
 
+/** Culoarea inelului de pe drum, după ce atinge terenul vecin (apa e cea implicită, albastră). */
+const INEL_ATINGERE: Partial<Record<string, string>> = {
+  ulei: 'rgba(214, 138, 40, 0.95)',
+  foc: 'rgba(255, 96, 48, 0.95)',
+  noroi: 'rgba(176, 138, 85, 0.95)',
+}
+
 /** Culorile grupurilor: auriu = combinat (un singur turn), alb-transparent = turnuri vecine care trag individual. */
 const LINK_COMBINAT = 'rgba(245, 215, 110, 0.95)'
 const LINK_INDIVIDUAL = 'rgba(232, 230, 227, 0.45)'
@@ -271,6 +278,14 @@ function enemyPath(ctx: CanvasRenderingContext2D, tip: Enemy['tip'], r: number):
       ctx.roundRect(-a, -a, a * 2, a * 2, r * 0.3)
       break
     }
+    case 'amfibiu':
+      // Un corp alungit, cu coadă: ca un pește care merge pe drum.
+      ctx.ellipse(r * 0.15, 0, r * 1.05, r * 0.7, 0, 0, Math.PI * 2)
+      ctx.moveTo(-r * 0.7, 0)
+      ctx.lineTo(-r * 1.35, r * 0.6)
+      ctx.lineTo(-r * 1.35, -r * 0.6)
+      ctx.closePath()
+      break
     default:
       ctx.arc(0, 0, r, 0, Math.PI * 2)
   }
@@ -333,7 +348,7 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     const p = pts[i] as { x: number; y: number }
     ;(contacts[i] ?? []).forEach((c, j) => {
       hexPath(ctx, p.x, p.y, sz * (0.82 - j * 0.14))
-      ctx.strokeStyle = c.element === 'ulei' ? 'rgba(214, 138, 40, 0.95)' : c.element === 'foc' ? 'rgba(255, 96, 48, 0.95)' : 'rgba(74, 163, 255, 0.8)'
+      ctx.strokeStyle = INEL_ATINGERE[c.element] ?? 'rgba(74, 163, 255, 0.8)'
       ctx.lineWidth = c.element === 'apa' ? 2 : 2.5
       ctx.stroke()
     })
@@ -543,7 +558,7 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     ctx.fill()
     ctx.save()
     ctx.translate(p.x, p.y)
-    if (e.tip === 'rapid') ctx.rotate(p.ang)
+    if (e.tip === 'rapid' || e.tip === 'amfibiu') ctx.rotate(p.ang)
     // Roiul: o mică ceată, cu doi sateliți care se învârt.
     if (e.tip === 'roi') {
       for (let i = 0; i < 2; i++) {
@@ -630,7 +645,28 @@ export function draw(ctx: CanvasRenderingContext2D, s: GameState, l: Layout, o: 
     }
     ctx.restore()
 
-    // Stările, pe inamic.
+    // Stările, pe inamic. Împotmolit: o pată de noroi la picioare. Grăbit: dâre în urma lui.
+    if (e.stari.impotmolit !== undefined) {
+      ctx.beginPath()
+      ctx.ellipse(p.x, p.y + r * 0.8, r * 1.3, r * 0.45, 0, 0, Math.PI * 2)
+      ctx.fillStyle = 'rgba(122, 92, 58, 0.95)'
+      ctx.fill()
+      ctx.strokeStyle = '#d2a868'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+    }
+    if (e.stari.grabit !== undefined) {
+      ctx.strokeStyle = 'rgba(63, 191, 160, 0.85)'
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      for (const off of [-0.45, 0, 0.45]) {
+        const bx = p.x - Math.cos(p.ang) * r * 1.5 - Math.sin(p.ang) * r * off
+        const by = p.y - Math.sin(p.ang) * r * 1.5 + Math.cos(p.ang) * r * off
+        ctx.moveTo(bx, by)
+        ctx.lineTo(bx - Math.cos(p.ang) * r * 0.8, by - Math.sin(p.ang) * r * 0.8)
+      }
+      ctx.stroke()
+    }
     if (e.stari.inghetat !== undefined) {
       hexPath(ctx, p.x, p.y, r * 1.45)
       ctx.fillStyle = 'rgba(220, 245, 255, 0.45)'
