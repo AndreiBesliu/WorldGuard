@@ -14,7 +14,7 @@ export const ECONOMIE = {
   dobanda: { procent: 10, maxim: 30 },
   pamant: {
     /** Cu cât pământ pornești. */
-    start: 0,
+    start: 3,
     /** Cât pământ aduce fiecare val încheiat. */
     peVal: 1,
     /** Cât pământ aduce, la fiecare val încheiat, fiecare mină. */

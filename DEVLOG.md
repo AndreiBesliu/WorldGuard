@@ -1030,3 +1030,27 @@ proporțiile de câștig rămân cele din felia 5, iar durata ajunge în țintă
    - un playtest al tău pe previzualizare;
    - finisarea vizuală;
    - meta-progresia (stratul C, lumea care ține minte), care e în afara prototipului.
+
+---
+
+## 05.10.2026 (10) — Răspunsurile owner-ului la felia 6: pământ de start
+
+**Răspunsuri:**
+1. „Vrei pământ de start?”: **da**.
+2. „Terraformarea rămâne așa sau o facem mai ieftină sau mai puternică?”: **așa rămâne**.
+3. „Ce urmează?”: **finisarea vizuală**. E felia 7, în PR-ul ei.
+
+**Făcut:** pornești cu **3 pământ** (propunere), cât pentru o terraformare la primul val: un deal, sau un canal ori
+o pădure arsă.
+
+**Măsurat — botul**, 25 de valuri, cărți alese bine, 20 de hărți. Câștiguri din 20, cu 0 și cu 3 pământ de start:
+
+| strategie | arde pădurea, 0 / 3 | deal, 0 / 3 |
+|---|---|---|
+| doar Foc | 19 / 19 | 19 / 19 |
+| Frig + Fizic | 19 / 19 | 19 / **20** |
+| Fizic + Foc | 18 / **19** | 17 / 17 |
+| toate, pe rând | 11 / **13** | 11 / 11 |
+
+Efectul e mic, dar merge în direcția cerută. Fără terraformare, pământul de start nu schimbă nimic, cum era de
+așteptat. Vieți pierdute la boss, cu deal: Frig + Fizic pierde 20 în loc de 38.
