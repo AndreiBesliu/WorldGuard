@@ -53,7 +53,10 @@ npm run build
 - `src/sim/lume.ts` — lumea care ține minte (GDD §9.1): planeta, regiunile, accesul, terenul care rămâne și evoluează
   după ceasul lumii, salvarea (verificată la citire). Determinist, sub aceleași reguli ca nucleul. Se salvează DOAR
   planeta (seed + versiunea generatorului) și jurnalul editărilor fiecărei regiuni; terenul de oricând se recalculează
-  (`regionTerrain`). O partidă pe o regiune pornește cu `newGame(seed, teren)`, iar `replay` primește același teren.
+  (`regionTerrain`). **Doar o partidă câștigată lasă urme** (decis de owner); una pierdută sau părăsită doar
+  înaintează ceasul. O partidă pe o regiune pornește cu `newGame(seed, start)` — `start` = terenul regiunii și dacă e
+  inima (al cărei ultim val, `VAL_INIMA`, are Paznicul inimii) —, iar `replay` primește același `start`. Valul unei
+  partide se ia prin `waveAt`, nu din `WAVES` direct.
   `src/ui/planeta.ts` e ecranul planetei; `main.ts` ține lumea în `localStorage` (`worldguard.lume`).
 - `src/events.ts` — ce s-a întâmplat într-un pas (lovituri, reacții, loviți, uciși, scăpați, apăruți, sfârșitul
   valului), citit din starea de dinainte și cea de după. Pur. Din el se hrănesc și efectele de pe ecran, și sunetul:
@@ -221,4 +224,6 @@ Felia 6, decisă de owner (05.10.2026). Cifrele în `src/data/economie.ts`.
 - **Felia 9 (05.10.2026):** meta-progresia, stratul C — planeta cu 7 regiuni, terenul care ține minte (jurnalul
   editărilor) și evoluează după ceasul lumii (cenușă, puieți, canale colmatate), ecranul planetei, salvarea în browser.
   Fără `?seed=`, jocul pornește pe planetă. 168 de teste.
+- **Răspunsurile owner-ului la felia 9 (05.10.2026):** bossul inimii (Paznicul inimii: mai greu, iar pulsul lui naște
+  roiuri); doar partidele câștigate lasă urme pe teren. 173 de teste.
 - **Următorul:** de ales cu owner-ul (vezi DEVLOG).

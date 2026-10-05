@@ -9,7 +9,7 @@
 import type { Terraform } from '../data/economie'
 import { EVOLUTIE, LUME } from '../data/lume'
 import type { Terrain } from '../data/terrain'
-import { newGame, type GameState } from './game'
+import { newGame, type GameState, type Start } from './game'
 import { distance, hexesInRadius, key, type Hex } from './hex'
 import { generateMap } from './map'
 import { fail, ok, type Result } from './result'
@@ -122,32 +122,36 @@ export function regionOf(l: Lume, cheie: string): Regiune | undefined {
   return planetRegions(l.planeta.seed).find((r) => r.cheie === cheie)
 }
 
-/** O partidă nouă pe regiune: harta ei, cu terenul pe care i l-au lăsat partidele de dinainte. */
-export function startRun(l: Lume, cheie: string): Result<{ state: GameState; teren: Map<string, Terrain> }> {
+/**
+ * O partidă nouă pe regiune: harta ei, cu terenul pe care i l-au lăsat partidele de dinainte; pe inimă, cu valul ei.
+ * `start` e ce trebuie dat și rejucării (`replay`).
+ */
+export function startRun(l: Lume, cheie: string): Result<{ state: GameState; start: Start }> {
   const r = regionOf(l, cheie)
   if (!r) return fail(`nu există regiunea ${cheie}`)
   const acces = regionAccess(l, cheie)
   if (acces === 'blocata') return fail(r.inima ? `inima se deschide după ${LUME.pentruInima} regiuni salvate` : 'regiunea se deschide după ce salvezi o vecină')
-  const teren = regionTerrain(l, cheie)
-  return ok({ state: newGame(r.seed, teren), teren })
+  const start: Start = { teren: regionTerrain(l, cheie), inima: r.inima }
+  return ok({ state: newGame(r.seed, start), start })
 }
 
 /**
- * Partida s-a terminat (sau a fost părăsită): ce i-a făcut terenului rămâne, cu ora lumii la care s-a făcut, iar ceasul
- * lumii înaintează cu cât s-a jucat — cel puțin un tick, ca „de la partida următoare” (`dupa: 1` în `EVOLUTIE`) să fie
- * adevărat și pentru o partidă părăsită înainte de primul val. Doar o partidă câștigată salvează regiunea. Editările
- * vin din jurnal, deci o decizie anulată (Z) nu rămâne.
+ * Partida s-a terminat (sau a fost părăsită). Se socotește jucată, iar ceasul lumii înaintează cu cât s-a jucat — cel
+ * puțin un tick, ca „de la partida următoare” (`dupa: 1` în `EVOLUTIE`) să fie adevărat oricând. **Doar o partidă
+ * câștigată lasă urme pe teren** (decis de owner, 05.10.2026), cu ora lumii la care s-a făcut fiecare, și tot doar ea
+ * salvează regiunea. Editările vin din jurnal, deci o decizie anulată (Z) nu rămâne.
  */
 export function commitRun(l: Lume, cheie: string, final: GameState): Lume {
   const vechi = stareOf(l, cheie)
+  const castigata = final.faza === 'castigat'
   const noi: Editare[] = []
-  for (const { la, d } of final.jurnal) if (d.tip === 'teren') noi.push({ hex: d.hex, actiune: d.actiune, la: l.ceas + la })
+  if (castigata) for (const { la, d } of final.jurnal) if (d.tip === 'teren') noi.push({ hex: d.hex, actiune: d.actiune, la: l.ceas + la })
   return {
     ...l,
     ceas: l.ceas + Math.max(1, final.tick),
     regiuni: {
       ...l.regiuni,
-      [cheie]: { salvata: vechi.salvata || final.faza === 'castigat', partide: vechi.partide + 1, editari: [...vechi.editari, ...noi] },
+      [cheie]: { salvata: vechi.salvata || castigata, partide: vechi.partide + 1, editari: [...vechi.editari, ...noi] },
     },
   }
 }

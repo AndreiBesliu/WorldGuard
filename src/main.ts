@@ -72,9 +72,11 @@ import {
   towerRange,
   towerReload,
   waveHealth,
+  waveAt,
   waveIncome,
   type Decision,
   type GameState,
+  type Start,
   type Tower,
 } from './sim/game'
 import { distance, fromKey, key, type Hex } from './sim/hex'
@@ -92,7 +94,7 @@ let state: GameState = newGame(seed)
 /** Lumea care ține minte (GDD §9.1); lipsește în partida liberă. */
 let lume: Lume | undefined
 /** Regiunea pe care se joacă acum și terenul cu care a pornit partida (rejucarea, la „anulează”, pornește din el). */
-let regiune: { cheie: string; teren: Map<string, Terrain> } | undefined
+let regiune: { cheie: string; start: Start } | undefined
 /** Regiunea arătată pe ecranul planetei. */
 let regiuneAleasa: string | undefined
 /** O părăsire a partidei care așteaptă confirmarea (a doua apăsare, în câteva secunde). */
@@ -481,7 +483,7 @@ function toolView(u: Terraform | 'mina', h: Hex): { view: HudView['context']; ov
 }
 
 function waveView(): HudView['wave'] {
-  const w = WAVES[state.val]
+  const w = waveAt(state, state.val)
   if (state.faza === 'castigat' || state.faza === 'pierdut' || !w) return { titlu: 'Partida s-a încheiat', randuri: [], nota: '' }
   // Un rând pe tip și trăsături: bossii cu trăsături diferite apar separat, cu ce-i face imuni.
   const rows = new Map<string, { nume: string; culoare: string; numar: number; boss: boolean; trasaturi?: string }>()
@@ -495,8 +497,8 @@ function waveView(): HudView['wave'] {
         nume: names ? `${ENEMIES[g.tip].nume} · ${names}` : ENEMIES[g.tip].nume,
         culoare: ENEMIES[g.tip].culoare,
         numar: g.numar,
-        boss: g.tip === 'boss',
-        trasaturi: g.trasaturi?.map((t) => TRAITS[t].descriere).join('; '),
+        boss: g.tip === 'boss' || g.tip === 'paznic',
+        trasaturi: g.tip === 'paznic' ? 'pulsul: naște roiuri acolo unde e; dacă ajunge la bază, ia toate viețile' : g.trasaturi?.map((t) => TRAITS[t].descriere).join('; '),
       })
     }
   }
@@ -580,7 +582,7 @@ function finalView(): HudView['final'] {
     return { titlu, text: `Toate cele ${WAVES.length} valuri, cu ${state.vieti} vieți rămase și ${total} reacții.`, castigat: true, butoane }
   }
   if (state.faza === 'pierdut') {
-    const rest = r ? ' Ce ai făcut terenului rămâne.' : ''
+    const rest = r ? ' Doar partidele câștigate lasă urme pe teren.' : ''
     return { titlu: 'Baza a căzut', text: `În valul ${state.val + 1} din ${WAVES.length}, după ${total} reacții.${rest}`, castigat: false, butoane }
   }
   return undefined
@@ -594,7 +596,7 @@ function render(): void {
   hud.update({
     regiune: regiune && lume ? regionOf(lume, regiune.cheie)?.nume : undefined,
     val: `Val ${Math.min(state.val + 1, WAVES.length)}/${WAVES.length}`,
-    boss: (WAVES[state.val]?.grupuri ?? []).some((g) => g.tip === 'boss'),
+    boss: (waveAt(state, state.val)?.grupuri ?? []).some((g) => g.tip === 'boss' || g.tip === 'paznic'),
     vieti: state.vieti,
     vietiMax: Math.max(VIETI_BAZA, state.vieti),
     aur: state.aur,
@@ -703,6 +705,7 @@ function stepEffects(evs: readonly StepEvent[], before: GameState, after: GameSt
         lastBolt = w
       }
     } else if (ev.tip === 'lovit') flash.set(ev.inamic, now)
+    else if (ev.tip === 'puls') fx.puls(worldAt(after, ev.progres), now)
     else if (ev.tip === 'scapat') fx.baza(worldAt(before, pathLength(before)), now)
     else if (ev.tip === 'ucis') fx.moarte(worldAt(before, ev.inamic.progres), ENEMIES[ev.inamic.tip].culoare, ENEMIES[ev.inamic.tip].aur, now)
   }
@@ -735,10 +738,11 @@ function decide(d: Decision): boolean {
   if (d.tip === 'turn' || d.tip === 'mina') fx.praf(toWorld(hexToPixel(fromKey(d.hex), layout), layout), now)
   if (d.tip === 'teren') fx.praf(toWorld(hexToPixel(fromKey(d.hex), layout), layout), now, d.actiune === 'canal' ? 'rgba(120, 170, 220, 0.7)' : d.actiune === 'arde' ? 'rgba(255, 140, 60, 0.7)' : undefined)
   if (d.tip === 'pornesteVal') {
-    const w = WAVES[state.val]
+    const w = waveAt(state, state.val)
     const bossi = (w?.grupuri ?? []).filter((g) => g.tip === 'boss')
+    const paznic = (w?.grupuri ?? []).some((g) => g.tip === 'paznic') ? ' · și Paznicul inimii' : ''
     const sub = bossi.length
-      ? `Boss · ${bossi.map((g) => (g.trasaturi ?? []).map((t) => TRAITS[t].nume).join(', ')).join(' · ')}`
+      ? `Boss · ${bossi.map((g) => (g.trasaturi ?? []).map((t) => TRAITS[t].nume).join(', ')).join(' · ')}${paznic}`
       : w
         ? describeWave(w)
         : ''
@@ -781,7 +785,7 @@ function undo(): void {
   // Se anulează doar ce s-a hotărât în pregătirea curentă: o decizie luată la tick-ul de acum.
   const lastDecision = state.jurnal.at(-1)
   if (state.faza === 'pregatire' && lastDecision !== undefined && lastDecision.la === state.tick) {
-    state = replay(seed, state.jurnal.slice(0, -1), state.tick, regiune?.teren)
+    state = replay(seed, state.jurnal.slice(0, -1), state.tick, regiune?.start)
     saveRun()
   } else {
     refuz('Nu e nimic de anulat: se anulează doar deciziile din pregătirea curentă — un val jucat nu se dă înapoi.')
@@ -866,10 +870,11 @@ function settleUnfinishedRun(): void {
     const p = JSON.parse(text) as { cheie: string; tick: number; jurnal: GameState['jurnal'] }
     const r = regionOf(lume, p.cheie)
     if (!r) throw new Error(`regiune necunoscută: ${p.cheie}`)
-    const final = replay(r.seed, p.jurnal, p.tick, regionTerrain(lume, p.cheie))
+    const final = replay(r.seed, p.jurnal, p.tick, { teren: regionTerrain(lume, p.cheie), inima: r.inima })
     lume = commitRun(lume, p.cheie, final)
     saveWorld()
-    window.setTimeout(() => hud.toast(`Partida neterminată din ${r.nume.replace('Ținutul', 'ținutul')} s-a socotit jucată: ce ai făcut terenului a rămas.`, 'info'), 500)
+    const urme = final.faza === 'castigat' ? 'câștigată: ce ai făcut terenului a rămas' : 'jucată, fără urme pe teren (doar câștigurile lasă urme)'
+    window.setTimeout(() => hud.toast(`Partida neterminată din ${r.nume.replace('Ținutul', 'ținutul')} s-a socotit ${urme}.`, 'info'), 500)
   } catch (e) {
     window.setTimeout(() => hud.toast(`Partida neterminată nu s-a putut reface (${e instanceof Error ? e.message : String(e)}); s-a renunțat la ea.`), 500)
   }
@@ -939,7 +944,7 @@ function planetView(l: Lume): PlanetView {
       stare: a === 'salvata' ? 'Salvată — te poți întoarce oricând' : a === 'accesibila' ? 'Se poate apăra' : 'Încă închisă',
       randuri,
       motiv: pornire.ok ? undefined : pornire.reason,
-      harta: newGame(r.seed, teren).map,
+      harta: newGame(r.seed, { teren }).map,
       editate: [...teren.keys()],
     }
   }
@@ -988,7 +993,7 @@ function playRegion(dorita?: string): void {
     refuz(`Nu se poate: ${r.reason}`)
     return
   }
-  regiune = { cheie, teren: r.value.teren }
+  regiune = { cheie, start: r.value.start }
   regiuneAleasa = cheie
   seed = r.value.state.seed
   resetRun(r.value.state)
@@ -1013,7 +1018,7 @@ function leaveRegion(act: 'restart' | 'new'): void {
     const acum = performance.now()
     if (!confirmare || confirmare.act !== act || acum > confirmare.pana) {
       confirmare = { act, pana: acum + 3000 }
-      hud.toast(`Apasă încă o dată ${act === 'new' ? 'N' : 'R'}: partida se socotește jucată, iar ce ai făcut terenului rămâne.`)
+      hud.toast(`Apasă încă o dată ${act === 'new' ? 'N' : 'R'}: partida se socotește pierdută, deci ce ai făcut terenului nu rămâne.`)
       return
     }
   }

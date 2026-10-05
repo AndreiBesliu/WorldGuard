@@ -1426,3 +1426,59 @@ testele editau la tick-ul 0. Acum e prinsă de un test cu o editare din mijlocul
    - modificatorii de dificultate la revenirea pe o regiune salvată (§9.2);
    - tipurile de planete (ocean, vulcanică, junglă, gheață);
    - favoarea zeilor (§9.3) sau cronica (§9.4).
+
+---
+
+## 05.10.2026 (16) — Răspunsurile owner-ului la felia 9: bossul inimii, doar câștigurile lasă urme
+
+**Răspunsuri:**
+1. „Vrei un boss al inimii, mai greu și diferit?”: **da**.
+2. „Ce rămâne după o partidă pierdută?”: **doar partidele câștigate lasă urme**.
+3. „Ce urmează?”: **urmele cu două tăișuri**. E felia 10, în PR-ul ei.
+
+**Făcut:**
+- **Paznicul inimii**, bossul inimii planetei (cifrele, în `ENEMIES.paznic` și `VAL_INIMA`, sunt propunerea mea):
+  - **mai greu:** de trei ori viața unui boss (6000), armură 10 (bossul are 5), iar dacă ajunge la bază ia toate cele
+    20 de vieți;
+  - **diferit — pulsul:** la fiecare 4 secunde naște 3 roiuri acolo unde se află, deci nu ajunge să-l ții în loc,
+    trebuie ucis repede. Cei născuți nu primesc atingerea terenului pe hexagonul pe care s-au născut;
+  - apare doar pe inimă, în ultimul val, după cei trei bossi ai valului 25;
+  - **pe hartă:** aura îi bate ca o inimă, din ce în ce mai repede spre puls, iar coroana e aurie și dublă;
+  - pulsul are un inel roșu pe ecran și o bătaie de inimă în sunet; fundalul muzical se întunecă și pentru el.
+- **Partida știe că e pe inimă** (`GameState.inima`, în amprentă). `newGame` și `replay` primesc acum un singur
+  `Start`: terenul regiunii și inima. Valul se ia mereu prin `waveAt`, inclusiv în previzualizare și în anunț.
+- **Doar partidele câștigate lasă urme pe teren.** Una pierdută, părăsită sau închisă la jumătate se socotește
+  jucată (ceasul lumii înaintează), dar fără urme. Textele o spun: „Doar partidele câștigate lasă urme pe teren.”
+
+**Măsurat — botul**, 25 de valuri, cărți alese bine, 20 de hărți. Câștiguri din 20, pe o regiune obișnuită și pe inimă:
+
+| strategie | turnuri răsfirate: obișnuită / inimă | turnuri lipite, combinate: obișnuită / inimă |
+|---|---|---|
+| doar Fizic | 20 / 19 | 18 / 18 |
+| doar Foc | 19 / 19 | 20 / 20 |
+| Frig + Fulger | 20 / 14 | 19 / 18 |
+| Frig + Fizic | 19 / 5 | 19 / 17 |
+| Fizic + Foc | 18 / 2 | 19 / 18 |
+| toate, pe rând | 10 / 0 | 12 / 0 |
+
+Inima e mult mai grea pentru construcțiile slabe sau răsfirate (Fizic + Foc răsfirat: de la 18 la 2), dar cele bune
+o câștigă tot (17–20 din 20). Aproape toate pierderile de pe inimă se întâmplă la ultimul val.
+
+**Verificat:**
+- **Testele: 173** (de la 168):
+  - valul inimii: Paznicul vine după bossi și numai pe inimă, iar valul pornit pe inimă chiar îl are;
+  - Paznicul e mai greu decât un boss;
+  - pulsul: exact o dată pe interval, nu și cât e mort, iar născuții nu primesc atingerea terenului;
+  - evenimentele pulsului, inclusiv născuții uciși chiar la naștere;
+  - sunetele;
+  - doar câștigurile lasă urme;
+  - partida pornită pe inimă știe că e pe inimă.
+- **Mutații (10):** toate prinse. Cinci scăpau la prima trecere: pulsul decalat, terenul la naștere, valul inimii
+  ignorat, inima pierdută la pornire, Paznicul care nu sună ca un boss. Fiecare are acum testul lui.
+- **În browser:**
+  - Paznicul desenat lângă un boss;
+  - partida părăsită și pagina închisă la jumătate nu lasă urme, iar mesajele o spun;
+  - fără erori.
+
+**Propuneri ale mele, nedecise:** cifrele Paznicului (viața, armura, pulsul la 4 s cu 3 roiuri, cele 20 de vieți) și
+locul lui în valul inimii.

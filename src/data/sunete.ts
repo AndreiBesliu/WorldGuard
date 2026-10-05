@@ -190,6 +190,17 @@ export const SOUNDS = {
       { sursa: 'sawtooth', frecventa: [82.4, 78], filtru: { tip: 'lowpass', frecventa: [300, 900] }, atac: 0.25, durata: 1.4, volum: 0.6 },
     ],
   },
+  /** Pulsul Paznicului inimii: o bătaie de inimă (lub-dub), când naște roiuri. */
+  puls: {
+    volum: 0.75,
+    interval: 300,
+    voci: 1,
+    prioritar: true,
+    straturi: [
+      { sursa: 'sine', frecventa: [75, 50], atac: 0.004, durata: 0.14, volum: 1 },
+      { sursa: 'sine', frecventa: [62, 42], start: 0.18, atac: 0.004, durata: 0.16, volum: 0.8 },
+    ],
+  },
   /** Un inamic a ajuns la bază. */
   baza: {
     volum: 0.7,

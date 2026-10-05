@@ -295,4 +295,8 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | Planeta: 7 regiuni (inima în centru, 6 în jur), pornire din vest, o regiune salvată deschide vecinele, inima după 5 salvate | propunere |
 | Evoluția terenului după ceasul lumii (timpul jucat): pădurea arsă → cenușă (partida următoare) → puieți (40 min) → pădure (80 min); canalul se colmatează (60 min) | propunere |
 | Drumul vechi (linia dreaptă intrare–bază) nu se terraformează: drumul se reface pe el la fiecare partidă | propunere |
-| O partidă părăsită sau pierdută se socotește jucată: ce i-ai făcut terenului rămâne | propunere |
+| O partidă părăsită, pierdută sau închisă la jumătate se socotește jucată (ceasul lumii înaintează) | propunere |
+| Inima planetei are un boss al ei, mai greu și diferit (05.10.2026) | decis |
+| Paznicul inimii: viață 6000, armură 10, ia toate viețile; pulsul naște 3 roiuri la 4 s; vine după bossii valului 25 | propunere |
+| Doar partidele câștigate lasă urme pe teren (05.10.2026) | decis |
+| Felia 10: urmele cu două tăișuri (05.10.2026) | decis |

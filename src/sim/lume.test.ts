@@ -73,6 +73,12 @@ describe('planeta', () => {
     expect(startRun(l, '0,0')).toEqual({ ok: false, reason: `inima se deschide după ${LUME.pentruInima} regiuni salvate` })
     l = win(l, '0,1')
     expect(regionAccess(l, '0,0')).toBe('accesibila')
+    // Partida de pe inimă știe că e pe inimă (ultimul ei val e al inimii); celelalte, nu.
+    const inima = startRun(l, '0,0')
+    expect(inima.ok && inima.value.state.inima).toBe(true)
+    expect(inima.ok && inima.value.start.inima).toBe(true)
+    const vest = startRun(l, START)
+    expect(vest.ok && vest.value.state.inima).toBe(false)
     expect(planetSaved(l)).toBe(false)
     l = win(l, '0,0')
     expect(planetSaved(l)).toBe(true)
@@ -80,17 +86,17 @@ describe('planeta', () => {
 })
 
 describe('terenul care ține minte', () => {
-  it('ce ai făcut terenului rămâne pentru partida următoare pe regiune; ceasul lumii înaintează cu timpul jucat', () => {
+  it('ce ai făcut terenului într-o partidă câștigată rămâne pe regiune; ceasul lumii înaintează cu timpul jucat', () => {
     let l = newWorld(42)
     const apa = freeHex(l, START, 'campie')
     const deal = freeHex(l, START, 'padure')
     const s = played(l, START, [
       { actiune: 'canal', hex: apa },
       { actiune: 'deal', hex: deal },
-    ], 'pierdut', 5000)
+    ], 'castigat', 5000)
     l = commitRun(l, START, s)
     expect(l.ceas).toBe(5000)
-    expect(l.regiuni[START]).toMatchObject({ salvata: false, partide: 1 })
+    expect(l.regiuni[START]).toMatchObject({ salvata: true, partide: 1 })
     expect(l.regiuni[START]!.editari.map((e) => [e.hex, e.actiune])).toEqual([
       [apa, 'canal'],
       [deal, 'deal'],
@@ -102,11 +108,23 @@ describe('terenul care ține minte', () => {
     expect(regionTerrain(l, '0,-1').size).toBe(0)
   })
 
-  it('o partidă părăsită înainte de primul val tot înaintează ceasul: pădurea arsă e cenușă la partida următoare', () => {
+  it('doar o partidă câștigată lasă urme (owner): una pierdută sau părăsită se socotește și înaintează ceasul, fără urme', () => {
     let l = newWorld(42)
     const hex = freeHex(l, START, 'padure')
+    l = commitRun(l, START, played(l, START, [{ actiune: 'arde', hex }], 'pierdut', 4000))
+    expect(l.regiuni[START]).toEqual({ salvata: false, partide: 1, editari: [] })
+    expect(l.ceas).toBe(4000)
+    // Părăsită înainte de primul val: tot o partidă, și ceasul tot înaintează (cel puțin un tick).
     l = commitRun(l, START, played(l, START, [{ actiune: 'arde', hex }], 'pregatire', 0))
-    expect(l.ceas).toBe(1)
+    expect(l.regiuni[START]).toEqual({ salvata: false, partide: 2, editari: [] })
+    expect(l.ceas).toBe(4001)
+    expect(regionTerrain(l, START).size).toBe(0)
+  })
+
+  it('pădurea arsă într-o partidă câștigată e cenușă de la partida următoare (ceasul a trecut de ora arderii)', () => {
+    let l = newWorld(42)
+    const hex = freeHex(l, START, 'padure')
+    l = commitRun(l, START, played(l, START, [{ actiune: 'arde', hex }], 'castigat', 1))
     expect(regionTerrain(l, START).get(hex)).toBe('cenusa')
   })
 
@@ -117,7 +135,7 @@ describe('terenul care ține minte', () => {
     const hex = freeHex(l, START, 'padure')
     // Pădurea arsă în pregătirea de după câteva valuri (tick 3000), partida terminată la tick-ul 5000.
     const s = must({ ...r.value.state, tick: 3000, pamant: 10 }, { tip: 'teren', actiune: 'arde', hex })
-    const dupa = commitRun(l, START, { ...s, faza: 'pierdut', tick: 5000 })
+    const dupa = commitRun(l, START, { ...s, faza: 'castigat', tick: 5000 })
     expect(dupa.regiuni[START]!.editari).toEqual([{ hex, actiune: 'arde', la: 3100 }])
     expect(dupa.ceas).toBe(5100)
     // Puieții cresc socotind de la ora arderii, nu de la începutul partidei.
@@ -132,8 +150,8 @@ describe('terenul care ține minte', () => {
     if (!r.ok) throw new Error(r.reason)
     const hex = freeHex(l, START, 'campie')
     const s = must({ ...r.value.state, pamant: 10 }, { tip: 'teren', actiune: 'canal', hex })
-    const anulat = replay(s.seed, s.jurnal.slice(0, -1), s.tick, r.value.teren)
-    expect(commitRun(l, START, { ...anulat, faza: 'pierdut' }).regiuni[START]!.editari).toEqual([])
+    const anulat = replay(s.seed, s.jurnal.slice(0, -1), s.tick, r.value.start)
+    expect(commitRun(l, START, { ...anulat, faza: 'castigat' }).regiuni[START]!.editari).toEqual([])
   })
 
   it('pădurea arsă: jar tot restul partidei, apoi cenușă, puieți, pădure — după ceasul lumii', () => {
@@ -153,7 +171,7 @@ describe('terenul care ține minte', () => {
   it('pe hartă: pădurea arsă e cenușă la partida următoare; cenușa nu mai arde; ultima editare a unui hexagon câștigă', () => {
     let l = newWorld(42)
     const hex = freeHex(l, START, 'padure')
-    l = commitRun(l, START, played(l, START, [{ actiune: 'arde', hex }], 'pierdut'))
+    l = commitRun(l, START, played(l, START, [{ actiune: 'arde', hex }], 'castigat'))
     const r = startRun(l, START)
     if (!r.ok) throw new Error(r.reason)
     expect(r.value.state.map.terrain.get(hex)).toBe('cenusa')
@@ -162,7 +180,7 @@ describe('terenul care ține minte', () => {
       reason: 'aprinzi pădurea se poate doar pe pădure, nu pe cenușă',
     })
     // Un canal pe cenușă: hexagonul e apă de acum încolo, nu mai trece prin puieți.
-    l = commitRun(l, START, played(l, START, [{ actiune: 'canal', hex }], 'pierdut'))
+    l = commitRun(l, START, played(l, START, [{ actiune: 'canal', hex }], 'castigat'))
     l = { ...l, ceas: l.ceas + EVOLUTIE.arde[2]!.dupa }
     expect(regionTerrain(l, START).get(hex)).toBe('apa')
   })
@@ -182,12 +200,12 @@ describe('terenul care ține minte', () => {
   it('o partidă pe o regiune modificată se rejoacă identic din (seed, teren, jurnal)', () => {
     let l = newWorld(42)
     const hex = freeHex(l, START, 'padure')
-    l = commitRun(l, START, played(l, START, [{ actiune: 'arde', hex }], 'pierdut'))
+    l = commitRun(l, START, played(l, START, [{ actiune: 'arde', hex }], 'castigat'))
     const r = startRun(l, START)
     if (!r.ok) throw new Error(r.reason)
     let s = startWave(r.value.state)
     for (let i = 0; i < 300; i++) s = step(s)
-    const again = replay(s.seed, s.jurnal, s.tick, r.value.teren)
+    const again = replay(s.seed, s.jurnal, s.tick, r.value.start)
     expect(fingerprint(again)).toBe(fingerprint(s))
     // Fără terenul regiunii, rejucarea dă altă hartă.
     expect(fingerprint(replay(s.seed, s.jurnal, s.tick))).not.toBe(fingerprint(s))

@@ -1,6 +1,7 @@
 // Ce sunet face fiecare lucru din joc: evenimentele unui pas (`events.ts`) și deciziile jucătorului. Pur: întoarce
 // doar numele sunetelor și poziția lor în stereo (după locul de pe hartă), ca maparea să se poată testa fără browser.
 
+import type { EnemyType } from '../data/enemies'
 import type { SoundId, StareFundal } from '../data/sunete'
 import type { StepEvent } from '../events'
 import { MILI_HEX } from '../data/joc'
@@ -12,6 +13,9 @@ export interface Cue {
   /** Poziția în stereo, de la −1 (stânga) la 1 (dreapta). */
   readonly pan: number
 }
+
+/** Inamicii care sună (și întunecă fundalul) ca un boss: bossul și Paznicul inimii. */
+const BOSSI: readonly EnemyType[] = ['boss', 'paznic']
 
 /** Cât de larg e stereo-ul: marginile hărții nu se aud doar într-o ureche. */
 const LARGIME_STEREO = 0.6
@@ -40,13 +44,16 @@ export function stepCues(events: readonly StepEvent[], before: GameState): Cue[]
         for (const t of ev.turnuri) out.push({ sunet: `turn-${t}`, pan: panOf(fromKey(ev.hex), raza) })
         break
       case 'ucis':
-        out.push({ sunet: ev.inamic.tip === 'boss' ? 'boss-ucis' : 'ucis', pan: peDrum(ev.inamic.progres) })
+        out.push({ sunet: BOSSI.includes(ev.inamic.tip) ? 'boss-ucis' : 'ucis', pan: peDrum(ev.inamic.progres) })
         break
       case 'scapat':
         out.push({ sunet: 'baza', pan: panOf(before.map.base, raza) })
         break
       case 'aparut':
-        if (ev.inamic.tip === 'boss') out.push({ sunet: 'boss', pan: panOf(before.map.spawn, raza) })
+        if (BOSSI.includes(ev.inamic.tip)) out.push({ sunet: 'boss', pan: panOf(before.map.spawn, raza) })
+        break
+      case 'puls':
+        out.push({ sunet: 'puls', pan: peDrum(ev.progres) })
         break
       case 'sfarsit':
         out.push({ sunet: ev.faza === 'pregatire' ? 'val-gata' : ev.faza, pan: 0 })
@@ -90,6 +97,6 @@ export function decisionPan(d: Decision, s: GameState): number {
 /** Starea fundalului muzical: pregătirea e calmă, valul tensionat, un boss pe hartă întunecă totul; după final, liniște. */
 export function stareFundal(s: GameState): StareFundal {
   if (s.faza === 'pregatire') return 'pregatire'
-  if (s.faza === 'val') return s.inamici.some((e) => e.tip === 'boss') ? 'boss' : 'val'
+  if (s.faza === 'val') return s.inamici.some((e) => BOSSI.includes(e.tip)) ? 'boss' : 'val'
   return 'liniste'
 }

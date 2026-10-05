@@ -106,6 +106,9 @@ describe('ce sună și unde', () => {
       { tip: 'scapat', inamic: enemy('normal') },
       { tip: 'aparut', inamic: enemy('normal') },
       { tip: 'aparut', inamic: enemy('boss') },
+      { tip: 'aparut', inamic: enemy('paznic') },
+      { tip: 'ucis', inamic: enemy('paznic') },
+      { tip: 'puls', progres: 0 },
       { tip: 'sfarsit', faza: 'pregatire' },
       { tip: 'sfarsit', faza: 'castigat' },
       { tip: 'sfarsit', faza: 'pierdut' },
@@ -118,6 +121,9 @@ describe('ce sună și unde', () => {
       'boss-ucis',
       'baza',
       'boss',
+      'boss',
+      'boss-ucis',
+      'puls',
       'val-gata',
       'castigat',
       'pierdut',
@@ -177,6 +183,7 @@ describe('fundalul muzical', () => {
     expect(stareFundal(s)).toBe('pregatire')
     expect(stareFundal({ ...s, faza: 'val' })).toBe('val')
     expect(stareFundal({ ...s, faza: 'val', inamici: [boss] })).toBe('boss')
+    expect(stareFundal({ ...s, faza: 'val', inamici: [{ ...boss, tip: 'paznic' }] })).toBe('boss')
     expect(stareFundal({ ...s, faza: 'castigat' })).toBe('liniste')
     expect(stareFundal({ ...s, faza: 'pierdut' })).toBe('liniste')
   })

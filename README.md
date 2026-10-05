@@ -13,7 +13,7 @@ npm run check    # typecheck + teste + build
 
 **Planeta:** jocul pornește pe o planetă de 7 regiuni; fiecare regiune e o partidă. Salvezi o regiune ca să le deschizi
 pe vecinele ei, iar după 5 se deschide inima planetei. **Terenul ține minte:** canalele, dealurile și pădurile arse
-rămân pe regiune de la o partidă la alta și se schimbă cu timpul jucat (cenușa devine puieți, apoi pădure; canalele se
+dintr-o partidă câștigată rămân pe regiune și se schimbă cu timpul jucat (cenușa devine puieți, apoi pădure; canalele se
 colmatează). Pe o regiune, `N` te duce înapoi pe planetă, iar `R` o reia. Cu `?seed=123` în URL joci o partidă liberă,
 fără planetă.
 
