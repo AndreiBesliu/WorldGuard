@@ -78,10 +78,11 @@ const g = (tip: EnemyType, numar: number, interval: number, intarziere = 0, tras
 })
 
 /**
- * Cele 15 valuri ale prototipului. Bossul apare la valurile 5, 10 și 15 (decis de owner), fiecare cu trăsături care
- * contracarează altă combinație (propunere): la 5 apa (uscat), la 10 frigul (neclintit), la 15 doi bossi — focul
- * (ignifug) și apa cu frigul (uscat, neclintit).
- * Prima versiune, scrisă de mână — se echilibrează după ce există turnuri.
+ * Cele 25 de valuri ale prototipului. Bossul apare la valurile 5, 10 și 15 (decis de owner) și, de când sunt 25 de
+ * valuri, la fiecare al cincilea (20, 25 — propunere). Fiecare boss are trăsături care contracarează altă combinație
+ * (propunere): la 5 apa (uscat), la 10 frigul (neclintit), la 15 focul (ignifug) și apa cu frigul, la 20 focul cu
+ * frigul, la 25 trei bossi, câte unul pe fiecare.
+ * Scrise de mână; viața crește și cu `CRESTERE_VIATA` (măsurat cu botul).
  */
 export const WAVES: readonly Wave[] = [
   { viata: 1.0, grupuri: [g('normal', 8, 24)] },
@@ -99,6 +100,27 @@ export const WAVES: readonly Wave[] = [
   { viata: 2.2, grupuri: [g('blindat', 12, 20), g('rapid', 16, 10, 80)] },
   { viata: 2.4, grupuri: [g('normal', 20, 10), g('roi', 24, 5, 40), g('blindat', 8, 22, 120)] },
   { viata: 2.6, grupuri: [g('blindat', 10, 20), g('rapid', 16, 10, 60), g('boss', 1, 1, 200, ['ignifug']), g('boss', 1, 1, 320, ['uscat', 'neclintit'])] },
+  // Valurile 16–25 (owner, 05.10.2026: „mai multe valuri”, ca partida să ajungă la 20–30 de minute). Propunere: de aici
+  // au trăsături și grupurile obișnuite, ca o combinație să nu țină singură până la capăt.
+  { viata: 2.75, grupuri: [g('roi', 30, 4), g('rapid', 14, 10, 60)] },
+  { viata: 2.9, grupuri: [g('blindat', 12, 18), g('normal', 20, 10, 40)] },
+  { viata: 3.05, grupuri: [g('rapid', 20, 8, 0, ['neclintit']), g('roi', 24, 5, 80)] },
+  { viata: 3.2, grupuri: [g('normal', 24, 9), g('blindat', 10, 18, 60), g('roi', 20, 5, 160)] },
+  { viata: 3.35, grupuri: [g('blindat', 10, 20), g('normal', 16, 10, 40), g('boss', 1, 1, 200, ['ignifug', 'neclintit'])] },
+  { viata: 3.5, grupuri: [g('roi', 40, 3, 0, ['uscat']), g('rapid', 16, 9, 100)] },
+  { viata: 3.65, grupuri: [g('blindat', 14, 16), g('rapid', 20, 8, 60)] },
+  { viata: 3.8, grupuri: [g('normal', 28, 8, 0, ['ignifug']), g('roi', 30, 4, 80)] },
+  { viata: 3.95, grupuri: [g('blindat', 16, 14), g('rapid', 20, 8, 40), g('normal', 20, 8, 160)] },
+  {
+    viata: 4.1,
+    grupuri: [
+      g('rapid', 20, 8),
+      g('blindat', 12, 16, 60),
+      g('boss', 1, 1, 200, ['uscat']),
+      g('boss', 1, 1, 320, ['neclintit']),
+      g('boss', 1, 1, 440, ['ignifug']),
+    ],
+  },
 ]
 
 /**

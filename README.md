@@ -22,7 +22,7 @@ npm run check    # typecheck + teste + build
   `N` hartă nouă. Seed fix: `?seed=123` în URL.
 - **Terenul contează:** apa de lângă drum udă inamicii, bălțile de ulei îi ung (focul îi aprinde: explozie),
   dealul dă rază. Focul și frigul sunt incompatibile.
-- **Bossii** (valurile 5, 10, 15) au trăsături care îi fac imuni la unele stări: uscat, neclintit, ignifug. Le vezi în
-  previzualizarea valului.
+- **25 de valuri.** **Bossii** (la fiecare al cincilea val) au trăsături care îi fac imuni la unele stări: uscat,
+  neclintit, ignifug. Le vezi în previzualizarea valului.
 
 Designul: [`docs/GDD.md`](docs/GDD.md). Regulile proiectului: [`CLAUDE.md`](CLAUDE.md).

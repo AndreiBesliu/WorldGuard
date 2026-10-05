@@ -35,7 +35,7 @@ Documentul rezumă discuția de design din 04.10.2026 și cele trei scanări de 
 
 ```
 val → recompense (aur, pământ) → alegi 1 din 3 cărți → modelezi harta / plasezi turnuri → combinații → val
-boss la valurile 5, 10 și 15 (în prototip)
+boss la valurile 5, 10 și 15 (în prototip); din 05.10.2026, 25 de valuri, cu boss la fiecare al cincilea
 ```
 
 **Cărțile din draft:** o bucată de traseu, un turn, o îmbunătățire sau o relicvă.
@@ -175,7 +175,7 @@ Fapte notabile deblochează conținut (de exemplu, 200 de păduri arse dau doctr
 - grila hex, traseul cu inserții (3 variante pe val), 4 tipuri de teren care participă la reacții;
 - terraformare: canal, deal, arde;
 - 4 turnuri de bază (fizic, foc, frig, fulger), ~6 reacții și grupuri de turnuri (individual sau combinat);
-- 4 inamici + boss la valurile 5, 10 și 15 (decis 05.10.2026), 15 valuri, draft 1 din 3;
+- 4 inamici + boss la valurile 5, 10 și 15 (decis 05.10.2026), apoi la 20 și 25: 25 de valuri, ca partida să ajungă la 20–30 de minute (decis 05.10.2026: „mai multe valuri”); draft 1 din 3;
 - aur cu dobândă și pământ;
 - **jurnalul deciziilor din prima zi**: e baza meta-progresiei, a verificării pe server și a datelor de playtest.
 
@@ -271,3 +271,7 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | Bossul: trăsături care îl fac imun la stări (uscat, neclintit, ignifug) | propunere |
 | Viața inamicilor crește cu 20% pe val, peste multiplicatorul valului (compensează draftul) | propunere |
 | Fulger: daună 36 → 30 (era strategia dominantă cu draftul) | propunere |
+| Un singur tip de turn, cu toate cărțile pe el, e un build bun (05.10.2026) | decis |
+| Partida se lungește prin mai multe valuri (05.10.2026) | decis |
+| 25 de valuri, boss și la valurile 20 și 25, trăsături și pe grupuri obișnuite în valurile 16–25 | propunere |
+| Felia 6: economia — dobânda, pământul, filonul (05.10.2026) | decis |

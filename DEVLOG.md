@@ -908,3 +908,46 @@ limita implicită de 5 s; singur trece în aproximativ 2,4 s.
 2. **Partidele durează încă puțin:** mediana e 10–11 minute la 1×, ținta e 20–30. Variante: mai multe valuri, valuri
    mai lungi, sau inamici mai lenți.
 3. **Felia următoare e economia** (dobânda la aur, pământul, filonul)?
+
+---
+
+## 05.10.2026 (8) — Răspunsurile owner-ului la felia 5: build-ul pe un tip rămâne, mai multe valuri
+
+**Răspunsuri:**
+1. „Un singur tip, cu toate cărțile pe el, câștigă — e un build bun?”: **„build bun”**. Rămâne cum e.
+2. „Partidele durează puțin: cum le lungim?”: **„mai multe valuri”**.
+3. „Felia următoare e economia?”: **„da”**.
+
+**Făcut:**
+- **25 de valuri în loc de 15.** Valurile 16–25 sunt scrise de mână, după tiparul primelor 15: mai mulți inamici,
+  multiplicatorul vieții de la 2,75 la 4,1.
+- **Boss la fiecare al cincilea val.** La 5, 10 și 15 e decizia owner-ului; la 20 și 25 e propunerea mea:
+  - valul 20: un boss ignifug și neclintit;
+  - valul 25: trei bossi, unul uscat, unul neclintit, unul ignifug.
+- **De la valul 16, trăsături și pe grupurile obișnuite** (propunere), ca o singură combinație să nu țină până la
+  capăt: rapizi neclintiți (val 18), roi uscat (val 21), normali ignifugi (val 23).
+
+**Măsurat — botul, cu 25 de valuri.** Am încercat creșterea vieții de 20%, 12% și 6% pe val. Am păstrat 20%:
+proporțiile de câștig rămân cele din felia 5, iar durata ajunge în țintă.
+
+| strategie | cărți alese bine | cărți la întâmplare |
+|---|---|---|
+| doar Fizic | 20 | 11 |
+| doar Foc | 18 | 5 |
+| doar Frig | 7 | 0 |
+| doar Fulger | 19 | 11 |
+| Fizic + Foc | 15 | 2 |
+| Frig + Fulger | 20 | 4 |
+| Frig + Fizic | 19 | 3 |
+| Fizic + Fulger | 13 | 2 |
+| toate, pe rând | 4 | 2 |
+
+- **Durata partidelor câștigate**, în timp de joc la 1×: 12–29 de minute, mediana 19 (cu cărți alese bine). Cu
+  cărți la întâmplare: 20–41 de minute, mediana 28. Înainte, cu 15 valuri, mediana era 10–11 minute.
+- **Timpul de pregătire nu e inclus:** simularea stă pe loc cât construiești și alegi. Cu o jumătate de minut de
+  pregătire pe val, o partidă reală ajunge la 30 de minute sau peste. Ținta din GDD e 20–30.
+- **Unde se pierde, cu cărți bune:** mai ales la valurile cu boss (10 pierderi la valul 10, 4 la 15) și la început
+  (valurile 3–5). Cu cărți la întâmplare se pierde și la ultimul val, cel cu trei bossi (12 pierderi).
+- Cu 12% sau 6% pe val, aproape orice câștigă din nou (doar Frig: 18/20, respectiv 19/20).
+
+**Teste: 123**, aceleași, actualizate: 25 de valuri, boss la 5, 10, 15, 20 și 25.

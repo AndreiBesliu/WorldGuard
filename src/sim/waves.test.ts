@@ -17,8 +17,8 @@ import { optionsAround } from './path'
 import { must, runWave, startWave } from './testkit'
 
 describe('datele valurilor', () => {
-  it('15 valuri, fiecare cu grupuri valide', () => {
-    expect(WAVES).toHaveLength(15)
+  it('25 de valuri (owner: „mai multe valuri”), fiecare cu grupuri valide', () => {
+    expect(WAVES).toHaveLength(25)
     for (const w of WAVES) {
       expect(w.grupuri.length).toBeGreaterThan(0)
       expect(w.viata).toBeGreaterThan(0)
@@ -46,9 +46,9 @@ describe('datele valurilor', () => {
     expect(s.inamici[0]!.viata).toBe(enemyHealth('blindat', 3))
   })
 
-  it('bossul apare la valurile 5, 10 și 15', () => {
+  it('bossul apare la valurile 5, 10 și 15 (decis de owner) și apoi la fiecare al cincilea: 20, 25', () => {
     const cuBoss = WAVES.map((w, i) => (w.grupuri.some((g) => g.tip === 'boss') ? i + 1 : 0)).filter(Boolean)
-    expect(cuBoss).toEqual([5, 10, 15])
+    expect(cuBoss).toEqual([5, 10, 15, 20, 25])
   })
 
   it('rezumatul valului numără corect', () => {

@@ -171,4 +171,6 @@ Felia 5, aleasă de owner (05.10.2026). Cărțile sunt date (`src/data/draft.ts`
   unele combinații o străpung sau o ignoră. 107 teste.
 - **Felia 5 (05.10.2026):** draftul 1 din 3 după fiecare val (turn gratuit, îmbunătățiri, relicve, traseu) și bossul
   cu trăsături (uscat, neclintit, ignifug); viața crește cu 20% pe val, Fulger 36 → 30 (măsurat). 123 de teste.
-- **Următorul:** economia (dobânda și pământul), dacă owner-ul nu decide altfel (vezi DEVLOG).
+- **Răspunsurile owner-ului la felia 5 (05.10.2026):** un singur tip cu toate cărțile pe el e un build bun (rămâne);
+  partida se lungește prin mai multe valuri: 25, cu boss la fiecare al cincilea (20 și 25 sunt propunerea mea).
+- **Următorul:** felia 6, economia (dobânda, pământul, filonul) — decisă de owner.
