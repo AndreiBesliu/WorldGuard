@@ -3,27 +3,33 @@ import { TARGET_MODES, TOWER_TYPES, TOWERS } from '../data/towers'
 import {
   applyDecision,
   checkBuild,
+  checkCombine,
   coverage,
   detourPossible,
   fingerprint,
+  groupOf,
+  incompatiblePair,
+  isCombined,
   newGame,
   replay,
   step,
+  towerGroups,
   towerKeys,
   type Decision,
   type GameState,
   type LoggedDecision,
 } from './game'
-import { key } from './hex'
+import { distance, fromKey, key } from './hex'
 import { optionsAround } from './path'
 import { createRng } from './rng'
 import { firstDetour, must } from './testkit'
 
 /**
  * Joacă o partidă întreagă cu decizii alese pseudo-aleator (determinist): în fiecare pregătire ocolul
- * obligatoriu și turnuri pe hexagoane libere care acoperă drumul, iar în fiecare val o schimbare de țintă la
- * un tick oarecare. Turnurile stau lângă drum, deci blochează uneori variante de ocol — `blocked` numără de
- * câte ori le-a lipsit jucătorului o variantă din cauza lor.
+ * obligatoriu și turnuri pe hexagoane libere care acoperă drumul (des lângă altele, ca să facă grupuri), câte o
+ * comutare de grup, iar în fiecare val o schimbare de țintă și o comutare de grup la tick-uri oarecare.
+ * Turnurile stau lângă drum, deci blochează uneori variante de ocol — `blocked` numără de câte ori le-a lipsit
+ * jucătorului o variantă din cauza lor.
  */
 function playRandom(seed: number): { s: GameState; blocked: number } {
   const pick = createRng(seed, 'test/jucator')
@@ -31,6 +37,15 @@ function playRandom(seed: number): { s: GameState; blocked: number } {
     const r = applyDecision(s, d)
     expect(r.ok).toBe(true)
     return r.ok ? r.value : s
+  }
+  /** Comută un grup ales la întâmplare, dacă se poate (combinat ↔ individual). */
+  const toggleSome = (s: GameState): GameState => {
+    const grupuri = towerGroups(s.turnuri).filter((g) => g.length >= 2)
+    if (grupuri.length === 0) return s
+    const g = pick.pick(grupuri)
+    const id = (g[0] as { id: number }).id
+    const activ = !isCombined(g)
+    return checkCombine(s, id, activ).ok ? apply(s, { tip: 'combina', turn: id, activ }) : s
   }
   let s = newGame(seed)
   let blocked = 0
@@ -50,29 +65,42 @@ function playRandom(seed: number): { s: GameState; blocked: number } {
         (k) => checkBuild(s, tip, k).ok && coverage(s.path, k, TOWERS[tip].raza).filter(Boolean).length >= 3,
       )
       if (good.length === 0) break
-      s = apply(s, { tip: 'turn', turn: tip, hex: pick.pick(good) })
+      const lipite = good.filter((k) => s.turnuri.some((t) => distance(fromKey(t.hex), fromKey(k)) === 1))
+      s = apply(s, { tip: 'turn', turn: tip, hex: pick.pick(lipite.length > 0 && pick.int(2) === 0 ? lipite : good) })
     }
+    s = toggleSome(s)
     s = apply(s, { tip: 'pornesteVal' })
     const switchAt = s.tick + 1 + pick.int(150)
+    const toggleAt = s.tick + 1 + pick.int(150)
     while (s.faza === 'val') {
       s = step(s)
-      const t = s.turnuri.find((x) => !TOWERS[x.tip].zona)
+      const t = s.turnuri.find((x) => !TOWERS[x.tip].zona || isCombined(groupOf(s.turnuri, x.id)))
       if (t && s.tick === switchAt) s = apply(s, { tip: 'tintire', turn: t.id, mod: pick.pick(TARGET_MODES.filter((m) => m !== t.tintire)) })
+      if (s.tick === toggleAt) s = toggleSome(s)
     }
   }
   return { s, blocked }
 }
 
 describe('jurnalul deciziilor', () => {
-  it('replay(seed, jurnal) reconstruiește exact aceeași stare — ocoluri, turnuri, ținte schimbate în val, reacții', () => {
+  it('replay(seed, jurnal) reconstruiește exact aceeași stare — ocoluri, turnuri, grupuri, ținte schimbate în val, reacții', () => {
     let blocked = 0
+    let combined = 0
     const reactions = new Set<string>()
     for (const seed of [1, 5, 2026]) {
       const game = playRandom(seed)
       const s = game.s
       blocked += game.blocked
+      combined += s.jurnal.filter((l) => l.d.tip === 'combina' && l.d.activ).length
       for (const [r, n] of Object.entries(s.reactii)) if ((n ?? 0) > 0) reactions.add(r)
-      expect([...new Set(s.jurnal.map((l) => l.d.tip))].sort()).toEqual(['ocol', 'pornesteVal', 'tintire', 'turn'])
+      expect([...new Set(s.jurnal.map((l) => l.d.tip))].sort()).toEqual(['combina', 'ocol', 'pornesteVal', 'tintire', 'turn'])
+      // Regula grupurilor ține pe tot parcursul: un grup are un singur mod, un turn singur nu e combinat, iar un
+      // grup combinat nu are o pereche incompatibilă.
+      for (const g of towerGroups(s.turnuri)) {
+        expect(new Set(g.map((t) => t.combinat)).size).toBe(1)
+        if (g.length === 1) expect(g[0]!.combinat).toBe(false)
+        if (isCombined(g)) expect(incompatiblePair(g.map((t) => t.tip))).toBeUndefined()
+      }
       expect(s.jurnal.length).toBeGreaterThan(10)
       const again = replay(seed, s.jurnal, s.tick)
       expect(fingerprint(again)).toBe(fingerprint(s))
@@ -80,6 +108,8 @@ describe('jurnalul deciziilor', () => {
     }
     // Turnurile chiar au blocat variante de ocol pe parcurs, deci replay-ul a exersat și regula asta…
     expect(blocked).toBeGreaterThan(0)
+    // …s-au combinat grupuri (și au tras combinat, în val)…
+    expect(combined).toBeGreaterThan(0)
     // …iar partidele au avut reacții de mai multe feluri (stări, lanțuri, teren), reproduse identic.
     expect(reactions.size).toBeGreaterThanOrEqual(3)
   })

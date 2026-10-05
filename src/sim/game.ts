@@ -14,8 +14,8 @@
 import { ENEMIES, WAVES, type EnemyType } from '../data/enemies'
 import { MILI_HEX, VIETI_BAZA } from '../data/joc'
 import type { ReactionType } from '../data/reactions'
-import { INSERARE, TERRAIN } from '../data/terrain'
-import { AUR_START, TARGET_MODES, TOWERS, type TargetMode, type TowerType } from '../data/towers'
+import { INSERARE, TERRAIN, type Terrain } from '../data/terrain'
+import { AUR_START, COMBINARE, TARGET_MODES, TOWERS, type TargetMode, type TowerType } from '../data/towers'
 import { distance, fromKey, key, neighbors, type Hex } from './hex'
 import { generateMap, type GameMap } from './map'
 import { detourOptions, insertDetour } from './path'
@@ -46,6 +46,13 @@ export type Decision =
       /** Id-ul turnului. */
       readonly turn: number
       readonly mod: TargetMode
+    }
+  | {
+      readonly tip: 'combina'
+      /** Un turn din grup — oricare. */
+      readonly turn: number
+      /** `true` = grupul devine un singur turn; `false` = turnurile lui trag din nou fiecare pe cont propriu. */
+      readonly activ: boolean
     }
 
 /** O decizie, cu tick-ul la care a fost luată. */
@@ -87,6 +94,11 @@ export interface Tower {
   readonly tintire: TargetMode
   /** Câte tick-uri mai sunt până poate lovi din nou (0 = gata). */
   readonly reincarcare: number
+  /**
+   * Face parte dintr-un grup combinat (vezi `towerGroups`). Toate turnurile unui grup au aceeași valoare, iar un
+   * turn fără vecini are mereu `false` — `applyDecision` păstrează regula asta la fiecare schimbare.
+   */
+  readonly combinat: boolean
   /** Ultima lovitură: tick-ul și pe cine a lovit. Doar desenul o folosește. */
   readonly lovitura?: { readonly tick: number; readonly tinte: readonly number[] }
 }
@@ -214,7 +226,6 @@ export function checkStartWave(state: GameState): Result<true> {
   return ok(true)
 }
 
-/** Se poate construi turnul `tip` pe hexagonul `hex` acum? Dacă nu, de ce. Folosit și de previzualizare. */
 /** Cât costă turnul `tip` pe hexagonul `hex`: prețul lui plus ce cere terenul (dealul). */
 export function towerCost(state: GameState, tip: TowerType, hex: string): number {
   const t = state.map.terrain.get(hex)
@@ -227,6 +238,98 @@ export function towerRange(state: GameState, tip: TowerType, hex: string): numbe
   return TOWERS[tip].raza + (t === undefined ? 0 : (TERRAIN[t].bonusRaza ?? 0))
 }
 
+/**
+ * Grupurile de turnuri: turnurile vecine (la un hexagon unul de altul), de orice tip, legate din aproape în
+ * aproape. Fiecare grup e în ordinea id-urilor; grupurile, în ordinea celui mai mic id. Un turn fără vecini e un
+ * grup de unul.
+ */
+export function towerGroups(turnuri: readonly Tower[]): Tower[][] {
+  const byHex = new Map(turnuri.map((t) => [t.hex, t]))
+  const seen = new Set<number>()
+  const out: Tower[][] = []
+  for (const t of [...turnuri].sort((a, b) => a.id - b.id)) {
+    if (seen.has(t.id)) continue
+    seen.add(t.id)
+    const grup = [t]
+    for (let i = 0; i < grup.length; i++) {
+      for (const n of neighbors(fromKey((grup[i] as Tower).hex))) {
+        const u = byHex.get(key(n))
+        if (u && !seen.has(u.id)) {
+          seen.add(u.id)
+          grup.push(u)
+        }
+      }
+    }
+    out.push(grup.sort((a, b) => a.id - b.id))
+  }
+  return out
+}
+
+/** Grupul din care face parte turnul `id` (gol, dacă turnul nu există). */
+export function groupOf(turnuri: readonly Tower[], id: number): Tower[] {
+  return towerGroups(turnuri).find((g) => g.some((t) => t.id === id)) ?? []
+}
+
+/** Un grup trage combinat dacă are cel puțin două turnuri și toate sunt combinate. */
+export const isCombined = (grup: readonly Pick<Tower, 'combinat'>[]): boolean => grup.length >= 2 && grup.every((t) => t.combinat)
+
+/** Perechea incompatibilă din tipurile date, dacă există (focul și frigul nu se combină). */
+export function incompatiblePair(tipuri: readonly TowerType[]): readonly [TowerType, TowerType] | undefined {
+  return COMBINARE.incompatibile.find(([a, b]) => tipuri.includes(a) && tipuri.includes(b))
+}
+
+/** Reîncărcarea unui grup combinat: a celui mai lent turn. */
+export const groupReload = (tipuri: readonly TowerType[]): number => Math.max(...tipuri.map((t) => TOWERS[t].reincarcare))
+
+/**
+ * Lovitura unui grup combinat, ca listă de atingeri în ordinea `COMBINARE.ordine`. Pentru fiecare element: suma
+ * daunelor pe care turnurile lui le-ar fi dat singure într-o reîncărcare a grupului, plus `bonusPeElement`% pentru
+ * fiecare element diferit din grup peste primul. Rotunjirile sunt în jos, pe întregi.
+ */
+export function combinedContacts(tipuri: readonly TowerType[]): Contact[] {
+  const R = groupReload(tipuri)
+  const elemente = new Set(tipuri.map((t) => TOWERS[t].element))
+  const bonus = 100 + COMBINARE.bonusPeElement * Math.min(elemente.size - 1, COMBINARE.elementeInPlus)
+  const out: Contact[] = []
+  for (const element of COMBINARE.ordine) {
+    const ale = tipuri.filter((t) => TOWERS[t].element === element)
+    const prim = ale[0]
+    if (prim === undefined) continue
+    const baza = ale.reduce((sum, t) => sum + Math.floor((TOWERS[t].dauna * R) / TOWERS[t].reincarcare), 0)
+    out.push({ element, dauna: Math.floor((baza * bonus) / 100), aplica: TOWERS[prim].aplica })
+  }
+  return out
+}
+
+/**
+ * Pune grupul pe modul dat. Combinat, turnurile lui iau ținta liderului (cel mai mic id) și cea mai lungă
+ * reîncărcare dintre ele — comutarea în timpul valului nu dă o lovitură gratuită.
+ */
+function withMode(turnuri: readonly Tower[], grup: readonly Tower[], combinat: boolean): Tower[] {
+  const lider = grup[0]
+  if (!lider) return [...turnuri]
+  const ids = new Set(grup.map((t) => t.id))
+  const reincarcare = Math.max(...grup.map((t) => t.reincarcare))
+  return turnuri.map((t) => {
+    if (!ids.has(t.id)) return t
+    if (combinat) return { ...t, combinat, tintire: lider.tintire, reincarcare }
+    return t.combinat ? { ...t, combinat } : t
+  })
+}
+
+/** Se poate comuta grupul turnului `id` pe modul `activ` acum? Dacă nu, de ce. Folosit și de UI. */
+export function checkCombine(state: GameState, id: number, activ: boolean): Result<true> {
+  if (state.faza === 'castigat' || state.faza === 'pierdut') return fail('partida s-a încheiat')
+  const grup = groupOf(state.turnuri, id)
+  if (grup.length === 0) return fail(`nu există turnul ${id}`)
+  if (grup.length < 2) return fail('turnul n-are vecini — un grup se face din turnuri puse unul lângă altul')
+  if (isCombined(grup) === activ) return fail(activ ? 'grupul e deja combinat' : 'turnurile grupului trag deja fiecare singur')
+  const pereche = activ ? incompatiblePair(grup.map((t) => t.tip)) : undefined
+  if (pereche) return fail(`${TOWERS[pereche[0]].nume} și ${TOWERS[pereche[1]].nume} sunt incompatibile — un grup cu amândouă nu se poate combina`)
+  return ok(true)
+}
+
+/** Se poate construi turnul `tip` pe hexagonul `hex` acum? Dacă nu, de ce. Folosit și de previzualizare. */
 export function checkBuild(state: GameState, tip: TowerType, hex: string): Result<true> {
   if (state.faza !== 'pregatire') return fail('turnurile se construiesc doar între valuri')
   const t = state.map.terrain.get(hex)
@@ -262,12 +365,20 @@ export function applyDecision(state: GameState, d: Decision): Result<GameState> 
     case 'turn': {
       const r = checkBuild(state, d.turn, d.hex)
       if (!r.ok) return fail(r.reason)
-      const tower: Tower = { id: state.urmatorulTurn, tip: d.turn, hex: d.hex, tintire: 'primul', reincarcare: 0 }
+      const tower: Tower = { id: state.urmatorulTurn, tip: d.turn, hex: d.hex, tintire: 'primul', reincarcare: 0, combinat: false }
+      const turnuri = [...state.turnuri, tower]
+      // Un turn nou lângă un grup combinat intră în grup (decis de owner, 05.10.2026). Dacă leagă grupul de turnuri
+      // care trag singure, sau aduce în el o pereche incompatibilă, grupul unit trage individual: combinarea rămâne
+      // o alegere a jucătorului, nu se face pe ascuns.
+      const at = fromKey(d.hex)
+      const vecini = state.turnuri.filter((t) => distance(fromKey(t.hex), at) === 1)
+      const grup = groupOf(turnuri, tower.id)
+      const combinat = vecini.length > 0 && vecini.every((t) => t.combinat) && !incompatiblePair(grup.map((t) => t.tip))
       return ok(
         logged({
           ...state,
           aur: state.aur - towerCost(state, d.turn, d.hex),
-          turnuri: [...state.turnuri, tower],
+          turnuri: withMode(turnuri, grup, combinat),
           urmatorulTurn: state.urmatorulTurn + 1,
         }),
       )
@@ -277,11 +388,21 @@ export function applyDecision(state: GameState, d: Decision): Result<GameState> 
       if (state.faza === 'castigat' || state.faza === 'pierdut') return fail('partida s-a încheiat')
       const t = state.turnuri.find((x) => x.id === d.turn)
       if (!t) return fail(`nu există turnul ${d.turn}`)
+      // Un grup combinat are o singură țintă, deci ținta se schimbă pentru tot grupul — și pentru un Frig din el.
+      const grup = groupOf(state.turnuri, t.id)
+      const combinat = isCombined(grup)
       const info = TOWERS[t.tip]
-      if (info.zona) return fail(`turnul ${info.nume} lovește toți inamicii din rază — nu are țintă de ales`)
+      if (info.zona && !combinat) return fail(`turnul ${info.nume} lovește toți inamicii din rază — nu are țintă de ales`)
       if (!TARGET_MODES.includes(d.mod)) return fail(`mod de țintire necunoscut: ${d.mod}`)
-      if (t.tintire === d.mod) return fail('turnul țintește deja așa')
-      return ok(logged({ ...state, turnuri: state.turnuri.map((x) => (x === t ? { ...x, tintire: d.mod } : x)) }))
+      if (t.tintire === d.mod) return fail(combinat ? 'grupul țintește deja așa' : 'turnul țintește deja așa')
+      const ids = new Set(combinat ? grup.map((x) => x.id) : [t.id])
+      return ok(logged({ ...state, turnuri: state.turnuri.map((x) => (ids.has(x.id) ? { ...x, tintire: d.mod } : x)) }))
+    }
+    case 'combina': {
+      // Ca ținta, modul se poate schimba și în timpul valului.
+      const allowed = checkCombine(state, d.turn, d.activ)
+      if (!allowed.ok) return fail(allowed.reason)
+      return ok(logged({ ...state, turnuri: withMode(state.turnuri, groupOf(state.turnuri, d.turn), d.activ) }))
     }
   }
 }
@@ -332,10 +453,10 @@ export function pickTarget<E extends Pick<Enemy, 'id' | 'viata' | 'progres'>>(ca
   return best
 }
 
-// Ce face terenul inamicilor, pe fiecare hexagon de drum: atingerea primului vecin care are una (apa udă).
-// Depinde de hartă și de drum; se memorează pe perechea lor.
-const contactCache = new WeakMap<GameMap, WeakMap<readonly Hex[], readonly (Contact | undefined)[]>>()
-export function pathContacts(state: Pick<GameState, 'map' | 'path'>): readonly (Contact | undefined)[] {
+// Ce face terenul inamicilor, pe fiecare hexagon de drum: atingerile terenurilor vecine (apa udă, uleiul unge),
+// fiecare teren o dată, în ordinea din `TERRAIN`. Depinde de hartă și de drum; se memorează pe perechea lor.
+const contactCache = new WeakMap<GameMap, WeakMap<readonly Hex[], readonly (readonly Contact[])[]>>()
+export function pathContacts(state: Pick<GameState, 'map' | 'path'>): readonly (readonly Contact[])[] {
   let perMap = contactCache.get(state.map)
   if (!perMap) {
     perMap = new WeakMap()
@@ -344,17 +465,18 @@ export function pathContacts(state: Pick<GameState, 'map' | 'path'>): readonly (
   let c = perMap.get(state.path)
   if (!c) {
     c = state.path.map((h) => {
-      for (const n of neighbors(h)) {
-        const t = state.map.terrain.get(key(n))
-        const a = t === undefined ? undefined : TERRAIN[t].atingere
-        if (a) return { element: a.element, dauna: 0, aplica: a.aplica }
-      }
-      return undefined
+      const near = new Set(neighbors(h).map((n) => state.map.terrain.get(key(n))))
+      return TERRAIN_ORDER.flatMap((t) => {
+        const a = TERRAIN[t].atingere
+        return near.has(t) && a ? [{ element: a.element, dauna: 0, aplica: a.aplica }] : []
+      })
     })
     perMap.set(state.path, c)
   }
   return c
 }
+
+const TERRAIN_ORDER = Object.keys(TERRAIN) as Terrain[]
 
 /** Inamicul în timpul unui pas: obiect nou, modificabil; `fost` = hexagonul de drum de la începutul pasului. */
 type LiveEnemy = { -readonly [K in keyof Enemy]: Enemy[K] } & { stari: States; fost: number }
@@ -404,35 +526,56 @@ export function step(state: GameState): GameState {
     },
   }
 
-  // 4. Terenul: cine intră pe un hexagon de drum vecin cu apa se udă (o dată pe hexagon, la intrare).
+  // 4. Terenul: cine intră pe un hexagon de drum vecin cu apa se udă, cu uleiul se unge (o dată pe hexagon, la intrare).
   const contacts = pathContacts(state)
   for (const e of live) {
     const at = indexOf(e.progres)
-    const c = contacts[at]
-    if (at !== e.fost && c && e.viata > 0) applyContact(e, c, ctx)
+    if (at === e.fost) continue
+    for (const c of contacts[at] ?? []) if (e.viata > 0) applyContact(e, c, ctx)
   }
 
   // 5. Turnurile lovesc, în ordinea id-urilor. Un inamic ucis nu mai e țintă pentru următorul.
   //    Fiecare lovitură e o atingere cu elementul turnului: reacțiile se decid în `applyContact`.
+  //    Un grup combinat trage o singură dată, la rândul liderului (cel mai mic id): o țintă, din razele tuturor
+  //    turnurilor lui, lovită pe rând de elementele din `combinedContacts`. Turnurile grupului au aceeași reîncărcare.
+  const lideri = new Map<number, readonly Tower[]>()
+  for (const g of towerGroups(state.turnuri)) if (isCombined(g)) lideri.set((g[0] as Tower).id, g)
+  const decise = new Map<number, Tower>()
+  const inRangeOf = (covers: readonly (readonly boolean[])[]): LiveEnemy[] =>
+    live.filter((e) => e.viata > 0 && covers.some((c) => c[indexOf(e.progres)] === true))
   const turnuri: Tower[] = []
   for (const t of state.turnuri) {
-    const info = TOWERS[t.tip]
+    const gata = decise.get(t.id)
+    if (gata) {
+      turnuri.push(gata)
+      continue
+    }
+    const grup = lideri.get(t.id)
+    const membri = grup ?? [t]
     const reincarcare = Math.max(0, t.reincarcare - 1)
+    let urmatoarea: (m: Tower) => Tower
     if (reincarcare > 0) {
-      turnuri.push({ ...t, reincarcare })
-      continue
+      urmatoarea = (m) => ({ ...m, reincarcare: Math.max(0, m.reincarcare - 1) })
+    } else if (grup) {
+      const target = pickTarget(inRangeOf(grup.map((m) => coverage(state.path, m.hex, towerRange(state, m.tip, m.hex)))), t.tintire)
+      if (target) {
+        for (const c of combinedContacts(grup.map((m) => m.tip))) if (target.viata > 0) applyContact(target, c, ctx)
+        const R = groupReload(grup.map((m) => m.tip))
+        urmatoarea = (m) => ({ ...m, reincarcare: R, lovitura: { tick, tinte: [target.id] } })
+      } else urmatoarea = (m) => (m.reincarcare === 0 ? m : { ...m, reincarcare: 0 })
+    } else {
+      const info = TOWERS[t.tip]
+      const inRange = inRangeOf([coverage(state.path, t.hex, towerRange(state, t.tip, t.hex))])
+      const target = info.zona ? undefined : pickTarget(inRange, t.tintire)
+      const tinte = info.zona ? inRange : target ? [target] : []
+      if (tinte.length > 0) {
+        const lovitura: Contact = { element: info.element, dauna: info.dauna, aplica: info.aplica }
+        for (const e of tinte) applyContact(e, lovitura, ctx)
+        urmatoarea = (m) => ({ ...m, reincarcare: info.reincarcare, lovitura: { tick, tinte: tinte.map((e) => e.id) } })
+      } else urmatoarea = (m) => (m.reincarcare === 0 ? m : { ...m, reincarcare: 0 })
     }
-    const cover = coverage(state.path, t.hex, towerRange(state, t.tip, t.hex))
-    const inRange = live.filter((e) => e.viata > 0 && cover[indexOf(e.progres)] === true)
-    const target = info.zona ? undefined : pickTarget(inRange, t.tintire)
-    const tinte = info.zona ? inRange : target ? [target] : []
-    if (tinte.length === 0) {
-      turnuri.push(t.reincarcare === 0 ? t : { ...t, reincarcare: 0 })
-      continue
-    }
-    const lovitura: Contact = { element: info.element, dauna: info.dauna, aplica: info.aplica }
-    for (const e of tinte) applyContact(e, lovitura, ctx)
-    turnuri.push({ ...t, reincarcare: info.reincarcare, lovitura: { tick, tinte: tinte.map((e) => e.id) } })
+    for (const m of membri) decise.set(m.id, urmatoarea(m))
+    turnuri.push(decise.get(t.id) as Tower)
   }
 
   // 6. Cei uciși dispar și lasă aur.
@@ -501,7 +644,7 @@ export function fingerprint(state: GameState): string {
   const reactii = Object.entries(state.reactii).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0))
   parts.push(`reactii=${reactii.map(([r, n]) => `${r}:${n}`).join(',')}`)
   parts.push(`deGenerat=${state.deGenerat.length}`)
-  parts.push(`turnuri=${state.turnuri.map((t) => `${t.id}/${t.tip}/${t.hex}/${t.tintire}/${t.reincarcare}`).join(';')}`)
+  parts.push(`turnuri=${state.turnuri.map((t) => `${t.id}/${t.tip}/${t.hex}/${t.tintire}/${t.reincarcare}/${t.combinat ? 'c' : 'i'}`).join(';')}`)
   let h = 0x811c9dc5
   const s = parts.join('|')
   for (let i = 0; i < s.length; i++) {

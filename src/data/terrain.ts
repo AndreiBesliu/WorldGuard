@@ -2,7 +2,7 @@
 
 import type { Element, StateType } from './reactions'
 
-export type Terrain = 'campie' | 'apa' | 'padure' | 'deal' | 'filon'
+export type Terrain = 'campie' | 'apa' | 'padure' | 'deal' | 'filon' | 'ulei'
 
 export interface TerrainInfo {
   readonly nume: string
@@ -13,7 +13,7 @@ export interface TerrainInfo {
   readonly permiteTurn: boolean
   /**
    * Terenul participă la reacții (GDD §5): un inamic care intră pe un hexagon de drum vecin cu terenul ăsta
-   * e atins de `element` și primește starea `aplica` (apa udă).
+   * e atins de `element` și primește starea `aplica` (apa udă, uleiul unge).
    */
   readonly atingere?: { readonly element: Element; readonly aplica: StateType }
   /** Rază în plus pentru turnul construit aici (dealul). */
@@ -29,6 +29,8 @@ export const TERRAIN: Readonly<Record<Terrain, TerrainInfo>> = {
   // Propunere: +1 rază, +20 aur. Prețul ar putea fi și altul (reîncărcare mai lentă, teren mai rar).
   deal: { nume: 'Deal', culoare: '#9a7f5a', permiteTraseu: true, permiteTurn: true, bonusRaza: 1, costTurn: 20 },
   filon: { nume: 'Filon', culoare: '#7d5f8f', permiteTraseu: false, permiteTurn: true },
+  // Uleiul se găsește pe hartă (decis de owner, 05.10.2026): bălți mici, departe de drumul inițial (vezi `MAP_GEN`).
+  ulei: { nume: 'Baltă de ulei', culoare: '#3a3026', permiteTraseu: false, permiteTurn: false, atingere: { element: 'ulei', aplica: 'uns' } },
 }
 
 /** Parametrii generatorului de hartă. */
@@ -40,6 +42,16 @@ export const MAP_GEN = {
   pragDeal: 0.63,
   pragPadure: 0.53,
   sansaFilon: 0.03,
+  /** Câte bălți de ulei are harta și din câte hexagoane e fiecare (cel mult). */
+  balti: 2,
+  marimeBalta: 3,
+  /**
+   * La câte hexagoane de drumul INIȚIAL stă uleiul, cel puțin. Propunere: 2 — la început nimic nu e uns, iar un
+   * ocol care iese un hexagon din drum spre baltă o aduce lângă drum. Uleiul devine un loc spre care modelezi drumul.
+   */
+  departareBalta: 2,
+  /** Distanța minimă dintre centrele a două bălți, ca să nu iasă una singură, mai mare. */
+  intreBalti: 5,
 } as const
 
 /** Ocolurile: cu cât lungește drumul o bucată, și cât de lungă poate fi porțiunea înlocuită. */

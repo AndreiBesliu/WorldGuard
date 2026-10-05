@@ -1,43 +1,49 @@
-// Prototipul 1, felia 2: turnurile de bază și țintirea, peste valurile din felia 1.
+// Prototipul 1: controlerul — bucla pe pas fix, mouse-ul, tastele și legătura dintre simulare, hartă și interfață.
 //
 // Mouse-ul face lucruri diferite după ce e sub el:
-//   - un hexagon de drum (în pregătire) = ocol: 1/2/3 = cu cât se lungește drumul, Tab = următoarea variantă,
-//     Click = aplici ocolul. Un ocol pe val, obligatoriu înainte de val; nu poate trece peste un turn;
-//   - un hexagon liber = turn: 4/5/6/7 = alegi turnul, Click = îl construiești (doar în pregătire);
-//   - un turn = îi vezi raza și ținta, Click = schimbi ținta (și în timpul valului).
-// Z = anulezi ultima decizie din pregătirea curentă (timpul care a trecut nu se dă înapoi).
-// Spațiu = pornește valul. F = viteză 1×/2×/4×, P = pauză. R = aceeași hartă de la capăt. N = hartă nouă.
+//   - un hexagon de drum (în pregătire) = ocol: +1/+2/+3 = cu cât se lungește drumul, variantă = următoarea,
+//     click = pui ocolul. Un ocol pe val, obligatoriu înainte de val; nu poate trece peste un turn;
+//   - un hexagon liber = turnul ales (cărțile de jos sau tastele 4–7), click = îl construiești (doar în pregătire);
+//   - un turn = cifrele lui și ale grupului din care face parte; click = îl alegi. Pentru turnul de sub mouse (sau
+//     cel ales): T = schimbă ținta, C = combină grupul / îl separă (și în timpul valului). Esc = renunți la alegere.
+// Tot ce se face din taste se face și din butoanele interfeței (src/ui/hud.ts).
 // Seed-ul se poate da în URL: ?seed=123
 //
 // Bucla: requestAnimationFrame adună timp real și rulează câte tick-uri fixe (TICK_MS) încap. Viteza din UI
 // doar înmulțește timpul adunat — simularea nu știe de ea, deci un replay iese identic la orice viteză.
 
-import { WAVES, describeWave } from './data/enemies'
+import { ENEMIES, WAVES, type EnemyType } from './data/enemies'
 import { TICK_MS, VIETI_BAZA, VITEZE_UI } from './data/joc'
-import { REACTION_RULES, REACTIONS, STATES, TAG_NAMES, type ReactionType } from './data/reactions'
+import { ELEMENT_NAMES, REACTION_RULES, REACTIONS, STATES, TAG_NAMES, type ReactionType } from './data/reactions'
 import { TERRAIN } from './data/terrain'
-import { TARGET_MODES, TARGET_NAMES, TOWERS, TOWER_TYPES, type TowerType } from './data/towers'
-import { draw, fitLayout, pixelToHex, type Layout, type Overlay } from './render/canvas'
+import { COMBINARE, TARGET_MODES, TARGET_NAMES, TOWERS, TOWER_TYPES, type TowerType } from './data/towers'
+import { draw, fitLayout, hexToPixel, pixelToHex, type Layout, type Overlay } from './render/canvas'
 import {
   applyDecision,
   checkBuild,
+  checkCombine,
   checkDetourAllowed,
   checkStartWave,
+  combinedContacts,
   detourPossible,
   fingerprint,
+  groupOf,
+  groupReload,
+  incompatiblePair,
+  isCombined,
   newGame,
   replay,
   step,
   towerCost,
   towerKeys,
   towerRange,
+  type Decision,
   type GameState,
   type Tower,
 } from './sim/game'
-import { key, type Hex } from './sim/hex'
+import { distance, fromKey, key, type Hex } from './sim/hex'
 import { optionsAround, type DetourOption } from './sim/path'
-
-const TOP_RESERVE = 140
+import { createHud, type HudView, type Row, type TowerAction } from './ui/hud'
 
 const canvas = document.getElementById('joc') as HTMLCanvasElement
 const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
@@ -52,8 +58,8 @@ let turnAles: TowerType = 'fizic'
 let hoverHex: Hex | undefined
 let hovered: number | undefined
 let options: DetourOption[] = []
-let message: string | undefined
-let layout: Layout = fitLayout(state.map.radius, innerWidth, innerHeight, TOP_RESERVE)
+/** Turnul ales cu click (id), ca butoanele lui din panou să rămână la îndemână când mouse-ul pleacă de pe hartă. */
+let selected: number | undefined
 
 let vitezaIndex = 0
 let paused = false
@@ -63,18 +69,42 @@ let last = performance.now()
 // Reacțiile de pe hartă (doar desen): textele care urcă și se sting, și anunțul primei descoperiri, cu un scurt
 // freeze-frame (GDD §6). Timpul de aici e al ecranului, nu al simulării — simularea nu știe de ele.
 const POPUP_MS = 900
-const BANNER_MS = 3200
 const FREEZE_MS = 600
 let popups: { text: string; culoare: string; progres: number; la: number }[] = []
-let banner: { text: string; pana: number } | undefined
 let freezeUntil = 0
+
+const hud = createHud({
+  startWave: () => act(startWave),
+  togglePause: () => act(() => (paused = !paused)),
+  cycleSpeed: () => act(() => (vitezaIndex = (vitezaIndex + 1) % VITEZE_UI.length)),
+  undo: () => act(undo),
+  restart: () => act(() => restart(seed)),
+  newMap: () => act(() => restart(seed + 1)),
+  selectTower: (tip) => act(() => (turnAles = tip)),
+  setExtra: (n) => act(() => setExtra(n)),
+  nextVariant: () => act(nextVariant),
+  towerAction: (a, id) => act(() => towerAction(a, id)),
+})
+let layout: Layout = fitLayout(state.map.radius, hud.mapArea())
+
+/** O acțiune din interfață sau din taste: o aplică, apoi recalculează ce e sub mouse și redesenează. */
+function act(fn: () => void): void {
+  fn()
+  syncHover()
+  render()
+}
+
+function relayout(): void {
+  layout = fitLayout(state.map.radius, hud.mapArea())
+}
 
 function resize(): void {
   const dpr = window.devicePixelRatio || 1
   canvas.width = Math.floor(innerWidth * dpr)
   canvas.height = Math.floor(innerHeight * dpr)
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  layout = fitLayout(state.map.radius, innerWidth, innerHeight, TOP_RESERVE)
+  render()
+  relayout()
   render()
 }
 
@@ -85,93 +115,30 @@ function refreshOptions(): void {
 }
 
 /**
- * Recalculează ce e sub mouse după orice schimbare (mișcare, decizie, Z, hartă nouă) și variantele de ocol.
+ * Recalculează ce e sub mouse după orice schimbare (mișcare, decizie, anulare, hartă nouă) și variantele de ocol.
  * Ecranul trebuie să arate mereu exact ce ar face un clic acolo.
- * Întoarce `true` dacă s-a schimbat hexagonul de drum de sub mouse.
  */
-function syncHover(): boolean {
+function syncHover(): void {
   const idx = hoverHex === undefined ? -1 : state.path.findIndex((p) => key(p) === key(hoverHex as Hex))
   // Hexagonul de sub mouse face parte din porțiunea înlocuită; capetele fixe nu se pot înlocui.
   const next = idx > 0 && idx < state.path.length - 1 ? idx : undefined
-  const changed = next !== hovered
-  if (changed) optionIndex = 0
+  if (next !== hovered) optionIndex = 0
   hovered = next
   refreshOptions()
-  return changed
 }
 
 const towerAt = (h: Hex | undefined): Tower | undefined =>
   h === undefined ? undefined : state.turnuri.find((t) => t.hex === key(h))
 
-const seconds = (ticks: number): string => `${((ticks * TICK_MS) / 1000).toFixed(1).replace('.', ',')} s`
+const seconds = (ticks: number): string => `${((ticks * TICK_MS) / 1000).toFixed(2).replace(/0$/, '').replace('.', ',')} s`
 
-function phaseLine(): string {
-  const next = WAVES[state.val]
-  switch (state.faza) {
-    case 'pregatire': {
-      const done = `${state.ocoluriFolosite}/${state.ocoluriPeVal}`
-      const ocol = !checkDetourAllowed(state).ok
-        ? `ocolul acestui val e pus (${done})`
-        : detourPossible(state)
-          ? `ocol obligatoriu ${done}: +${extra} (1/2/3) · ${options.length} variante aici (Tab)`
-          : 'niciun ocol nu mai încape pe hartă'
-      const go = checkStartWave(state).ok ? 'Spațiu = pornește valul' : 'valul pornește după ocol'
-      return `Urmează valul ${state.val + 1}: ${next ? describeWave(next) : '—'} · ${go} · ${ocol} · Z = anulează`
-    }
-    case 'val':
-      return `Valul ${state.val + 1} e pe drum: ${state.inamici.length} pe hartă, ${state.deGenerat.length} mai vin · F = viteză · P = pauză · Click pe turn = schimbă ținta`
-    case 'castigat':
-      return `Ai apărat lumea: toate cele ${WAVES.length} valuri, cu ${state.vieti} vieți rămase. R = din nou · N = hartă nouă`
-    case 'pierdut':
-      return `Baza a căzut în valul ${state.val + 1}. R = din nou · N = hartă nouă`
-  }
-}
+/** Ocolul previzualizat: doar când se poate pune unul acum (în pregătire, sub limita pe val). */
+const shownDetour = (): DetourOption | undefined => (checkDetourAllowed(state).ok ? options[optionIndex] : undefined)
 
-function towerLine(): string {
-  return `Turn: ${TOWER_TYPES.map((t, i) => `${t === turnAles ? '▶' : ''}[${i + 4}] ${TOWERS[t].nume} ${TOWERS[t].cost}`).join(' · ')}`
-}
+// --- Texte din date (nicio cifră ascunsă) -------------------------------------------------------------------
 
-/** Rândul despre ce e sub mouse — ce face un clic acolo, sau de ce nu se poate. */
-function hoverLine(): { text: string; overlay: Partial<Overlay> } {
-  const t = towerAt(hoverHex)
-  if (t) {
-    const info = TOWERS[t.tip]
-    const raza = towerRange(state, t.tip, t.hex)
-    const tinta = info.zona ? 'lovește toți inamicii din rază' : `țintește: ${TARGET_NAMES[t.tintire]} · Click = schimbă ținta`
-    return {
-      text: `${info.nume} #${t.id} · daună ${info.dauna} · rază ${raza} · o lovitură la ${seconds(info.reincarcare)} · ${tinta} · ${reactionsOf(t.tip)}`,
-      overlay: { range: { hex: hoverHex as Hex, raza, culoare: info.culoare } },
-    }
-  }
-  if (hovered !== undefined) {
-    // Pe drum: previzualizarea ocolului se desenează pe hartă; aici doar spunem când nu încape niciunul.
-    const empty = checkDetourAllowed(state).ok && options.length === 0
-    return {
-      text: empty ? `Aici nu încape un ocol de +${extra}: apă, filon, un turn în cale, marginea hărții sau drumul s-ar atinge singur` : '',
-      overlay: {},
-    }
-  }
-  if (hoverHex === undefined || !state.map.terrain.has(key(hoverHex))) return { text: '', overlay: {} }
-  if (state.path.some((h) => key(h) === key(hoverHex as Hex))) return { text: '', overlay: {} }
-  const info = TOWERS[turnAles]
-  const hex = key(hoverHex)
-  const r = checkBuild(state, turnAles, hex)
-  const raza = towerRange(state, turnAles, hex)
-  const teren = state.map.terrain.get(hex)
-  const deal = teren !== undefined && TERRAIN[teren].bonusRaza ? ` · pe ${TERRAIN[teren].nume.toLowerCase()}: rază +${TERRAIN[teren].bonusRaza}, +${TERRAIN[teren].costTurn ?? 0} aur` : ''
-  return {
-    text: r.ok
-      ? `${info.nume} (${towerCost(state, turnAles, hex)} aur${deal}): ${info.descriere} · daună ${info.dauna}, rază ${raza}, o lovitură la ${seconds(info.reincarcare)} · ${reactionsOf(turnAles)} · Click = construiește`
-      : `${info.nume} aici: nu se poate — ${r.reason}`,
-    overlay: {
-      ghost: { hex: hoverHex, tip: turnAles, ok: r.ok },
-      range: r.ok ? { hex: hoverHex, raza, culoare: info.culoare } : undefined,
-    },
-  }
-}
-
-/** Ce lasă turnul pe inamic și în ce reacții intră — din date, ca să nu existe cifre ascunse. */
-function reactionsOf(tip: TowerType): string {
+/** Ce lasă turnul pe inamic și în ce reacții intră. */
+function reactionsOf(tip: TowerType): Row[] {
   const info = TOWERS[tip]
   const seen = new Set<string>()
   const parts: string[] = []
@@ -181,50 +148,334 @@ function reactionsOf(tip: TowerType): string {
     seen.add(k)
     parts.push(`${REACTIONS[r.tip].nume} pe ${TAG_NAMES[r.eticheta]}`)
   }
-  const lasa = info.aplica ? `lasă: ${STATES[info.aplica].nume.toLowerCase()} ${seconds(STATES[info.aplica].durata)}` : ''
-  return [lasa, parts.length ? `reacții: ${parts.join(', ')}` : ''].filter(Boolean).join(' · ')
+  const rows: Row[] = []
+  if (info.aplica) rows.push({ k: 'Lasă', v: `${STATES[info.aplica].nume.toLowerCase()}, ${seconds(STATES[info.aplica].durata)}` })
+  if (parts.length) rows.push({ k: 'Reacții', v: parts.join(' · ') })
+  return rows
 }
 
-/** Rezumatul reacțiilor din partida asta: „Îngheț 12 · Spargere 3”. */
-function reactionSummary(): string {
-  const parts = (Object.keys(REACTIONS) as ReactionType[]).filter((r) => (state.reactii[r] ?? 0) > 0).map((r) => `${REACTIONS[r].nume} ${state.reactii[r]}`)
-  return parts.length ? ` · reacții: ${parts.join(' · ')}` : ''
+/** Rândurile cu cifrele unui turn: ale tipului, și cum le schimbă terenul (dealul). */
+function statRows(tip: TowerType, hex: string): Row[] {
+  const info = TOWERS[tip]
+  const raza = towerRange(state, tip, hex)
+  return [
+    { k: 'Daună', v: `${info.dauna}` },
+    { k: 'Rază', v: raza === info.raza ? `${info.raza}` : `${info.raza} → ${raza} (deal)`, ton: raza > info.raza ? 'up' : undefined },
+    { k: 'O lovitură la', v: seconds(info.reincarcare) },
+  ]
 }
 
-/** Ocolul previzualizat: doar când se poate pune unul acum (în pregătire, sub limita pe val). */
-const shownDetour = (): DetourOption | undefined => (checkDetourAllowed(state).ok ? options[optionIndex] : undefined)
+const perSecond = (dauna: number, ticks: number): string => ((dauna * 1000) / (ticks * TICK_MS)).toFixed(1).replace('.', ',')
+
+/** Cum ar trage grupul combinat: lovitura pe elemente, cadența, dauna pe secundă față de turnurile separate. */
+function combinedRows(grup: readonly Tower[]): Row[] {
+  const tipuri = grup.map((t) => t.tip)
+  const lovitura = combinedContacts(tipuri)
+  const R = groupReload(tipuri)
+  const total = lovitura.reduce((n, c) => n + c.dauna, 0)
+  const separat = tipuri.reduce((n, t) => n + TOWERS[t].dauna / TOWERS[t].reincarcare, 0)
+  const elemente = new Set(tipuri.map((t) => TOWERS[t].element)).size
+  const bonus = COMBINARE.bonusPeElement * Math.min(elemente - 1, COMBINARE.elementeInPlus)
+  return [
+    { k: 'Lovitura', v: lovitura.map((c) => `${ELEMENT_NAMES[c.element]} ${c.dauna}`).join(' → ') },
+    { k: 'O lovitură la', v: `${seconds(R)} (cel mai lent)` },
+    { k: 'Pe secundă', v: `${perSecond(total, R)} (separat: ${perSecond(separat, 1)})`, ton: total / R > separat ? 'up' : total / R < separat ? 'down' : undefined },
+    ...(bonus > 0 ? [{ k: 'Bonus', v: `+${bonus}% (${elemente} elemente)`, ton: 'up' as const }] : []),
+  ]
+}
+
+/** Numele turnurilor dintr-un grup, cu id-urile lor: „Fizic #1 + Fulger #3”. */
+const groupNames = (grup: readonly Tower[]): string => grup.map((t) => `${TOWERS[t.tip].nume} #${t.id}`).join(' + ')
+
+/** Butoanele unui turn în panou: ținta și comutarea grupului, cu motivul când nu se pot folosi. */
+function towerButtons(t: Tower, grup: readonly Tower[]): NonNullable<HudView['context']['butoane']> {
+  const combinat = isCombined(grup)
+  const tinta = TOWERS[t.tip].zona && !combinat ? 'lovește toți inamicii din rază — nu are țintă de ales' : undefined
+  const comb = checkCombine(state, t.id, !combinat)
+  return [
+    { act: 'tinta', id: t.id, text: 'Schimbă ținta', tasta: 'T', motiv: tinta },
+    { act: 'combina', id: t.id, text: combinat ? 'Separă grupul' : 'Combină grupul', tasta: 'C', activ: combinat, motiv: comb.ok ? undefined : comb.reason },
+  ]
+}
+
+/** Vederea unui turn: cifrele lui, grupul din care face parte și ce poți face cu ele. */
+function towerView(t: Tower): { view: HudView['context']; overlay: Partial<Overlay> } {
+  const info = TOWERS[t.tip]
+  const grup = groupOf(state.turnuri, t.id)
+  const combinat = isCombined(grup)
+  const cercuri = (combinat ? grup : [t]).map((m) => ({ hex: fromKey(m.hex), raza: towerRange(state, m.tip, m.hex) }))
+  const overlay: Partial<Overlay> = { range: { cercuri, culoare: combinat ? '#f5d76e' : info.culoare } }
+  const butoane = towerButtons(t, grup)
+  if (combinat) {
+    return {
+      view: {
+        titlu: `Grup combinat · ${grup.length} turnuri`,
+        ton: 'ok',
+        randuri: [{ k: 'Turnuri', v: groupNames(grup) }, ...combinedRows(grup), { k: 'Ținta', v: TARGET_NAMES[t.tintire] }],
+        nota: 'Un singur turn: o lovitură, la o singură țintă, din razele tuturor turnurilor. Elementele lovesc pe rând.',
+        butoane,
+      },
+      overlay,
+    }
+  }
+  const rows: Row[] = [...statRows(t.tip, t.hex), { k: 'Ținta', v: info.zona ? 'toți inamicii din rază' : TARGET_NAMES[t.tintire] }, ...reactionsOf(t.tip)]
+  let nota = 'Pune un turn lângă el ca să faci un grup — grupul se poate combina într-un singur turn.'
+  if (grup.length >= 2) {
+    rows.push({ k: 'Grup', v: `${groupNames(grup)} — trag individual` })
+    const pereche = incompatiblePair(grup.map((m) => m.tip))
+    if (pereche) nota = `${TOWERS[pereche[0]].nume} și ${TOWERS[pereche[1]].nume} sunt incompatibile: grupul ăsta nu se poate combina.`
+    else {
+      rows.push(...combinedRows(grup).map((r) => ({ ...r, k: `Combinat · ${r.k.toLowerCase()}` })))
+      nota = 'C = combină grupul într-un singur turn.'
+    }
+  }
+  return { view: { titlu: `${info.nume} #${t.id}`, randuri: rows, nota, butoane }, overlay }
+}
+
+// --- Vederea interfeței ---------------------------------------------------------------------------------------
+
+/** Ce e sub mouse: cifrele turnului, previzualizarea construcției, ocolul — sau ce se poate face. */
+function contextView(): { view: HudView['context']; overlay: Partial<Overlay> } {
+  const t = towerAt(hoverHex)
+  if (t) return towerView(t)
+  if (hovered !== undefined) {
+    const allowed = checkDetourAllowed(state)
+    if (!allowed.ok) return { view: { titlu: 'Ocol', ton: 'bad', randuri: [], nota: `Nu se poate: ${allowed.reason}` }, overlay: {} }
+    if (options.length === 0) {
+      return {
+        view: { titlu: `Ocol +${extra} — nu încape aici`, ton: 'bad', randuri: [], nota: 'Apă, filon, un turn în cale, marginea hărții sau drumul s-ar atinge singur. Încearcă alt număr sau alt loc.' },
+        overlay: {},
+      }
+    }
+    return {
+      view: {
+        titlu: `Ocol +${extra}`,
+        ton: 'ok',
+        randuri: [
+          { k: 'Varianta', v: `${optionIndex + 1} din ${options.length}` },
+          { k: 'Drumul', v: `${state.path.length} → ${state.path.length + extra} hexagoane`, ton: 'up' },
+        ],
+        nota: 'Click = pune ocolul · Tab sau ⇥ = altă variantă',
+      },
+      overlay: {},
+    }
+  }
+  if (hoverHex !== undefined && state.map.terrain.has(key(hoverHex)) && !state.path.some((h) => key(h) === key(hoverHex as Hex))) {
+    const hex = key(hoverHex)
+    const info = TOWERS[turnAles]
+    const r = checkBuild(state, turnAles, hex)
+    const teren = state.map.terrain.get(hex)
+    const costRow: Row = { k: 'Cost', v: `${towerCost(state, turnAles, hex)} aur${teren && TERRAIN[teren].costTurn ? ` (pe ${TERRAIN[teren].nume.toLowerCase()}: +${TERRAIN[teren].costTurn})` : ''}` }
+    const atingere = teren === undefined ? undefined : TERRAIN[teren].atingere
+    const terenRow: Row[] = teren && atingere ? [{ k: 'Teren', v: `${TERRAIN[teren].nume}: inamicii de pe drumul vecin devin ${STATES[atingere.aplica].nume.toLowerCase()}` }] : []
+    // Grupul în care ar intra: îl spune chiar simularea, aplicând decizia pe o copie (nicio regulă dublată aici).
+    // Copia are aur din belșug, ca grupul să se vadă și când turnul încă nu se poate plăti.
+    const after = applyDecision({ ...state, aur: Number.MAX_SAFE_INTEGER }, { tip: 'turn', turn: turnAles, hex })
+    const groupRows: Row[] = []
+    let ghostLinks: Overlay['ghostLinks'] = []
+    if (after.ok) {
+      const nou = after.value.turnuri.at(-1) as Tower
+      const grup = groupOf(after.value.turnuri, nou.id)
+      const combinat = isCombined(grup)
+      const at = fromKey(hex)
+      ghostLinks = state.turnuri.filter((n) => distance(fromKey(n.hex), at) === 1).map((n) => ({ to: fromKey(n.hex), combinat }))
+      if (combinat) groupRows.push({ k: 'Grup', v: `intră în grupul combinat (${grup.length} turnuri)`, ton: 'up' })
+      else if (grup.length >= 2) {
+        groupRows.push({ k: 'Grup', v: `${grup.length} turnuri, trag individual` })
+        if (state.turnuri.some((n) => n.combinat && grup.some((m) => m.id === n.id))) {
+          const pereche = incompatiblePair(grup.map((m) => m.tip))
+          groupRows.push({
+            k: 'Atenție',
+            v: pereche
+              ? `${TOWERS[pereche[0]].nume} și ${TOWERS[pereche[1]].nume} sunt incompatibile: grupul combinat de lângă trece pe individual`
+              : 'leagă grupul combinat de turnuri individuale: tot grupul trece pe individual (C îl combină la loc)',
+            ton: 'down',
+          })
+        }
+      }
+    }
+    return {
+      view: {
+        titlu: r.ok ? `Construiește ${info.nume}` : `${info.nume} aici: nu se poate`,
+        ton: r.ok ? 'ok' : 'bad',
+        randuri: [costRow, ...terenRow, ...statRows(turnAles, hex), ...groupRows, ...reactionsOf(turnAles)],
+        nota: r.ok ? `${info.descriere}. Click = construiește.` : r.reason,
+      },
+      overlay: {
+        ghost: { hex: hoverHex, tip: turnAles, ok: r.ok },
+        range: r.ok ? { cercuri: [{ hex: hoverHex, raza: towerRange(state, turnAles, hex) }], culoare: info.culoare } : undefined,
+        ghostLinks,
+      },
+    }
+  }
+  const ales = state.turnuri.find((x) => x.id === selected)
+  if (ales) return towerView(ales)
+  return {
+    view: {
+      titlu: 'Ce poți face',
+      randuri: [
+        { k: 'Mouse pe drum', v: 'ocolul valului' },
+        { k: 'Pe un loc liber', v: 'construiești turnul ales' },
+        { k: 'Pe un turn', v: 'click = îl alegi; T = ținta' },
+        { k: 'Turnuri lipite', v: 'fac un grup; C = combinat' },
+      ],
+      nota:
+        'Ocolul e obligatoriu înainte de fiecare val. Uleiul de pe hartă unge inamicii: du drumul pe lângă el cu un ocol, apoi aprinde-i cu Foc. Focul și Frigul sunt incompatibile — se anulează și nu se combină.',
+    },
+    overlay: {},
+  }
+}
+
+function waveView(): HudView['wave'] {
+  const w = WAVES[state.val]
+  if (state.faza === 'castigat' || state.faza === 'pierdut' || !w) return { titlu: 'Partida s-a încheiat', randuri: [], nota: '' }
+  const counts = new Map<EnemyType, number>()
+  for (const g of w.grupuri) counts.set(g.tip, (counts.get(g.tip) ?? 0) + g.numar)
+  const randuri = [...counts].map(([tip, numar]) => ({ nume: ENEMIES[tip].nume, culoare: ENEMIES[tip].culoare, numar, boss: tip === 'boss' }))
+  const viata = w.viata === 1 ? '' : `viață ×${String(w.viata).replace('.', ',')}`
+  if (state.faza === 'val') {
+    return { titlu: `Valul ${state.val + 1} e pe drum`, randuri, nota: [`${state.inamici.length} pe hartă, ${state.deGenerat.length} mai vin`, viata].filter(Boolean).join(' · ') }
+  }
+  return { titlu: `Valul următor: ${state.val + 1} din ${WAVES.length}`, randuri, nota: viata }
+}
+
+function codexView(): HudView['codex'] {
+  return (Object.keys(REACTIONS) as ReactionType[]).map((r) => ({
+    nume: REACTIONS[r].nume,
+    reteta: [...new Set(REACTION_RULES.filter((x) => x.tip === r).map((x) => `${ELEMENT_NAMES[x.element]} pe ${TAG_NAMES[x.eticheta]}`))].join(' · '),
+    efect: REACTIONS[r].efect,
+    numar: state.reactii[r] ?? 0,
+    culoare: REACTIONS[r].culoare,
+  }))
+}
+
+function ocolView(): HudView['ocol'] {
+  const done = `${state.ocoluriFolosite}/${state.ocoluriPeVal}`
+  const variante = options.length > 0 && checkDetourAllowed(state).ok ? `${optionIndex + 1}/${options.length}` : '—'
+  if (state.faza !== 'pregatire') return { stare: 'doar între valuri', extra, variante: '—', activ: false }
+  if (!checkDetourAllowed(state).ok) return { stare: `pus (${done})`, extra, variante: '—', activ: false }
+  if (!detourPossible(state)) return { stare: 'nu mai încape niciunul', extra, variante: '—', activ: false }
+  return { stare: `obligatoriu (${done})`, extra, variante, activ: true }
+}
+
+function finalView(): HudView['final'] {
+  const total = Object.values(state.reactii).reduce((n, x) => n + (x ?? 0), 0)
+  if (state.faza === 'castigat') {
+    return { titlu: 'Ai apărat lumea', text: `Toate cele ${WAVES.length} valuri, cu ${state.vieti} vieți rămase și ${total} reacții.`, castigat: true }
+  }
+  if (state.faza === 'pierdut') {
+    return { titlu: 'Baza a căzut', text: `În valul ${state.val + 1} din ${WAVES.length}, după ${total} reacții.`, castigat: false }
+  }
+  return undefined
+}
 
 function render(): void {
+  const context = contextView()
   const chosen = shownDetour()
-  const speed = VITEZE_UI[vitezaIndex] ?? 1
-  const hover = hoverLine()
+  const lastDecision = state.jurnal.at(-1)
+  const start = checkStartWave(state)
+  hud.update({
+    val: `Val ${Math.min(state.val + 1, WAVES.length)}/${WAVES.length}`,
+    boss: (WAVES[state.val]?.grupuri ?? []).some((g) => g.tip === 'boss'),
+    vieti: state.vieti,
+    vietiMax: VIETI_BAZA,
+    aur: state.aur,
+    drum: state.path.length,
+    faza: state.faza,
+    fazaText: { pregatire: 'Pregătire', val: paused ? 'Pauză' : 'Val în desfășurare', castigat: 'Câștigat', pierdut: 'Pierdut' }[state.faza],
+    start: start.ok ? { ok: true } : { ok: false, motiv: start.reason },
+    paused,
+    speed: VITEZE_UI[vitezaIndex] ?? 1,
+    canUndo: state.faza === 'pregatire' && lastDecision !== undefined && lastDecision.la === state.tick,
+    towers: TOWER_TYPES.map((tip, i) => ({
+      tip,
+      nume: TOWERS[tip].nume,
+      cost: TOWERS[tip].cost,
+      culoare: TOWERS[tip].culoare,
+      forma: TOWERS[tip].forma,
+      tasta: String(i + 4),
+      ales: tip === turnAles,
+      accesibil: state.aur >= TOWERS[tip].cost,
+    })),
+    ocol: ocolView(),
+    wave: waveView(),
+    context: context.view,
+    codex: codexView(),
+    debug: `seed ${seed} · tick ${state.tick} · ${state.jurnal.length} decizii · amprentă ${fingerprint(state)}`,
+    final: finalView(),
+  })
   draw(ctx, state, layout, {
     start: chosen?.start,
     span: chosen?.span,
     preview: chosen?.hexes,
     alpha: state.faza === 'val' && !paused ? Math.min(1, acumulat / TICK_MS) : 0,
-    ...hover.overlay,
+    ...context.overlay,
+    selected: selectedTower() ? fromKey((selectedTower() as Tower).hex) : undefined,
     popups: popups.map((p) => ({ text: p.text, culoare: p.culoare, progres: p.progres, varsta: (performance.now() - p.la) / POPUP_MS })),
-    banner: banner && performance.now() < banner.pana ? banner.text : undefined,
-    lines: [
-      `World Guard — prototip · Val ${Math.min(state.val + 1, WAVES.length)}/${WAVES.length} · Vieți ${state.vieti}/${VIETI_BAZA} · Aur ${state.aur} · drum ${state.path.length} hexagoane · ${speed}×${paused ? ' · PAUZĂ' : ''}`,
-      phaseLine(),
-      towerLine(),
-      `seed ${seed} · tick ${state.tick} · ${state.jurnal.length} decizii · amprentă ${fingerprint(state)} · I/B = intrarea/baza${reactionSummary()}`,
-      hover.text,
-    ],
-    message,
   })
+}
+
+// --- Acțiuni --------------------------------------------------------------------------------------------------
+
+/** Aplică decizia; refuzul (cu motivul lui, venit din simulare) apare ca notificare. */
+function decide(d: Decision): boolean {
+  const r = applyDecision(state, d)
+  if (r.ok) state = r.value
+  else hud.toast(`Nu se poate: ${r.reason}`)
+  return r.ok
+}
+
+const selectedTower = (): Tower | undefined => state.turnuri.find((t) => t.id === selected)
+
+/** Ținta sau modul grupului, pentru turnul `id` — sau, din taste, pentru cel de sub mouse ori cel ales. */
+function towerAction(a: TowerAction, id?: number): void {
+  if (a === 'deselecteaza') {
+    selected = undefined
+    return
+  }
+  const t = id !== undefined ? state.turnuri.find((x) => x.id === id) : (towerAt(hoverHex) ?? selectedTower())
+  if (!t) {
+    hud.toast('Alege întâi un turn: click pe el, sau ține mouse-ul deasupra.')
+    return
+  }
+  if (a === 'tinta') {
+    const i = TARGET_MODES.indexOf(t.tintire)
+    decide({ tip: 'tintire', turn: t.id, mod: TARGET_MODES[(i + 1) % TARGET_MODES.length] ?? 'primul' })
+  } else {
+    decide({ tip: 'combina', turn: t.id, activ: !isCombined(groupOf(state.turnuri, t.id)) })
+  }
+}
+
+function startWave(): void {
+  if (decide({ tip: 'pornesteVal' })) acumulat = 0
+}
+
+function undo(): void {
+  // Se anulează doar ce s-a hotărât în pregătirea curentă: o decizie luată la tick-ul de acum.
+  const lastDecision = state.jurnal.at(-1)
+  if (state.faza === 'pregatire' && lastDecision !== undefined && lastDecision.la === state.tick) {
+    state = replay(seed, state.jurnal.slice(0, -1), state.tick)
+  } else {
+    hud.toast('Nu e nimic de anulat: se anulează doar deciziile din pregătirea curentă — un val jucat nu se dă înapoi.')
+  }
+}
+
+function setExtra(n: number): void {
+  extra = n
+  optionIndex = 0
+}
+
+function nextVariant(): void {
+  if (options.length > 0) optionIndex = (optionIndex + 1) % options.length
 }
 
 function restart(newSeed: number): void {
   seed = newSeed
   state = newGame(seed)
+  selected = undefined
   acumulat = 0
   paused = false
   popups = []
-  banner = undefined
-  syncHover()
 }
 
 /** După un pas: reacțiile lui devin texte pe hartă, iar o reacție văzută prima dată în partidă — anunț + pauză scurtă. */
@@ -236,8 +487,8 @@ function noteReactions(before: GameState, now: number): void {
   for (const r of Object.keys(REACTIONS) as ReactionType[]) {
     if ((before.reactii[r] ?? 0) === 0 && (state.reactii[r] ?? 0) > 0) {
       const rule = REACTION_RULES.find((x) => x.tip === r)
-      const reteta = rule ? ` (${rule.element === 'apa' ? 'apă' : rule.element} pe ${TAG_NAMES[rule.eticheta]})` : ''
-      banner = { text: `Reacție nouă: ${REACTIONS[r].nume}${reteta} — ${REACTIONS[r].efect}`, pana: now + BANNER_MS }
+      const reteta = rule ? ` (${ELEMENT_NAMES[rule.element]} pe ${TAG_NAMES[rule.eticheta]})` : ''
+      hud.announce(`Reacție nouă: ${REACTIONS[r].nume}${reteta} — ${REACTIONS[r].efect}`)
       freezeUntil = now + FREEZE_MS
     }
   }
@@ -257,29 +508,17 @@ function frame(now: number): void {
     }
     if (state.faza !== 'val') {
       // Valul s-a terminat (sau partida): timpul se oprește, drumul se poate modela din nou.
-      // Un mesaj rămas din timpul valului nu mai e adevărat în faza nouă.
       acumulat = 0
-      message = undefined
       syncHover()
     }
     render()
-  } else if (popups.length > 0 || (banner && now < banner.pana + 50)) {
-    render() // freeze-frame, pauză sau pregătire: textele și anunțul se sting mai departe
+  } else if (popups.length > 0) {
+    render() // freeze-frame, pauză sau pregătire: textele se sting mai departe
   }
   requestAnimationFrame(frame)
 }
 
-/** Aplică decizia; refuzul (cu motivul lui, venit din simulare) ajunge în mesaj. */
-function decide(d: Parameters<typeof applyDecision>[1]): boolean {
-  const r = applyDecision(state, d)
-  if (r.ok) {
-    state = r.value
-    message = undefined
-  } else {
-    message = `Nu se poate: ${r.reason}`
-  }
-  return r.ok
-}
+// --- Intrări --------------------------------------------------------------------------------------------------
 
 canvas.addEventListener('mousemove', (e) => {
   const h = pixelToHex(e.clientX, e.clientY, layout)
@@ -291,21 +530,22 @@ canvas.addEventListener('mousemove', (e) => {
   }
 })
 
+canvas.addEventListener('mouseleave', () => {
+  hoverHex = undefined
+  syncHover()
+  render()
+})
+
 canvas.addEventListener('click', () => {
   const t = towerAt(hoverHex)
   if (t) {
-    const i = TARGET_MODES.indexOf(t.tintire)
-    decide({ tip: 'tintire', turn: t.id, mod: TARGET_MODES[(i + 1) % TARGET_MODES.length] ?? 'primul' })
+    selected = selected === t.id ? undefined : t.id
   } else if (hovered !== undefined) {
     const allowed = checkDetourAllowed(state)
     const chosen = options[optionIndex]
-    if (!allowed.ok) {
-      message = `Nu se poate: ${allowed.reason}`
-    } else if (!chosen) {
-      message = `Nu există ocol de +${extra} aici (apă, filon, un turn în cale, marginea hărții, sau drumul s-ar atinge singur). Încearcă alt număr sau alt loc.`
-    } else {
-      decide({ tip: 'ocol', start: chosen.start, span: chosen.span, hexuri: chosen.hexes.map(key) })
-    }
+    if (!allowed.ok) hud.toast(`Nu se poate: ${allowed.reason}`)
+    else if (!chosen) hud.toast(`Nu există ocol de +${extra} aici. Încearcă alt număr sau alt loc.`)
+    else decide({ tip: 'ocol', start: chosen.start, span: chosen.span, hexuri: chosen.hexes.map(key) })
   } else if (hoverHex !== undefined && state.map.terrain.has(key(hoverHex))) {
     decide({ tip: 'turn', turn: turnAles, hex: key(hoverHex) })
   }
@@ -314,41 +554,23 @@ canvas.addEventListener('click', () => {
 })
 
 window.addEventListener('keydown', (e) => {
-  message = undefined
   const towerKey = ['4', '5', '6', '7'].indexOf(e.key)
-  if (e.key === ' ') {
-    e.preventDefault()
-    if (decide({ tip: 'pornesteVal' })) acumulat = 0
-  } else if (e.key === 'f' || e.key === 'F') {
-    vitezaIndex = (vitezaIndex + 1) % VITEZE_UI.length
-  } else if (e.key === 'p' || e.key === 'P') {
-    paused = !paused
-  } else if (e.key === '1' || e.key === '2' || e.key === '3') {
-    extra = Number(e.key)
-    optionIndex = 0
-  } else if (towerKey >= 0) {
-    turnAles = TOWER_TYPES[towerKey] ?? turnAles
-  } else if (e.key === 'Tab') {
-    e.preventDefault()
-    if (options.length > 0) optionIndex = (optionIndex + 1) % options.length
-  } else if (e.key === 'z' || e.key === 'Z') {
-    // Se anulează doar ce s-a hotărât în pregătirea curentă: o decizie luată la tick-ul de acum.
-    const lastDecision = state.jurnal.at(-1)
-    if (state.faza === 'pregatire' && lastDecision !== undefined && lastDecision.la === state.tick) {
-      state = replay(seed, state.jurnal.slice(0, -1), state.tick)
-    } else {
-      message = 'Nu e nimic de anulat: se anulează doar deciziile din pregătirea curentă — un val jucat nu se dă înapoi.'
-    }
-  } else if (e.key === 'r' || e.key === 'R') {
-    restart(seed)
-  } else if (e.key === 'n' || e.key === 'N') {
-    restart(seed + 1)
-  } else {
-    return
-  }
-  // După orice tastă (Z, Spațiu, R, N, 1/2/3), ce e sub mouse se recalculează pe starea nouă.
-  syncHover()
-  render()
+  let fn: (() => void) | undefined
+  if (e.key === ' ') fn = startWave
+  else if (e.key === 'f' || e.key === 'F') fn = () => (vitezaIndex = (vitezaIndex + 1) % VITEZE_UI.length)
+  else if (e.key === 'p' || e.key === 'P') fn = () => (paused = !paused)
+  else if (e.key === '1' || e.key === '2' || e.key === '3') fn = () => setExtra(Number(e.key))
+  else if (towerKey >= 0) fn = () => (turnAles = TOWER_TYPES[towerKey] ?? turnAles)
+  else if (e.key === 'Tab') fn = nextVariant
+  else if (e.key === 'z' || e.key === 'Z') fn = undo
+  else if (e.key === 'r' || e.key === 'R') fn = () => restart(seed)
+  else if (e.key === 'n' || e.key === 'N') fn = () => restart(seed + 1)
+  else if (e.key === 't' || e.key === 'T') fn = () => towerAction('tinta')
+  else if (e.key === 'c' || e.key === 'C') fn = () => towerAction('combina')
+  else if (e.key === 'Escape') fn = () => towerAction('deselecteaza')
+  if (!fn) return
+  e.preventDefault()
+  act(fn)
 })
 
 // Ce build rulează (commit, ramură, oră) — în colțul paginii, ca versiunea publicată să se vadă dintr-o privire.
@@ -357,9 +579,21 @@ versiune.id = 'versiune'
 versiune.textContent = `build ${__BUILD__.sha.slice(0, 7)}${__BUILD__.ref ? ` · ${__BUILD__.ref}` : ''} · ${__BUILD__.at.slice(0, 16).replace('T', ' ')} UTC`
 document.body.append(versiune)
 
-// Doar în `npm run dev`: starea, citibilă din consolă sau din scripturile de verificare în browser.
+// Doar în `npm run dev`: starea și poziția pe ecran a unui hexagon, pentru consolă și scripturile de verificare.
 // Vite scoate blocul din build-ul de producție.
-if (import.meta.env.DEV) Object.assign(window, { wg: { get state(): GameState { return state } } })
+if (import.meta.env.DEV) {
+  Object.assign(window, {
+    wg: {
+      get state(): GameState {
+        return state
+      },
+      px: (k: string): [number, number] => {
+        const p = hexToPixel(fromKey(k), layout)
+        return [p.x, p.y]
+      },
+    },
+  })
+}
 
 window.addEventListener('resize', resize)
 resize()

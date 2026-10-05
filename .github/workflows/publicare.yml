@@ -9,6 +9,8 @@
 # Publicarea cere secretul FIREBASE_SERVICE_ACCOUNT (cheia JSON a unui cont de serviciu din proiect). Dacă
 # lipsește, verificarea rulează oricum, iar publicarea e sărită cu un avertisment — nu pică.
 # Regula proiectelor lui Andrei: intrările din workflow trec prin `env:`, niciodată `${{ }}` direct în `run:`.
+# Acțiunile sunt pe versiunile care rulează pe Node 24 (GitHub scoate Node 20); verificat în `action.yml`-ul fiecăreia
+# la 05.10.2026: checkout v7, setup-node v7, upload-artifact v7, download-artifact v8, action-hosting-deploy v0.
 
 name: Verificare și publicare
 
@@ -29,8 +31,8 @@ jobs:
   verificare:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -41,7 +43,7 @@ jobs:
           # Amprenta build-ului, afișată în colțul jocului: ce commit rulează.
           BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           BUILD_REF: ${{ github.head_ref || github.ref_name }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist
@@ -58,8 +60,8 @@ jobs:
     env:
       HAS_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist
@@ -83,8 +85,8 @@ jobs:
     env:
       HAS_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist

@@ -12,7 +12,7 @@ export type StateType = 'arde' | 'ud' | 'racit' | 'inghetat' | 'uns'
 export type Tag = 'fierbinte' | 'ud' | 'conductor' | 'rece' | 'fragil' | 'inflamabil'
 
 /** Ce atinge un inamic: lovitura unui turn sau terenul de lângă drum. */
-export type Element = 'impact' | 'foc' | 'frig' | 'fulger' | 'apa'
+export type Element = 'impact' | 'foc' | 'frig' | 'fulger' | 'apa' | 'ulei'
 
 export interface StateInfo {
   readonly nume: string
@@ -51,6 +51,7 @@ export const ELEMENT_NAMES: Readonly<Record<Element, string>> = {
   frig: 'frig',
   fulger: 'fulger',
   apa: 'apă',
+  ulei: 'ulei',
 }
 
 export type ReactionType = 'explozie' | 'abur' | 'dezghet' | 'inghet' | 'spargere' | 'electrocutare'
@@ -65,6 +66,7 @@ export interface ReactionInfo {
 export const REACTIONS: Readonly<Record<ReactionType, ReactionInfo>> = {
   explozie: { nume: 'Explozie', efect: '50 de daune în jur; inamicii unși de alături explodează și ei', culoare: '#ffb347' },
   abur: { nume: 'Abur', efect: 'focul și apa se sting una pe alta', culoare: '#d8e2ea' },
+  // Focul și frigul sunt incompatibile (decis de owner, 05.10.2026): se anulează, și nu se pot combina în grup.
   dezghet: { nume: 'Dezgheț', efect: 'focul și frigul se anulează', culoare: '#ffd1a8' },
   inghet: { nume: 'Îngheț', efect: 'inamicul ud îngheață de tot, 0,75 s', culoare: '#e8fbff' },
   spargere: { nume: 'Spargere', efect: 'daună ×3; gheața se sparge', culoare: '#9fe7ff' },
@@ -99,7 +101,7 @@ export interface ReactionRule {
  * nu se ciocnesc între ele.
  */
 export const REACTION_RULES: readonly ReactionRule[] = [
-  // ulei + foc: explozie în lanț (GDD §6). Deocamdată nimic nu unge inamicii — vezi DEVLOG, felia 3.
+  // ulei + foc: explozie în lanț (GDD §6). Uleiul vine din bălțile de pe hartă (decis de owner, 05.10.2026).
   { tip: 'explozie', element: 'foc', eticheta: 'inflamabil', consuma: true, zona: { raza: 1, dauna: 50 }, lant: { raza: 1 } },
   // Focul anulează udul: abur, iar flacăra nu mai prinde.
   { tip: 'abur', element: 'foc', eticheta: 'ud', consuma: true, blocheaza: true },

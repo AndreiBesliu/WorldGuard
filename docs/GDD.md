@@ -51,7 +51,8 @@ boss la valurile 5, 10 și 15 (în prototip)
 - **Bucățile se aleg, nu se trag la noroc.** E răspunsul direct la reclamația numărul 1 din gen („când am nevoie de turn, primesc drum”).
 - **Ramificații deterministe și lizibile.** Inamicii nu aleg o ramură la întâmplare; regula se vede pe ecran.
 - **Terenul participă la reacții:**
-  - **apa** de lângă drum îi udă pe inamici: ud + frig = îngheț, ud + fulger = electrocutare;
+  - **apa** de lângă drum îi udă pe inamici: ud + frig = îngheț, ud + fulger = electrocutare. Cantitatea de apă de pe hărțile prototipului rămâne cum e (decis 05.10.2026: „nu e prea multă apă”);
+  - **uleiul se găsește pe hartă** (decis 05.10.2026): bălțile de ulei îi ung pe inamicii de pe drumul vecin, iar focul îi aprinde (explozie în lanț). În prototip: 2 bălți de cel mult 3 hexagoane, la cel puțin 2 hexagoane de drumul inițial, deci la un ocol distanță (propunere);
   - **pădurea** arde: pădure arsă + inamici unși cu ulei = explozie în lanț;
   - **dealul** dă rază mai mare, dar cu un cost, ca să nu existe un teren evident cel mai bun (capcana Nordhold);
   - **filonul** dă pământ dacă îl exploatezi.
@@ -59,14 +60,18 @@ boss la valurile 5, 10 și 15 (în prototip)
 
 ## 6. Turnuri și combinații
 
-**Decis:** reacții pe inamic + bonusuri de vecinătate; fuziunea turnurilor rămâne pentru mai târziu.
+**Decis:** reacții pe inamic + **grupuri de turnuri** (05.10.2026; înlocuiește „bonusuri de vecinătate, fuziunea mai târziu”).
+- **Turnurile puse unul lângă altul fac un grup**, de orice tipuri. Grupul se comută (toggle) între **individual** (fiecare turn trage singur) și **combinat**: grupul se comportă ca **un singur turn** (owner-ul a ales „un singur turn” dintre variante).
+- **Un turn nou pus lângă un grup combinat intră în grup.**
+- **Focul și frigul sunt incompatibile** (decis 05.10.2026): pe inamic se anulează (dezgheț). Propunerea mea, din „incompatibile”: un grup cu Foc și Frig nu se poate combina.
+- **Propunerea pentru lovitura combinată** (prototip, felia 4): o singură țintă, aleasă din razele tuturor turnurilor; fiecare turn contribuie cu dauna pe care ar fi dat-o singur într-o reîncărcare a grupului (a celui mai lent turn), plus 15% pentru fiecare element diferit peste primul (cel mult 3); elementele lovesc pe rând, fulger → frig → impact → foc. Un turn nou care leagă grupul combinat de turnuri individuale, sau aduce o pereche incompatibilă, lasă grupul unit pe individual. Cifrele și botul: DEVLOG, felia 4.
 
 **Propunerea pentru prototip** (din cercetare):
 - 4 stări de durată (arde, uns cu ulei, ud, înghețat parțial) și 2 lovituri instantanee (impact, fulger), ca la Mindustry.
 - ~5–6 reacții: explozie (ulei + foc, consumă uleiul), îngheț (ud + frig), spargere (înghețat + impact, consumă înghețul), electrocutare (ud + fulger, sare la vecinii uzi), abur sau smoală. Focul anulează udul și frigul.
 - **Regulile se scriu pe etichete, nu pe perechi.** De exemplu „inflamabil + foc”, ca un viitor „smoală” să moștenească reacția automat.
 - **În prototip (felia 3, 05.10.2026):** stările arde, ud, răcit (înghețat parțial), înghețat și uns; reacțiile explozie, abur, dezgheț, îngheț, spargere și electrocutare. Apa de lângă drum udă, dealul dă rază +1 cu un cost. Cifrele sunt propuneri, măsurate cu un bot; detaliile în DEVLOG.
-- **Vecinătatea schimbă cifre sau etichete, nu creează reacții noi.** Contează câte etichete *diferite* ai în jur (plafon ~3), ca șase turnuri identice lipite să nu fie soluția. Câteva vecinătăți negative dau tensiune la plasare.
+- ~~Vecinătatea schimbă cifre sau etichete, nu creează reacții noi; câteva vecinătăți negative.~~ Înlocuit de grupuri (05.10.2026). Ce rămâne din idee: bonusul crește cu elementele *diferite* din grup (plafon 3), ca turnurile identice lipite să nu fie soluția.
 - **Prezentare:**
   - la plasare, un preview cu bonusurile și cu reacțiile care s-ar produce pe traseu;
   - prima reacție descoperită apare cu numele ei și un scurt freeze-frame;
@@ -158,7 +163,7 @@ Fapte notabile deblochează conținut (de exemplu, 200 de păduri arse dau doctr
 **Intră:**
 - grila hex, traseul cu inserții (3 variante pe val), 4 tipuri de teren care participă la reacții;
 - terraformare: canal, deal, arde;
-- 4 turnuri de bază (fizic, foc, frig, fulger), ~6 reacții și bonusuri de vecinătate;
+- 4 turnuri de bază (fizic, foc, frig, fulger), ~6 reacții și grupuri de turnuri (individual sau combinat);
 - 4 inamici + boss la valurile 5, 10 și 15 (decis 05.10.2026), 15 valuri, draft 1 din 3;
 - aur cu dobândă și pământ;
 - **jurnalul deciziilor din prima zi**: e baza meta-progresiei, a verificării pe server și a datelor de playtest.
@@ -217,7 +222,7 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 |---|---|
 | Roguelite TD, traseu fix, prototip în browser, țintă comercială | decis |
 | Grilă de hexagoane | decis |
-| Combinații: reacții pe inamic + vecinătate; fuziunea mai târziu | decis |
+| Combinații: reacții pe inamic + vecinătate; fuziunea mai târziu | înlocuit (05.10.2026), vezi grupurile |
 | Modelarea hărții: bucăți de traseu + terraformare | decis |
 | Partide de 20–30 de minute | decis |
 | Traseu cu capete fixe, lungit prin ocoluri (o porțiune de 1–3 hexagoane devine un drum mai lung) | decis |
@@ -238,3 +243,12 @@ Cifrele vin din extrase de căutare; vânzările sunt estimări.
 | Un ocol pe val, obligatoriu; upgrade-urile de mai târziu pot da mai multe (05.10.2026) | decis |
 | Dacă nu mai încape niciun ocol, valul pornește fără el | propunere |
 | Ocolul nu poate trece peste un turn: jocul îl refuză, cu motiv (05.10.2026) | decis |
+| Turnurile lipite fac un grup; grupul se comută individual ↔ combinat; combinat = un singur turn (05.10.2026) | decis |
+| Un turn nou lângă un grup combinat intră în grup (05.10.2026) | decis |
+| Lovitura combinată: suma daunelor la cadența celui mai lent, +15% pe element diferit, ordinea fulger → frig → impact → foc | propunere |
+| Un turn nou care leagă grupul combinat de turnuri individuale sau aduce Foc lângă Frig lasă grupul unit pe individual | propunere |
+| Uleiul se găsește pe hartă (05.10.2026) | decis |
+| Bălțile de ulei: 2 × cel mult 3 hexagoane, la cel puțin 2 hexagoane de drumul inițial | propunere |
+| Apa de lângă drum: cantitatea de acum rămâne (05.10.2026) | decis |
+| Focul și frigul sunt incompatibile: se anulează pe inamic (05.10.2026) | decis |
+| …și nu se pot combina în același grup | propunere (din „incompatibile”) |

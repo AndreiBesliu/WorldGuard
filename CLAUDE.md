@@ -39,8 +39,10 @@ npm run build
 - `src/data/` — cifrele și regulile de conținut (teren, ocoluri, inamici și valuri, turnuri, stări și reacții,
   constantele partidei).
   **Un număr de gameplay scris direct în cod e o greșeală**: îl muți în `src/data/`.
-- `src/render/` — desenarea pe Canvas 2D. Citește starea, nu o modifică.
-- `src/main.ts` — input și legătura dintre ele. În `npm run dev` expune `window.wg.state` (doar citire),
+- `src/render/` — desenarea hărții pe Canvas 2D. Citește starea, nu o modifică.
+- `src/ui/` — interfața HTML peste hartă (bare, panou, cărți, notificări). Nu citește starea: primește o vedere
+  gata calculată (`HudView`) și trimite înapoi acțiuni (`HudActions`).
+- `src/main.ts` — input și legătura dintre ele (controlerul). În `npm run dev` expune `window.wg.state` (doar citire),
   pentru verificările în browser; blocul e sub `import.meta.env.DEV`, deci lipsește din build.
 
 ## Reguli dure în `src/sim/`
@@ -89,16 +91,35 @@ Măsurat: pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoan
 
 ## Stările și reacțiile (implementat)
 - **Regulile se scriu pe etichete, nu pe perechi** (GDD §6), în `src/data/reactions.ts`: o regulă spune ce se
-  întâmplă când un *element* (lovitura unui turn: impact, foc, frig, fulger; sau terenul: apă) atinge un inamic
+  întâmplă când un *element* (lovitura unui turn: impact, foc, frig, fulger; sau terenul: apă, ulei) atinge un inamic
   care poartă o stare cu o anumită *etichetă*. O stare nouă cu eticheta „inflamabil” explodează la foc fără cod nou.
 - Motorul e `applyContact` din `src/sim/reactions.ts`: întâi regulile (în ordinea din date), apoi dauna
   atingerii (după armură), apoi starea pe care o lasă, dacă nicio regulă n-a blocat-o sau n-a înlocuit-o.
 - Ordinea unui tick: inamicii merg (încetinirea cea mai mare se aplică, nu se adună) → apar cei noi → stările
-  trec cu un tick (arsura lovește și trece de armură) → terenul (apa udă inamicul **o dată, când intră** pe un
-  hexagon de drum vecin cu ea) → turnurile lovesc → cei uciși lasă aur → sfârșitul valului.
+  trec cu un tick (arsura lovește și trece de armură) → terenul (apa udă, uleiul unge — **o dată, când intră** pe un
+  hexagon de drum vecin; un hexagon vecin cu amândouă dă amândouă atingerile, în ordinea din `TERRAIN`) → turnurile
+  lovesc → cei uciși lasă aur → sfârșitul valului.
+- **Uleiul se găsește pe hartă** (decis de owner, 05.10.2026): bălți generate pe fluxul lor (`harta/ulei`), la cel
+  puțin `MAP_GEN.departareBalta` de drumul inițial — la început nimic nu e uns; un ocol spre baltă o aduce lângă drum.
+- **Focul și frigul sunt incompatibile** (decis de owner, 05.10.2026): se anulează pe inamic (dezgheț) și nu se
+  combină în același grup (`COMBINARE.incompatibile`).
 - `GameState.reactii` numără reacțiile (date pentru cronică și playtest) și intră în amprentă;
   `GameState.evenimente` sunt reacțiile ultimului tick, doar pentru desen.
 - Dealul: rază +1 și +20 aur la construcție (`towerRange`, `towerCost`) — propunere.
+
+## Grupurile de turnuri (implementat)
+Decis de owner (05.10.2026), înlocuiește bonusurile de vecinătate: turnurile lipite fac un **grup**, iar grupul se
+comută **individual ↔ combinat**; combinat = **un singur turn**.
+- Grupurile nu se țin în stare: `towerGroups` le calculează din turnuri (vecini la un hexagon, din aproape în
+  aproape). În stare e doar `Tower.combinat`, cu regula: **toate turnurile unui grup au aceeași valoare, iar un turn
+  singur are `false`**. `applyDecision` o păstrează la fiecare schimbare (`withMode`); testul de replay o verifică.
+- Decizia `combina` (`checkCombine` dă motivul refuzului) se poate lua și în timpul valului. Combinarea ia ținta
+  liderului (cel mai mic id) și cea mai lungă reîncărcare din grup — fără lovitură gratuită.
+- Un turn nou lângă un grup combinat intră în grup; dacă îl leagă de turnuri individuale sau aduce Foc lângă Frig,
+  tot grupul unit trece pe individual (nu rămâne combinat pe ascuns).
+- În `step`, grupul combinat trage o dată, la rândul liderului: o țintă din reuniunea razelor, lovită pe rând de
+  atingerile din `combinedContacts` (cifrele în `COMBINARE`, `src/data/towers.ts`). Ținta se schimbă pentru tot grupul.
+- UI-ul nu dublează regulile: previzualizarea „în ce grup intră turnul ăsta” aplică decizia pe o copie a stării.
 
 ## Cum se lucrează
 - După fiecare felie: `npm run check` verde → intrare în `DEVLOG.md` → commit. Stagează explicit
@@ -124,4 +145,6 @@ Măsurat: pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoan
   dezgheț, îngheț, spargere, electrocutare); apa udă, dealul dă rază. Anunț la prima reacție, cu freeze-frame.
   Cifrele, măsurate cu botul. 86 de teste.
 - **Publicare (05.10.2026):** Firebase Hosting `worldguard-910f1` — previzualizare la fiecare PR, live la `main`.
-- **Următorul:** felia 4 — vecinătatea între turnuri (vezi DEVLOG).
+- **Felia 4 (05.10.2026):** grupurile de turnuri (individual sau combinat), bălțile de ulei pe hartă, interfața
+  HTML nouă (bare, panou, cărți, butoane pentru tot). 104 teste.
+- **Următorul:** de ales cu owner-ul — draftul și bossul, sau economia (vezi DEVLOG).

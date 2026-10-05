@@ -566,3 +566,158 @@ Firebase → Project settings → Service accounts → Generate new private key,
 
 **Notă:** PR-urile feliilor sunt stivuite (#1 → #2 → #3). Workflow-ul e în ramura feliei 3, deci previzualizările
 pornesc de la PR #3 și de la feliile care vin peste el. Live-ul pleacă după ce stiva ajunge în `main`.
+
+---
+
+## 05.10.2026 (5) — Felia 4: grupurile de turnuri, uleiul pe hartă, interfața nouă
+
+**Cerut de owner:**
+- „continuă cu felia 4” și „vreau și un bump în UI”;
+- „vreau să pot pune turnuri unul lângă altul și să creez sinergie în felul ăsta, care poate fi toggled on sau
+  off”. Precizat: „turnurile conectate ori se comportă ca turnuri individuale, ori ca un turn combinat din cele
+  conectate”, iar dintre variante a ales **„un singur turn”**;
+- răspunsurile la întrebările din felia 3: „uleiul se găsește pe hartă, nu e prea multă apă, focul și frigul
+  sunt incompatibile”.
+
+**Decizia owner-ului înlocuiește un rând din GDD:** „reacții pe inamic + bonusuri de vecinătate; fuziunea mai
+târziu” devine „reacții pe inamic + grupuri de turnuri, individual sau combinat”. Bonusurile de vecinătate
+(aure, vecinătăți negative) pe care le începusem le-am scos înainte de commit, ca să nu rămână două mecanici care
+se bat cap în cap. Registrul din GDD §14 le marchează pe amândouă.
+
+**Făcut — grupurile:**
+- `towerGroups`: turnurile vecine, de orice tip, legate din aproape în aproape. Grupurile nu se țin în stare, se
+  calculează; în stare e doar `Tower.combinat`, cu regula „un grup are un singur mod, un turn singur e individual”.
+- Decizia `combina` (`{ turn, activ }`), cu motiv la refuz:
+  - un turn fără vecini nu are ce combina;
+  - grupul e deja în modul cerut;
+  - **Foc și Frig sunt incompatibile** — un grup cu amândouă nu se combină.
+  Se poate lua și în timpul valului; combinarea ia ținta liderului (cel mai mic id) și cea mai lungă reîncărcare
+  din grup, deci comutarea nu dă o lovitură gratuită.
+- **Lovitura combinată** (`combinedContacts`, cifrele în `COMBINARE`):
+  - o singură țintă, aleasă din reuniunea razelor turnurilor;
+  - fiecare turn contribuie cu dauna pe care ar fi dat-o singur într-o reîncărcare a grupului, adică a celui mai
+    lent turn;
+  - +15% pentru fiecare element diferit peste primul, cel mult 3;
+  - elementele lovesc pe rând: fulger → frig → impact → foc. Fulgerul sare pe inamicii uzi, frigul îngheață
+    udul, impactul sparge gheața, focul la urmă aprinde uleiul.
+  Exemplu: Fizic + Fulger = fulger 51 → impact 46, la 1,5 s; 64,7 daune pe secundă, față de 56,7 separat.
+- **Turn nou lângă un grup combinat:** intră în grup și îi ia ținta. Dacă leagă grupul de turnuri individuale,
+  sau aduce Frig lângă Foc, tot grupul unit trece pe individual. Panoul avertizează înainte de construcție.
+- Ținta unui grup combinat se schimbă pentru tot grupul. Un Frig dintr-un grup combinat nu mai lovește în zonă:
+  grupul are o singură țintă.
+
+**Făcut — uleiul:**
+- Teren nou, **baltă de ulei**: nu e drum, nu se construiește pe ea. Unge inamicii care intră pe un hexagon de
+  drum vecin, cum îi udă apa.
+- Generarea (`placeOil`, pe fluxul ei, `harta/ulei`, ca restul hărții să nu se schimbe):
+  - 2 bălți de cel mult 3 hexagoane;
+  - centrul la exact 2 hexagoane de drumul inițial, restul la cel puțin 2;
+  - bălțile la cel puțin 5 hexagoane una de alta.
+- `pathContacts` dă acum **toate** atingerile unui hexagon de drum. Unul vecin și cu apa, și cu uleiul udă și
+  unge; înainte se lua doar primul teren găsit.
+- **Măsurat pe 200 de hărți:**
+  - fiecare are cel puțin o baltă (170 au 6 hexagoane de ulei);
+  - la început, niciun hexagon de drum nu e lângă ulei;
+  - pe 196 de hărți, un singur ocol poate duce drumul lângă ulei;
+  - pe 199, cele două bălți sunt separate.
+- Apa rămâne cum era („nu e prea multă apă”). Focul și frigul se anulează pe inamic, ca până acum
+  („incompatibile”).
+
+**Făcut — interfața (`src/ui/`):**
+- Interfață HTML peste hartă:
+  - bara de sus: valul, viețile cu bară, aurul, lungimea drumului, faza, plus butoane pentru pornire, pauză,
+    viteză, anulare, restart și hartă nouă;
+  - bara de jos: cărțile turnurilor, cu iconiță, cost și tastă, plus ocolul (+1/+2/+3 și varianta);
+  - panoul din dreapta: valul următor, ce e sub mouse, codexul reacțiilor (necunoscutele ca „? ? ?”);
+  - refuzurile apar ca notificări, prima reacție ca anunț, iar finalul partidei pe un ecran cu „Aceeași hartă”
+    și „Hartă nouă”.
+- **Tot ce se face din taste se face și din butoane.** Harta ocupă spațiul rămas între bare și panou. Sub 960 px
+  panoul se ascunde și harta ia tot ecranul.
+- **Turnurile:** click alege turnul; panoul rămâne pe el și după ce mouse-ul pleacă de pe hartă, cu butoanele
+  „Schimbă ținta (T)” și „Combină / Separă grupul (C)”. `Esc` renunță. Un buton care nu se poate folosi apare
+  dezactivat, cu motivul de la simulare.
+- **Pe hartă:**
+  - legături aurii și contur auriu = grup combinat; legături subțiri = grup individual;
+  - raza unui grup combinat e reuniunea razelor;
+  - fantoma unui turn nou arată, cu linii punctate, grupul în care ar intra;
+  - conturul de pe drum e albastru lângă apă și maro-auriu lângă ulei;
+  - bălțile au luciu, ca să nu se confunde cu alt teren închis.
+- Panoul unui grup spune lovitura pe elemente, cadența, dauna pe secundă față de turnurile separate și bonusul.
+  Pentru un grup individual arată și cum ar fi combinat. Previzualizarea „în ce grup intră” aplică decizia pe o
+  copie a stării, deci regulile nu sunt dublate în UI.
+
+**Făcut — CI:** acțiunile GitHub sunt pe versiunile care rulează pe Node 24 (checkout v7, setup-node v7,
+upload-artifact v7, download-artifact v8). Am verificat `runs.using` în `action.yml`-ul fiecărei versiuni, iar
+notele de versiune n-au nimic care să atingă workflow-ul nostru (`pull_request`, fără `pull_request_target`).
+Rezultatul se vede la primul run al PR-ului.
+
+**Teste: 104** (de la 86):
+- `groups.test.ts`, 15 teste: grupurile, comutarea și jurnalul, refuzurile, Foc + Frig, turnul nou lângă un grup
+  combinat (intră / punte / incompatibil), cifrele loviturii, o singură țintă, reuniunea razelor, cadența celui mai
+  lent chiar când liderul e mai rapid, Frig fără zonă, comutarea în val fără lovitură gratuită, amprenta;
+- uleiul: generarea pe 200 de hărți, apa și uleiul pe același hexagon (în listă și în simulare), explozia
+  produsă de uleiul de pe hartă;
+- partidele aleatoare din testul de replay fac acum și grupuri, și comutări în pregătire și în val. Testul cere să
+  fi fost combinat măcar un grup și verifică regula grupurilor la final.
+
+**Mutații reintroduse într-o copie (23):** toate prinse. Patru au trecut la prima rundă și au cerut teste noi:
+- reîncărcarea liderului în loc de a celui mai lent;
+- grupul combinat dacă un singur turn e combinat (echivalentă cât timp regula grupurilor ține; acum o prinde un
+  test direct);
+- doar prima atingere de teren;
+- bălțile fără distanță între ele.
+
+**Măsurat — botul**, 20 de hărți (cu bălțile de ulei), ocolul obligatoriu, turnurile pe rând. Câștiguri din 20:
+
+| strategie | răsfirat (ca în felia 3) | lipite, individual | lipite, combinat | ocol spre ulei, răsfirat | ocol spre ulei, lipite, combinat |
+|---|---|---|---|---|---|
+| doar Fizic | 17 | 18 | 8 | — | — |
+| doar Foc | 7 | 6 | **20** | **19** | 19 |
+| doar Frig | 0 | 0 | 7 | — | — |
+| doar Fulger | 20 | 20 | 20 | — | — |
+| Fizic + Foc | 16 | 16 | 12 | 10 | 9 |
+| Frig + Fulger | 20 | 20 | 20 | — | — |
+| Frig + Fizic | 20 | 20 | 14 | — | — |
+| Fizic + Fulger | 17 | 16 | 16 | — | — |
+| toate, pe rând | 14 | 13 | 13 | 13 | 10 |
+
+- **Combinarea e o alegere, nu un upgrade:**
+  - ajută turnurile cu lovituri multe și mici, fiindcă o lovitură mare trece de armură. Foc combinat: 9 × n
+    daune, minus armura o singură dată;
+  - strică turnurile grele: Fizic combinat irosește dauna pe inamici mici și pierde țintele multiple;
+  - Frig combinat își pierde zona, dar câștigă lovituri mari (de la 0/20 la 7/20).
+- **Uleiul îi dă Focului rolul** care-i lipsea în felia 3: cu un ocol spre baltă, Foc singur trece de la 7/20 la
+  19/20, cu 6.257 de explozii în 20 de partide.
+- Botul care caută uleiul alege ocolul după ulei, nu după lungime, deci strategiile care nu folosesc uleiul
+  pierd drum (Fizic + Foc: 10/20).
+- În „toate, pe rând”, doar 7 din 54 de grupuri s-au putut combina: celelalte aveau Foc și Frig.
+- **De urmărit:** Foc combinat câștigă 20/20, cum câștigă și Fulger singur din felia 2. Problema e tot dificultatea
+  generală (vezi felia 3). Dacă o luăm înaintea ei, pârghia e armura: s-ar scădea pentru fiecare turn din grup,
+  nu o dată pe lovitură.
+
+**Verificat în browser** (seed 2026, fără erori în consolă):
+- ocolul spre baltă și conturul maro-auriu de pe drumul uns;
+- Foc + Fizic lipite: fantoma arată „2 turnuri, trag individual”;
+- click pe Foc, apoi butonul „Combină grupul” din panou: legăturile și conturul devin aurii, iar panoul arată
+  „fizic 46 → foc 62, 72,0 pe secundă (separat 62,7), +15%”;
+- Frig lângă grup: „Foc și Frig sunt incompatibile: grupul combinat de lângă trece pe individual” (și când aurul
+  nu ajunge);
+- valul: ambele turnuri ale grupului lovesc aceeași țintă (citit din stare), iar uleiul dă o explozie. Linia
+  loviturii nu s-a văzut: un inamic din valul 1 moare dintr-o lovitură combinată (108 daune la 100 de viață), iar
+  desenul trage linii doar spre inamicii vii, ca până acum. De îmbunătățit la desen, nu la reguli;
+- la 900 px lățime, panoul dispare și harta ocupă tot.
+
+**Propuneri ale mele, nedecise:**
+- cifrele combinării: +15% pe element, plafonul de 3, suma daunelor la cadența celui mai lent;
+- ordinea elementelor într-o lovitură combinată;
+- un Frig combinat își pierde zona;
+- turnul nou care leagă grupul de turnuri individuale (sau aduce Frig lângă Foc) lasă grupul unit pe individual;
+- „incompatibile” înseamnă și „nu se combină în același grup”;
+- bălțile: câte, cât de mari, cât de departe de drum.
+
+**Întrebări pentru owner:**
+1. **Combinarea trece de armură:** o lovitură mare în loc de multe mici. Ăsta e rolul pe care îl vrei pentru
+   grupul combinat (contra blindaților și a bossului)? Sau armura se scade pentru fiecare turn din grup?
+2. **„Focul și frigul sunt incompatibile”**: am aplicat-o și la grupuri — un grup cu amândouă nu se combină.
+   Corect?
+3. **Ce urmează:** draftul și bossul (GDD §10), sau economia (dobânda și pământul)?
