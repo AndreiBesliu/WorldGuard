@@ -151,7 +151,9 @@ describe('lovitura', () => {
       // Cine a dispărut și n-a ajuns la bază (valul 1 are doar inamici normali, care iau câte o viață) a fost ucis.
       const gone = prev.inamici.filter((e) => !s.inamici.some((x) => x.id === e.id)).length
       const killedNow = gone - (prev.vieti - s.vieti) / ENEMIES.normal.dauna
-      expect(s.aur - prev.aur).toBe(killedNow * ENEMIES.normal.aur)
+      // La sfârșitul valului se adaugă și dobânda (felia 6).
+      const dobanda = s.faza === 'val' ? 0 : (s.venit?.aur ?? 0)
+      expect(s.aur - prev.aur).toBe(killedNow * ENEMIES.normal.aur + dobanda)
       killed += killedNow
     }
     expect(hits.length).toBeGreaterThan(3)
@@ -159,7 +161,7 @@ describe('lovitura', () => {
     // Primele lovituri vin una după alta, la exact `reincarcare` tick-uri.
     expect(hits[1]! - hits[0]!).toBe(TOWERS.fizic.reincarcare)
     expect(killed).toBeGreaterThan(0)
-    expect(s.aur).toBe(AUR_START - TOWERS.fizic.cost + killed * ENEMIES.normal.aur)
+    expect(s.aur).toBe(AUR_START - TOWERS.fizic.cost + killed * ENEMIES.normal.aur + s.venit!.aur)
   })
 
   it('turnul de zonă lovește toți inamicii din rază deodată', () => {

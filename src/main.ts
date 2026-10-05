@@ -7,6 +7,8 @@
 //   - un turn = cifrele lui și ale grupului din care face parte; click = îl alegi. Pentru turnul de sub mouse (sau
 //     cel ales): T = schimbă ținta, C = combină grupul / îl separă (și în timpul valului). Esc = renunți la alegere.
 // După fiecare val: draftul, 1 carte din 3 (click pe ea sau 8 / 9 / 0); valul următor pornește abia după alegere.
+// Uneltele de teren (Q canal, W deal, E arzi pădurea, M mină pe filon) înlocuiesc turnul ales: click pe un loc liber
+// face terraformarea (cu pământ) sau sapă mina (cu aur).
 // Tot ce se face din taste se face și din butoanele interfeței (src/ui/hud.ts).
 // Seed-ul se poate da în URL: ?seed=123
 //
@@ -14,6 +16,7 @@
 // doar înmulțește timpul adunat — simularea nu știe de ea, deci un replay iese identic la orice viteză.
 
 import { CARDS, cardTower, type CardEffect, type CardId } from './data/draft'
+import { ECONOMIE, TERRAFORM_TYPES, TERRAFORMARI, type Terraform } from './data/economie'
 import { ENEMIES, TRAITS, WAVES } from './data/enemies'
 import { TICK_MS, VIETI_BAZA, VITEZE_UI } from './data/joc'
 import { ELEMENT_NAMES, REACTION_RULES, REACTIONS, STATES, TAG_NAMES, type ReactionType } from './data/reactions'
@@ -26,7 +29,9 @@ import {
   checkBuild,
   checkCombine,
   checkDetourAllowed,
+  checkMine,
   checkStartWave,
+  checkTerraform,
   combinedContacts,
   detourLimit,
   detourPossible,
@@ -44,6 +49,7 @@ import {
   towerRange,
   towerReload,
   waveHealth,
+  waveIncome,
   type Decision,
   type GameState,
   type Tower,
@@ -61,6 +67,8 @@ let state: GameState = newGame(seed)
 let extra = 2
 let optionIndex = 0
 let turnAles: TowerType = 'fizic'
+/** Unealta de teren aleasă, dacă e una: atunci click pe un loc liber terraformează sau sapă o mină, nu construiește. */
+let unealta: Terraform | 'mina' | undefined
 /** Hexagonul de sub mouse (oricare), și — dacă e un hexagon de drum care se poate înlocui — indicele lui. */
 let hoverHex: Hex | undefined
 let hovered: number | undefined
@@ -70,6 +78,8 @@ let selected: number | undefined
 
 /** Tastele cărților din draft, în ordinea ofertei. */
 const CARD_KEYS = ['8', '9', '0']
+/** Tastele terraformărilor, în ordinea din `TERRAFORM_TYPES` (canal, deal, arde). */
+const TOOL_KEYS = ['Q', 'W', 'E']
 let lastDraftShown = false
 
 let vitezaIndex = 0
@@ -91,7 +101,8 @@ const hud = createHud({
   undo: () => act(undo),
   restart: () => act(() => restart(seed)),
   newMap: () => act(() => restart(seed + 1)),
-  selectTower: (tip) => act(() => (turnAles = tip)),
+  selectTower: (tip) => act(() => selectTower(tip)),
+  selectTool: (id) => act(() => (unealta = id as Terraform | 'mina')),
   setExtra: (n) => act(() => setExtra(n)),
   nextVariant: () => act(nextVariant),
   towerAction: (a, id) => act(() => towerAction(a, id)),
@@ -292,6 +303,9 @@ function contextView(): { view: HudView['context']; overlay: Partial<Overlay> } 
       overlay: {},
     }
   }
+  if (unealta !== undefined && hoverHex !== undefined && state.map.terrain.has(key(hoverHex)) && !state.path.some((h) => key(h) === key(hoverHex as Hex))) {
+    return toolView(unealta, hoverHex)
+  }
   if (hoverHex !== undefined && state.map.terrain.has(key(hoverHex)) && !state.path.some((h) => key(h) === key(hoverHex as Hex))) {
     const hex = key(hoverHex)
     const info = TOWERS[turnAles]
@@ -351,12 +365,44 @@ function contextView(): { view: HudView['context']; overlay: Partial<Overlay> } 
         { k: 'Pe un turn', v: 'click = îl alegi; T = ținta' },
         { k: 'Turnuri lipite', v: 'fac un grup; C = combinat' },
         { k: 'După fiecare val', v: 'alegi 1 carte din 3 (8 / 9 / 0)' },
+        { k: 'Q / W / E', v: 'canal, deal, arzi pădurea (cu pământ)' },
+        { k: 'M pe un filon', v: 'mină: pământ la fiecare val' },
         ...COMBINARE.armura.map((c) => ({ k: `Combinat ${comboTowers(c)}`, v: `${c.nume}: ${comboEffect(c)}` })),
       ],
       nota:
         'Ocolul e obligatoriu înainte de fiecare val. Uleiul de pe hartă unge inamicii: du drumul pe lângă el cu un ocol, apoi aprinde-i cu Foc. Focul și Frigul sunt incompatibile — se anulează și nu se combină.',
     },
     overlay: {},
+  }
+}
+
+/** Ce ar face unealta de teren pe hexagonul de sub mouse: costul, efectul, și dacă se poate. */
+function toolView(u: Terraform | 'mina', h: Hex): { view: HudView['context']; overlay: Partial<Overlay> } {
+  const hex = key(h)
+  const teren = state.map.terrain.get(hex)
+  const acum: Row = { k: 'Terenul', v: teren ? TERRAIN[teren].nume : '—' }
+  if (u === 'mina') {
+    const r = checkMine(state, hex)
+    return {
+      view: {
+        titlu: r.ok ? 'Sapă o mină' : 'Mină aici: nu se poate',
+        ton: r.ok ? 'ok' : 'bad',
+        randuri: [{ k: 'Cost', v: `${ECONOMIE.mina.costAur} aur` }, acum, { k: 'Aduce', v: `+${ECONOMIE.pamant.peMina} pământ la fiecare val` }],
+        nota: r.ok ? 'Click = sapă mina. Pe ea nu se mai poate construi.' : r.reason,
+      },
+      overlay: { mineGhost: { hex: h, ok: r.ok } },
+    }
+  }
+  const info = TERRAFORMARI[u]
+  const r = checkTerraform(state, u, hex)
+  return {
+    view: {
+      titlu: r.ok ? info.nume : `${info.nume} aici: nu se poate`,
+      ton: r.ok ? 'ok' : 'bad',
+      randuri: [{ k: 'Cost', v: `${info.costPamant} pământ (ai ${state.pamant})` }, acum, { k: 'Devine', v: TERRAIN[info.in].nume }],
+      nota: r.ok ? `${info.descriere[0]?.toUpperCase()}${info.descriere.slice(1)}. Click = ${info.verb}.` : r.reason,
+    },
+    overlay: { terraform: { hex: h, teren: info.in, ok: r.ok } },
   }
 }
 
@@ -381,12 +427,18 @@ function waveView(): HudView['wave'] {
     }
   }
   const randuri = [...rows.values()]
+  const venit = waveIncome(state)
+  const laSfarsit = `la sfârșit: +${venit.aur} aur dobândă, +${venit.pamant} pământ`
   const hp = waveHealth(state.val)
   const viata = hp === 1 ? '' : `viață ×${String(Math.round(hp * 100) / 100).replace('.', ',')}`
   if (state.faza === 'val') {
-    return { titlu: `Valul ${state.val + 1} e pe drum`, randuri, nota: [`${state.inamici.length} pe hartă, ${state.deGenerat.length} mai vin`, viata].filter(Boolean).join(' · ') }
+    return {
+      titlu: `Valul ${state.val + 1} e pe drum`,
+      randuri,
+      nota: [`${state.inamici.length} pe hartă, ${state.deGenerat.length} mai vin`, viata, laSfarsit].filter(Boolean).join(' · '),
+    }
   }
-  return { titlu: `Valul următor: ${state.val + 1} din ${WAVES.length}`, randuri, nota: viata }
+  return { titlu: `Valul următor: ${state.val + 1} din ${WAVES.length}`, randuri, nota: [viata, laSfarsit].filter(Boolean).join(' · ') }
 }
 
 function codexView(): HudView['codex'] {
@@ -458,6 +510,7 @@ function render(): void {
     vieti: state.vieti,
     vietiMax: Math.max(VIETI_BAZA, state.vieti),
     aur: state.aur,
+    pamant: state.pamant,
     drum: state.path.length,
     faza: state.faza,
     fazaText: { pregatire: 'Pregătire', val: paused ? 'Pauză' : 'Val în desfășurare', castigat: 'Câștigat', pierdut: 'Pierdut' }[state.faza],
@@ -473,9 +526,29 @@ function render(): void {
       culoare: TOWERS[tip].culoare,
       forma: TOWERS[tip].forma,
       tasta: String(i + 4),
-      ales: tip === turnAles,
+      ales: tip === turnAles && unealta === undefined,
       accesibil: (state.gratuite[tip] ?? 0) > 0 || state.aur >= TOWERS[tip].cost,
     })),
+    unelte: [
+      ...TERRAFORM_TYPES.map((u, i) => ({
+        id: u,
+        nume: TERRAFORMARI[u].nume,
+        cost: `⬢ ${TERRAFORMARI[u].costPamant}`,
+        tasta: TOOL_KEYS[i] ?? '',
+        ales: unealta === u,
+        accesibil: state.pamant >= TERRAFORMARI[u].costPamant,
+        culoare: TERRAIN[TERRAFORMARI[u].in].culoare,
+      })),
+      {
+        id: 'mina',
+        nume: 'Mină',
+        cost: `◆ ${ECONOMIE.mina.costAur}`,
+        tasta: 'M',
+        ales: unealta === 'mina',
+        accesibil: state.aur >= ECONOMIE.mina.costAur,
+        culoare: TERRAIN.filon.culoare,
+      },
+    ],
     ocol: ocolView(),
     wave: waveView(),
     draft: draftView(),
@@ -531,6 +604,11 @@ function towerAction(a: TowerAction, id?: number): void {
   } else {
     decide({ tip: 'combina', turn: t.id, activ: !isCombined(groupOf(state.turnuri, t.id)) })
   }
+}
+
+function selectTower(tip: TowerType): void {
+  turnAles = tip
+  unealta = undefined
 }
 
 function startWave(): void {
@@ -597,6 +675,9 @@ function frame(now: number): void {
       // Valul s-a terminat (sau partida): timpul se oprește, drumul se poate modela din nou.
       acumulat = 0
       syncHover()
+      if (state.faza === 'pregatire' && state.venit) {
+        hud.toast(`Valul ${state.val} s-a încheiat: dobândă +${state.venit.aur} aur, +${state.venit.pamant} pământ`, 'info')
+      }
     }
     render()
   } else if (popups.length > 0) {
@@ -634,7 +715,10 @@ canvas.addEventListener('click', () => {
     else if (!chosen) hud.toast(`Nu există ocol de +${extra} aici. Încearcă alt număr sau alt loc.`)
     else decide({ tip: 'ocol', start: chosen.start, span: chosen.span, hexuri: chosen.hexes.map(key) })
   } else if (hoverHex !== undefined && state.map.terrain.has(key(hoverHex))) {
-    decide({ tip: 'turn', turn: turnAles, hex: key(hoverHex) })
+    const hex = key(hoverHex)
+    if (unealta === 'mina') decide({ tip: 'mina', hex })
+    else if (unealta !== undefined) decide({ tip: 'teren', actiune: unealta, hex })
+    else decide({ tip: 'turn', turn: turnAles, hex })
   }
   syncHover()
   render()
@@ -647,7 +731,9 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'f' || e.key === 'F') fn = () => (vitezaIndex = (vitezaIndex + 1) % VITEZE_UI.length)
   else if (e.key === 'p' || e.key === 'P') fn = () => (paused = !paused)
   else if (e.key === '1' || e.key === '2' || e.key === '3') fn = () => setExtra(Number(e.key))
-  else if (towerKey >= 0) fn = () => (turnAles = TOWER_TYPES[towerKey] ?? turnAles)
+  else if (towerKey >= 0) fn = () => selectTower(TOWER_TYPES[towerKey] ?? turnAles)
+  else if (TOOL_KEYS.includes(e.key.toUpperCase())) fn = () => (unealta = TERRAFORM_TYPES[TOOL_KEYS.indexOf(e.key.toUpperCase())])
+  else if (e.key === 'm' || e.key === 'M') fn = () => (unealta = 'mina')
   else if (e.key === 'Tab') fn = nextVariant
   else if (e.key === 'z' || e.key === 'Z') fn = undo
   else if (e.key === 'r' || e.key === 'R') fn = () => restart(seed)

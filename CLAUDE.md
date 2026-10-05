@@ -142,6 +142,16 @@ Felia 5, aleasă de owner (05.10.2026). Cărțile sunt date (`src/data/draft.ts`
   (`Enemy.trasaturi`). Imunitatea e în motorul reacțiilor: `applyState` nu aplică o stare la care inamicul e imun, deci
   nici reacțiile care pornesc de la ea nu mai au loc.
 
+## Economia (implementat)
+Felia 6, decisă de owner (05.10.2026). Cifrele în `src/data/economie.ts`.
+- **La sfârșitul fiecărui val** (`step`, odată cu draftul): `waveIncome` = dobânda (procent din aur, cu plafon) și
+  pământul (al valului + câte unul pe mină). Ce a adus stă în `GameState.venit`, doar pentru interfață.
+- **Decizia `mina`** (`checkMine`): pe un filon liber, cu aur; hexagonul ei nu mai ține un turn (`checkBuild`).
+- **Decizia `teren`** (`checkTerraform`): canal / deal / arde, cu pământ, doar în pregătire, nu pe drum, turn sau mină.
+  Harta e imuabilă: terraformarea face o hartă nouă (`{ ...map, terrain }`), deci cache-urile pe hartă se refac singure.
+- **Pădurea în flăcări** (`jar`) e un teren cu atingere de foc: drumul vecin aprinde inamicii, iar uleiul + foc =
+  explozie, prin aceleași reguli ale reacțiilor. Nicio regulă nouă în motor.
+
 ## Cum se lucrează
 - După fiecare felie: `npm run check` verde → intrare în `DEVLOG.md` → commit. Stagează explicit
   fișierele, **nu** `git add -A` (owner-ul rulează sesiuni paralele pe proiecte diferite).
@@ -173,4 +183,6 @@ Felia 5, aleasă de owner (05.10.2026). Cărțile sunt date (`src/data/draft.ts`
   cu trăsături (uscat, neclintit, ignifug); viața crește cu 20% pe val, Fulger 36 → 30 (măsurat). 123 de teste.
 - **Răspunsurile owner-ului la felia 5 (05.10.2026):** un singur tip cu toate cărțile pe el e un build bun (rămâne);
   partida se lungește prin mai multe valuri: 25, cu boss la fiecare al cincilea (20 și 25 sunt propunerea mea).
-- **Următorul:** felia 6, economia (dobânda, pământul, filonul) — decisă de owner.
+- **Felia 6 (05.10.2026):** economia — dobânda, pământul, minele pe filoane și terraformarea (canal, deal, arzi
+  pădurea). 133 de teste.
+- **Următorul:** de ales cu owner-ul (vezi DEVLOG).

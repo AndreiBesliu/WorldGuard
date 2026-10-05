@@ -951,3 +951,82 @@ proporțiile de câștig rămân cele din felia 5, iar durata ajunge în țintă
 - Cu 12% sau 6% pe val, aproape orice câștigă din nou (doar Frig: 18/20, respectiv 19/20).
 
 **Teste: 123**, aceleași, actualizate: 25 de valuri, boss la 5, 10, 15, 20 și 25.
+
+---
+
+## 05.10.2026 (9) — Felia 6: economia — dobânda, pământul, minele și terraformarea
+
+**Cerut de owner:** „felia următoare e economia” — „da”, la propunerea „dobânda la aur, pământul, filonul”.
+
+**Făcut** (GDD §7 și §5; toate cifrele, în `src/data/economie.ts`, sunt propunerea mea):
+- **Dobânda:** la sfârșitul fiecărui val, 10% din aurul pe care îl ai, cel mult 30. E tensiunea din GDD: cheltui
+  acum sau economisești.
+- **Pământul**, resursă nouă. Vine din:
+  - fiecare val încheiat: 1;
+  - fiecare **mină**: încă 1 pe val.
+
+  Pornești cu 0. Bara de sus îl arată, iar previzualizarea valului spune ce aduce sfârșitul lui („la sfârșit: +11
+  aur dobândă, +1 pământ”). După val apare o notificare verde.
+- **Mina** (decizia `mina`, tasta M) se sapă pe un **filon**, cu 40 de aur. Pe hexagonul ei nu se mai construiește.
+- **Terraformarea** (decizia `teren`, tastele Q / W / E), plătită cu pământ, doar în pregătire, nu pe drum, turn sau
+  mină:
+  - **canal** (2): câmpie sau pădure → apă, deci drumul de lângă udă;
+  - **deal** (3): câmpie sau pădure → deal, deci +1 rază pentru turnul de pe el;
+  - **arzi pădurea** (2): pădure → **pădure în flăcări**, un teren nou cu atingere de foc. Inamicii de pe drumul
+    vecin iau foc, iar cei unși cu ulei explodează. E imaginea din GDD §1, făcută din regulile reacțiilor care
+    existau deja, fără regulă nouă. Pădurea arde tot restul partidei.
+- **Interfața:**
+  - uneltele de teren stau lângă cărțile turnurilor și se aleg cu click sau Q / W / E / M;
+  - fantoma colorează hexagonul în terenul care ar ieși, sau îl taie cu motivul refuzului;
+  - minele se văd pe hartă;
+  - jarul are scântei, iar drumul de lângă el are contur roșu.
+
+**Teste: 133** (de la 123):
+- `economie.test.ts`, 10 teste: venitul (dobânda cu plafon, pământul din mine), sfârșitul valului, mina (cost,
+  turnul interzis pe ea, refuzurile), canalul (care udă drumul, iar harta veche rămâne neschimbată), dealul,
+  pădurea arsă (aprinde, iar cu uleiul dă explozii fără niciun turn), refuzurile cu motiv, datele, amprenta;
+- partidele aleatoare din testul de replay sapă mine și terraformează, iar replay-ul iese identic.
+
+**Mutații reintroduse într-o copie (15):** toate prinse din prima.
+
+**Măsurat — botul**, 25 de valuri, cărți alese bine, 20 de hărți. Câștiguri din 20:
+
+| strategie | fără economie (felia 5) | cu dobândă | + arde pădurea | + canal | + deal | + mine și arde |
+|---|---|---|---|---|---|---|
+| doar Fizic | 20 | 20 | 20 | 20 | 20 | 20 |
+| doar Foc | 18 | 19 | 19 | 19 | 19 | 17 |
+| Frig + Fulger | 20 | 20 | 20 | 20 | 20 | 20 |
+| Frig + Fizic | 19 | 19 | 19 | 19 | 19 | 18 |
+| Fizic + Foc | 15 | 18 | 18 | 17 | 17 | 16 |
+| toate, pe rând | 4 | 10 | 11 | 8 | 11 | 6 |
+
+- **Dobânda ușurează jocul**, chiar dacă botul cheltuie tot aurul: Fizic + Foc trece de la 15 la 18, toate pe rând de
+  la 4 la 10.
+- **Terraformarea botului e naivă:** o pune unde atinge cel mai mult drum, fără să caute combinații. Efectul e mic,
+  mai ales mai puține vieți pierdute la boss: Fizic + Foc pierde 12 în loc de 28 cu pădurea arsă. Canalul strică
+  amestecul cu Foc (abur), deci terenul trebuie ales după turnuri, nu pus oriunde.
+- **Minele sunt un compromis, nu un câștig sigur:** 40 de aur dat devreme pe o mină, cu pământul folosit naiv, scade
+  câștigurile (toate pe rând: de la 11 la 6).
+- Durata partidelor câștigate rămâne la mediana de 18–19 minute de joc.
+
+**Verificat în browser** (fără erori în consolă):
+- pământul în bara de sus și uneltele în bara de jos;
+- canalul refuzat cu motiv la 0 pământ („nu ajunge pământul: canal costă 2, ai 0”), apoi săpat după două valuri,
+  când hexagonul devine apă;
+- notificarea „Valul 1 s-a încheiat: dobândă +6 aur, +1 pământ”;
+- previzualizarea minei pe un filon.
+
+**Propuneri ale mele, nedecise:** toate cifrele (dobânda și plafonul ei, pământul pe val și pe mină, costul minei
+și al terraformărilor); pornirea cu 0 pământ; pădurea care arde tot restul partidei.
+
+**Întrebări pentru owner:**
+1. **Pornești cu 0 pământ**, deci prima terraformare vine după valul 2. Vrei pământ de start, ca terenul să conteze
+   de la primul val?
+2. **Terraformarea face puțin**, cel puțin cu un bot care nu caută combinații. O lăsăm așa (contează când e pusă cu
+   cap, de exemplu pădurea arsă lângă uleiul de pe drum) sau o facem mai ieftină sau mai puternică?
+3. **Ce urmează?** Cu felia asta, lista din GDD §10 e acoperită: harta, traseul, terenul în reacții,
+   terraformarea, turnurile, reacțiile, grupurile, inamicii și bossii, draftul, economia, jurnalul. Criteriul din
+   §10 („o partidă de 20–30 de minute în care fiecare val pune o alegere reală”) se verifică jucând. Variante:
+   - un playtest al tău pe previzualizare;
+   - finisarea vizuală;
+   - meta-progresia (stratul C, lumea care ține minte), care e în afara prototipului.

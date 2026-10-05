@@ -16,6 +16,8 @@ export interface HudActions {
   restart(): void
   newMap(): void
   selectTower(tip: TowerType): void
+  /** O unealtă de teren: canal, deal, arde (pădurea) sau mină. */
+  selectTool(id: string): void
   setExtra(extra: number): void
   nextVariant(): void
   /** Un buton din panoul unui turn: ținta, comutarea grupului, sau renunțarea la alegere. */
@@ -39,6 +41,7 @@ export interface HudView {
   readonly vieti: number
   readonly vietiMax: number
   readonly aur: number
+  readonly pamant: number
   readonly drum: number
   readonly fazaText: string
   readonly faza: 'pregatire' | 'val' | 'castigat' | 'pierdut'
@@ -57,6 +60,16 @@ export interface HudView {
     readonly tasta: string
     readonly ales: boolean
     readonly accesibil: boolean
+  }[]
+  /** Uneltele de teren (terraformările și mina), ca și cărțile turnurilor. */
+  readonly unelte: readonly {
+    readonly id: string
+    readonly nume: string
+    readonly cost: string
+    readonly tasta: string
+    readonly ales: boolean
+    readonly accesibil: boolean
+    readonly culoare: string
   }[]
   readonly ocol: { readonly stare: string; readonly extra: number; readonly variante: string; readonly activ: boolean }
   readonly wave: {
@@ -97,6 +110,11 @@ export function towerIcon(forma: TowerShape, culoare: string, size = 22): string
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><g fill="${culoare}" stroke="#12161c" stroke-width="1.6">${shape}</g></svg>`
 }
 
+/** Iconița unei unelte de teren: un hexagon în culoarea terenului care iese. */
+function hexIcon(culoare: string, size = 22): string {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><polygon points="12,2 21,7 21,17 12,22 3,17 3,7" fill="${culoare}" stroke="#12161c" stroke-width="1.6"/></svg>`
+}
+
 function el(tag: string, cls: string, parent: HTMLElement): HTMLElement {
   const e = document.createElement(tag)
   e.className = cls
@@ -119,7 +137,8 @@ export interface Hud {
   /** Zona rămasă pentru hartă, în pixeli CSS. */
   mapArea(): { x: number; y: number; w: number; h: number }
   update(v: HudView): void
-  toast(text: string): void
+  /** O notificare: refuz (implicit) sau informație (`info`, de exemplu venitul de la sfârșitul valului). */
+  toast(text: string, fel?: 'info'): void
   announce(text: string): void
 }
 
@@ -156,6 +175,12 @@ export function createHud(actions: HudActions): Hud {
   towersBox.addEventListener('click', (e) => {
     const card = (e.target as HTMLElement).closest<HTMLElement>('[data-tip]')
     if (card) actions.selectTower(card.dataset.tip as TowerType)
+  })
+  const toolsBox = el('div', 'towers unelte', bottom)
+  const toolSlot = slot(toolsBox)
+  toolsBox.addEventListener('click', (e) => {
+    const card = (e.target as HTMLElement).closest<HTMLElement>('[data-tool]')
+    if (card?.dataset.tool) actions.selectTool(card.dataset.tool)
   })
   const ocolBox = el('div', 'ocol', bottom)
   const ocolSlot = slot(ocolBox)
@@ -218,6 +243,7 @@ export function createHud(actions: HudActions): Hud {
           `<span class="pill ${v.boss ? 'boss' : ''}">${esc(v.val)}${v.boss ? ' · boss' : ''}</span>` +
           `<span class="stat" title="Vieți"><span class="ico vieti">♥</span>${v.vieti}<span class="bara"><span style="width:${hearts}%"></span></span></span>` +
           `<span class="stat" title="Aur"><span class="ico aur">◆</span>${v.aur}</span>` +
+          `<span class="stat" title="Pământ: din valuri și mine, pentru terraformare"><span class="ico pamant">⬢</span>${v.pamant}</span>` +
           `<span class="stat mic" title="Lungimea drumului">drum ${v.drum}</span>` +
           `<span class="faza ${v.faza}">${esc(v.fazaText)}</span>`,
       )
@@ -236,6 +262,15 @@ export function createHud(actions: HudActions): Hud {
               `${towerIcon(t.forma, t.culoare)}<span class="nume">${esc(t.nume)}</span>` +
               (t.gratuit > 0 ? `<span class="cost gratuit">gratuit${t.gratuit > 1 ? ` ×${t.gratuit}` : ''}</span>` : `<span class="cost">◆ ${t.cost}</span>`) +
               `<kbd>${t.tasta}</kbd></button>`,
+          )
+          .join(''),
+      )
+      toolSlot(
+        v.unelte
+          .map(
+            (t) =>
+              `<button class="card unealta ${t.ales ? 'ales' : ''} ${t.accesibil ? '' : 'scump'}" data-tool="${esc(t.id)}" title="${esc(t.nume)} — tasta ${esc(t.tasta)}">` +
+              `${hexIcon(t.culoare)}<span class="nume">${esc(t.nume)}</span><span class="cost">${esc(t.cost)}</span><kbd>${esc(t.tasta)}</kbd></button>`,
           )
           .join(''),
       )
@@ -312,8 +347,8 @@ export function createHud(actions: HudActions): Hud {
       endBox.classList.toggle('vizibil', v.final !== undefined)
     },
 
-    toast(text) {
-      const t = el('div', 'toast', toasts)
+    toast(text, fel) {
+      const t = el('div', fel === 'info' ? 'toast info' : 'toast', toasts)
       t.textContent = text
       window.setTimeout(() => t.classList.add('stinge'), 3200)
       window.setTimeout(() => t.remove(), 3700)

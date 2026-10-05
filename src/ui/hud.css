@@ -48,6 +48,7 @@ kbd {
 .stat.mic, .mic { color: var(--sters); font-weight: 400; font-size: 12px; }
 .ico.vieti { color: #e5533d; }
 .ico.aur { color: var(--accent); }
+.ico.pamant { color: #c9a26b; }
 .bara { display: inline-block; width: 60px; height: 6px; background: #2b333d; border-radius: 3px; overflow: hidden; }
 .bara > span { display: block; height: 100%; background: #e5533d; }
 .faza { padding: 2px 10px; border-radius: 6px; font-size: 13px; background: #232a33; color: var(--sters); }
@@ -192,6 +193,8 @@ ul.carti-alese .fel { grid-column: 1 / span 2; font-size: 12px; color: var(--ste
 .toasts { position: fixed; left: 50%; bottom: 112px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
 .toast { background: #3a2a18; border: 1px solid #8a5a2a; color: #ffd9a8; padding: 7px 14px; border-radius: 8px; transition: opacity 0.5s; max-width: 70vw; }
 .toast.stinge { opacity: 0; }
+.toast.info { background: #1d3a24; border-color: #3f7a4c; color: #c9f0d1; }
+.towers.unelte .card { min-width: 104px; }
 
 .anunt {
   position: fixed;

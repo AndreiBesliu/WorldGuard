@@ -2,7 +2,7 @@
 
 import type { Element, StateType } from './reactions'
 
-export type Terrain = 'campie' | 'apa' | 'padure' | 'deal' | 'filon' | 'ulei'
+export type Terrain = 'campie' | 'apa' | 'padure' | 'deal' | 'filon' | 'ulei' | 'jar'
 
 export interface TerrainInfo {
   readonly nume: string
@@ -31,6 +31,9 @@ export const TERRAIN: Readonly<Record<Terrain, TerrainInfo>> = {
   filon: { nume: 'Filon', culoare: '#7d5f8f', permiteTraseu: false, permiteTurn: true },
   // Uleiul se găsește pe hartă (decis de owner, 05.10.2026): bălți mici, departe de drumul inițial (vezi `MAP_GEN`).
   ulei: { nume: 'Baltă de ulei', culoare: '#3a3026', permiteTraseu: false, permiteTurn: false, atingere: { element: 'ulei', aplica: 'uns' } },
+  // Pădurea aprinsă prin terraformare (GDD §1: „arzi pădurea de lângă drum, iar inamicii unși cu ulei explodează în
+  // lanț”). Arde tot restul partidei (propunere); nu ține drum și nici turn.
+  jar: { nume: 'Pădure în flăcări', culoare: '#5c2416', permiteTraseu: false, permiteTurn: false, atingere: { element: 'foc', aplica: 'arde' } },
 }
 
 /** Parametrii generatorului de hartă. */
