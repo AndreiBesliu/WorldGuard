@@ -1,0 +1,98 @@
+# Verificare și publicare pe Firebase Hosting (proiectul worldguard-910f1).
+#
+#   - la fiecare PR: `npm run check` (typecheck + teste + build), apoi o PREVIZUALIZARE pe un canal al PR-ului
+#     (pr-<număr>, ține 30 de zile); linkul apare ca un comentariu pe PR. Fiecare felie devine un checkpoint
+#     jucabil;
+#   - la fiecare push pe main (adică la unirea unui PR): aceeași verificare, apoi publicarea pe LIVE;
+#   - manual (workflow_dispatch), doar de pe main: republicarea live.
+#
+# Publicarea cere secretul FIREBASE_SERVICE_ACCOUNT (cheia JSON a unui cont de serviciu din proiect). Dacă
+# lipsește, verificarea rulează oricum, iar publicarea e sărită cu un avertisment — nu pică.
+# Regula proiectelor lui Andrei: intrările din workflow trec prin `env:`, niciodată `${{ }}` direct în `run:`.
+
+name: Verificare și publicare
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publicare-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: npm run check (typecheck + teste + build)
+        run: npm run check
+        env:
+          # Amprenta build-ului, afișată în colțul jocului: ce commit rulează.
+          BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BUILD_REF: ${{ github.head_ref || github.ref_name }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
+
+  previzualizare:
+    if: github.event_name == 'pull_request'
+    needs: verificare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    env:
+      HAS_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - if: env.HAS_SA != 'true'
+        run: echo "::warning::Secretul FIREBASE_SERVICE_ACCOUNT lipsește din repo — previzualizarea nu se publică."
+      - if: env.HAS_SA == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: worldguard-910f1
+          channelId: pr-${{ github.event.pull_request.number }}
+          expires: 30d
+
+  live:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: verificare
+    runs-on: ubuntu-latest
+    # Mediul „live” din GitHub: aici se poate cere, mai târziu, o aprobare înainte de publicare.
+    environment: live
+    env:
+      HAS_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - if: env.HAS_SA != 'true'
+        run: echo "::warning::Secretul FIREBASE_SERVICE_ACCOUNT lipsește din repo — live nu se publică."
+      - if: env.HAS_SA == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: worldguard-910f1
+          channelId: live

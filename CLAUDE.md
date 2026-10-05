@@ -19,6 +19,19 @@ npm test           # Vitest
 npm run build
 ```
 
+## Publicare (Firebase Hosting, proiectul `worldguard-910f1`)
+- **Nu se publică de mână.** `.github/workflows/publicare.yml`:
+  - la fiecare PR: `npm run check`, apoi o **previzualizare** pe canalul `pr-<număr>` (ține 30 de zile); linkul
+    apare ca un comentariu pe PR — fiecare felie e un checkpoint jucabil;
+  - la push pe `main` (unirea unui PR): aceeași verificare, apoi **live**; manual, tot doar de pe `main`.
+- Cere secretul `FIREBASE_SERVICE_ACCOUNT` în GitHub (cheia JSON a unui cont de serviciu). Fără el, verificarea
+  rulează și publicarea e sărită cu un avertisment.
+- Jocul afișează în colț ce build rulează (`__BUILD__`: commit, ramură, oră), pus de Vite din `BUILD_SHA` /
+  `BUILD_REF`. Configurația web Firebase (`apiKey` etc.) **nu** e în cod: jocul nu folosește încă SDK-ul.
+- Regula comună a proiectelor lui Andrei (test + live, publicarea live doar de owner, cu confirmare și jurnal)
+  se aplică din clipa în care apare un backend. Până atunci: previzualizările țin loc de „test”, iar live-ul
+  pleacă doar din `main`, adică doar după ce owner-ul unește un PR.
+
 ## Arhitectura
 - `src/sim/` — **nucleul de joc, determinist, fără DOM.** Hartă, traseu, decizii, valuri și inamici,
   turnuri și țintire, stări și reacții (`reactions.ts`). Tot ce contează pentru reguli stă aici.
@@ -110,4 +123,5 @@ Măsurat: pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoan
 - **Felia 3 (05.10.2026):** stările (arde, ud, răcit, înghețat, uns) și 6 reacții pe etichete (explozie, abur,
   dezgheț, îngheț, spargere, electrocutare); apa udă, dealul dă rază. Anunț la prima reacție, cu freeze-frame.
   Cifrele, măsurate cu botul. 86 de teste.
+- **Publicare (05.10.2026):** Firebase Hosting `worldguard-910f1` — previzualizare la fiecare PR, live la `main`.
 - **Următorul:** felia 4 — vecinătatea între turnuri (vezi DEVLOG).

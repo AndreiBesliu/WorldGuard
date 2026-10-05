@@ -351,6 +351,12 @@ window.addEventListener('keydown', (e) => {
   render()
 })
 
+// Ce build rulează (commit, ramură, oră) — în colțul paginii, ca versiunea publicată să se vadă dintr-o privire.
+const versiune = document.createElement('div')
+versiune.id = 'versiune'
+versiune.textContent = `build ${__BUILD__.sha.slice(0, 7)}${__BUILD__.ref ? ` · ${__BUILD__.ref}` : ''} · ${__BUILD__.at.slice(0, 16).replace('T', ' ')} UTC`
+document.body.append(versiune)
+
 // Doar în `npm run dev`: starea, citibilă din consolă sau din scripturile de verificare în browser.
 // Vite scoate blocul din build-ul de producție.
 if (import.meta.env.DEV) Object.assign(window, { wg: { get state(): GameState { return state } } })

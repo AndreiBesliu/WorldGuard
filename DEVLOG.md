@@ -531,3 +531,38 @@ cu cea mai multă acoperire), 20 de hărți.
   turnuri puse prost se sabotează. E dorit așa?
 
 **Rămâne:** felia 4 — vecinătatea între turnuri.
+
+---
+
+## 05.10.2026 (4) — Publicare pe Firebase Hosting, la fiecare checkpoint
+
+**Cerut de owner:** „vreau să-l publicăm în Firebase și să-i facem update acolo la fiecare checkpoint”. Proiectul
+Firebase: `worldguard-910f1` (Blaze), cu o aplicație Web înregistrată.
+
+**Făcut:**
+- `firebase.json` (publică `dist/`; fișierele din `assets/` cu cache lung, `index.html` fără cache) și
+  `.firebaserc` (`default` și `live` = `worldguard-910f1`).
+- `.github/workflows/publicare.yml` — primul CI al repo-ului:
+  - **verificare** la fiecare PR și la push pe `main`: `npm ci`, `npm run check`;
+  - **previzualizare** la fiecare PR, pe canalul `pr-<număr>` (30 de zile), cu linkul comentat pe PR;
+  - **live** la push pe `main` sau manual, doar de pe `main`, în mediul GitHub `live`, unde se poate cere mai
+    târziu o aprobare;
+  - fără secretul `FIREBASE_SERVICE_ACCOUNT`, publicarea e sărită cu un avertisment, iar verificarea rulează;
+  - intrările workflow-ului trec prin `env:`, niciodată direct în `run:` (regula proiectelor lui Andrei).
+- **Amprenta build-ului în colțul paginii:** commit, ramură și ora build-ului (`__BUILD__`, din `BUILD_SHA` și
+  `BUILD_REF`). „Ce e publicat” se vede dintr-o privire.
+- **Configurația web Firebase nu intră în cod.** Jocul nu folosește SDK-ul (nici Analytics); o adăugăm când apare
+  un backend.
+
+**Verificat:**
+- build-ul de producție, servit static ca de Firebase, arată „build f5c2184 · claude/felia-3-reactii · …”, n-are
+  hook-ul de dev și nici erori în consolă;
+- workflow-ul se citește ca YAML valid, cu cele trei joburi și condițiile lor.
+
+Publicarea propriu-zisă se verifică la primul run din GitHub Actions; de aici nu se poate.
+
+**De făcut de owner** (o singură dată): secretul `FIREBASE_SERVICE_ACCOUNT` în GitHub. Cheia se generează în
+Firebase → Project settings → Service accounts → Generate new private key, iar fișierul JSON nu se pune în repo.
+
+**Notă:** PR-urile feliilor sunt stivuite (#1 → #2 → #3). Workflow-ul e în ramura feliei 3, deci previzualizările
+pornesc de la PR #3 și de la feliile care vin peste el. Live-ul pleacă după ce stiva ajunge în `main`.
