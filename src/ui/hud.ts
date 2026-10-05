@@ -42,6 +42,8 @@ export interface Row {
 export interface HudView {
   /** Regiunea planetei pe care se joacă partida (lipsește în partida liberă, cu `?seed=`). */
   readonly regiune?: string
+  /** Amenințarea partidei (modificatorii de dificultate), dacă are. */
+  readonly amenintare?: { readonly total: number; readonly detalii: string }
   readonly val: string
   readonly boss: boolean
   readonly vieti: number
@@ -278,6 +280,7 @@ export function createHud(actions: HudActions): Hud {
       stats(
         `<span class="titlu">World Guard</span>` +
           (v.regiune ? `<span class="regiune-nume">${esc(v.regiune)}</span>` : '') +
+          (v.amenintare ? `<span class="pill amenintare" title="${esc(v.amenintare.detalii)}">⚠ Amenințare ${v.amenintare.total}</span>` : '') +
           `<span class="pill ${v.boss ? 'boss' : ''}">${esc(v.val)}${v.boss ? ' · boss' : ''}</span>` +
           `<span class="stat" title="Vieți"><span class="ico vieti">♥</span>${v.vieti}<span class="bara"><span style="width:${hearts}%"></span></span></span>` +
           `<span class="stat" title="Aur"><span class="ico aur">◆</span>${v.aur}</span>` +

@@ -15,12 +15,14 @@ import { CARD_IDS, CARDS, cardTower, DRAFT, type CardEffect, type CardId } from 
 import { ECONOMIE, TERRAFORMARI, type Terraform } from '../data/economie'
 import { CRESTERE_VIATA, ENEMIES, VAL_INIMA, WAVES, type EnemyType, type Trait, type Wave } from '../data/enemies'
 import { AMFIBII } from '../data/lume'
+import { AVANGARDA, MODIFICATOR_IDS, type Modificatori } from '../data/modificatori'
 import { MILI_HEX, VIETI_BAZA } from '../data/joc'
 import type { ReactionType } from '../data/reactions'
 import { INSERARE, TERRAIN, type Terrain } from '../data/terrain'
 import { AUR_START, COMBINARE, TARGET_MODES, TOWERS, type ArmorCombo, type TargetMode, type TowerType } from '../data/towers'
 import { distance, fromKey, key, lineBetween, neighbors, type Hex } from './hex'
-import { generateMap, mixTerrain, type GameMap } from './map'
+import { floodPlains, generateMap, mixTerrain, type GameMap } from './map'
+import { modValue } from './modificatori'
 import { detourOptions, insertDetour } from './path'
 import { applyContact, enemySpeed, STATE_ORDER, tickStates, type Contact, type ReactionContext, type States } from './reactions'
 import { fail, ok, type Result } from './result'
@@ -172,6 +174,8 @@ export interface GameState {
   readonly inima: boolean
   /** Câți amfibi în plus are fiecare val (canalele săpate pe regiune îi aduc — felia 10). */
   readonly amfibii: number
+  /** Modificatorii de dificultate aleși la pornire (GDD §9.2, felia 11). Nu se schimbă în partidă. */
+  readonly modificatori: Modificatori
 }
 
 /**
@@ -183,6 +187,8 @@ export interface Start {
   readonly inima?: boolean
   /** Câți amfibi în plus pe val (`AMFIBII`). */
   readonly amfibii?: number
+  /** Modificatorii de dificultate (`MODIFICATORI`); nu se verifică aici — `checkModifiers` o face înainte. */
+  readonly modificatori?: Modificatori
 }
 
 /** Îmbunătățirile unui tip de turn: +`dauna`% daună, trage cu `reincarcare`% mai des. */
@@ -200,12 +206,16 @@ export type Improvements = Readonly<Partial<Record<TowerType, Improvement>>>
  */
 export function newGame(seed: number, start: Start = {}): GameState {
   const { teren } = start
+  const modificatori = start.modificatori ?? {}
+  const inundatii = modValue(modificatori, 'inundatii')
   const gen = generateMap(seed)
   let map = gen.map
   const path = gen.path
-  if (teren && teren.size > 0) {
-    const merged = new Map(map.terrain)
-    for (const [k, v] of teren) if (merged.has(k)) merged.set(k, v)
+  if ((teren && teren.size > 0) || inundatii > 0) {
+    let merged = new Map(map.terrain)
+    for (const [k, v] of teren ?? []) if (merged.has(k)) merged.set(k, v)
+    // Sezonul inundațiilor: apa crește cu un inel, peste terenul regiunii (și în jurul canalelor săpate).
+    if (inundatii > 0) merged = floodPlains(merged, path)
     // Amestecurile (cenușa de lângă apă e noroi) se fac după ce terenul regiunii e pus peste cel generat.
     const t = mixTerrain(merged)
     for (const h of path) if (!TERRAIN[t.get(key(h)) ?? 'campie'].permiteTraseu) t.set(key(h), 'campie')
@@ -238,8 +248,10 @@ export function newGame(seed: number, start: Start = {}): GameState {
     pamant: ECONOMIE.pamant.start,
     mine: [],
     inima: start.inima ?? false,
-    // Amfibii: din apa naturală de lângă drum (pe orice hartă) și din canalele săpate pe regiune (`start.amfibii`).
-    amfibii: Math.max(0, Math.min(AMFIBII.maxim, naturalAmphibians(gen.map, path) + (start.amfibii ?? 0))),
+    // Amfibii: din apa naturală de lângă drum (pe orice hartă) și din canalele săpate pe regiune (`start.amfibii`), cel
+    // mult `AMFIBII.maxim`; peste ei, cei din Sezonul inundațiilor.
+    amfibii: Math.max(0, Math.min(AMFIBII.maxim, naturalAmphibians(gen.map, path) + (start.amfibii ?? 0))) + inundatii,
+    modificatori,
   }
 }
 
@@ -249,6 +261,11 @@ export function newGame(seed: number, start: Start = {}): GameState {
  * un canal săpat să nu numere de două ori.
  */
 export function naturalAmphibians(map: GameMap, path: readonly Hex[]): number {
+  return Math.min(AMFIBII.apaNaturala.maxim, Math.floor(roadsideWater(map, path) / AMFIBII.apaNaturala.hexagoane))
+}
+
+/** Câte hexagoane de apă sunt vecine cu drumul dat (fiecare o dată). */
+export function roadsideWater(map: GameMap, path: readonly Hex[]): number {
   const drum = new Set(path.map(key))
   const apa = new Set<string>()
   for (const h of path) {
@@ -257,14 +274,49 @@ export function naturalAmphibians(map: GameMap, path: readonly Hex[]): number {
       if (!drum.has(k) && map.terrain.get(k) === 'apa') apa.add(k)
     }
   }
-  return Math.min(AMFIBII.apaNaturala.maxim, Math.floor(apa.size / AMFIBII.apaNaturala.hexagoane))
+  return apa.size
 }
 
-/** Valul `i` al partidei: pe inima planetei, ultimul e `VAL_INIMA`; cu amfibi, fiecare val îi are la coadă. */
-export function waveAt(s: { readonly inima?: boolean; readonly amfibii?: number }, i: number): Wave | undefined {
+/** Apa naturală de lângă drumul vechi, pe harta generată din `seed` (de ea depinde Sezonul inundațiilor). */
+export function naturalRoadsideWater(seed: number): number {
+  const gen = generateMap(seed)
+  return roadsideWater(gen.map, gen.path)
+}
+
+const BOSSI: readonly EnemyType[] = ['boss', 'paznic']
+
+/** Ce schimbă valurile unei partide: inima planetei, amfibii regiunii, modificatorii. */
+export interface WaveContext {
+  readonly inima?: boolean
+  readonly amfibii?: number
+  readonly modificatori?: Modificatori
+}
+
+/**
+ * Valul `i` al partidei: pe inima planetei, ultimul e `VAL_INIMA`. Apoi modificatorii: Hoardele cresc fiecare grup în
+ * afară de bossi (în același ritm, deci grupul ține mai mult), Avangarda de cenușă pune în față rapizii ignifugi. La
+ * coadă, amfibii.
+ */
+export function waveAt(s: WaveContext, i: number): Wave | undefined {
   const w = s.inima && i === WAVES.length - 1 ? VAL_INIMA : WAVES[i]
-  if (!w || !s.amfibii || i < AMFIBII.dinValul) return w
-  return { ...w, grupuri: [...w.grupuri, { tip: 'amfibiu', numar: s.amfibii, interval: AMFIBII.interval, intarziere: AMFIBII.intarziere }] }
+  if (!w) return w
+  const m = s.modificatori ?? {}
+  let grupuri = w.grupuri
+  const hoarde = modValue(m, 'hoarde')
+  if (hoarde > 0) {
+    grupuri = grupuri.map((g) => {
+      if (BOSSI.includes(g.tip)) return g
+      return { ...g, numar: Math.floor((g.numar * (100 + hoarde) + 50) / 100) }
+    })
+  }
+  const avangarda = modValue(m, 'avangarda')
+  if (avangarda > 0 && i >= AVANGARDA.dinValul) {
+    grupuri = [{ tip: AVANGARDA.tip, numar: avangarda, interval: AVANGARDA.interval, intarziere: 0, trasaturi: AVANGARDA.trasaturi }, ...grupuri]
+  }
+  if (s.amfibii && i >= AMFIBII.dinValul) {
+    grupuri = [...grupuri, { tip: 'amfibiu', numar: s.amfibii, interval: AMFIBII.interval, intarziere: AMFIBII.intarziere }]
+  }
+  return grupuri === w.grupuri ? w : { ...w, grupuri }
 }
 
 /** Cât de lung e drumul, în unitățile simulării. Un inamic ajunge la bază când îl parcurge. */
@@ -272,18 +324,24 @@ export const pathLength = (s: GameState): number => (s.path.length - 1) * MILI_H
 
 /**
  * Viața unui inamic de tipul `tip` în valul `valIndex`: a tipului × multiplicatorul valului × (1 + CRESTERE_VIATA ×
- * valIndex / 100). Calculul e pe întregi (multiplicatorul valului în sutimi), ca rotunjirea să nu depindă de virgulă.
+ * valIndex / 100) × (1 + `extra` / 100) — `extra` e Pielea groasă. Calculul e pe întregi (multiplicatorul valului în
+ * sutimi), ca rotunjirea să nu depindă de virgulă.
  */
-export function enemyHealth(tip: EnemyType, valIndex: number): number {
+export function enemyHealth(tip: EnemyType, valIndex: number, extra = 0): number {
   const sutimi = Math.round((WAVES[valIndex]?.viata ?? 1) * 100)
-  return Math.round((ENEMIES[tip].viata * sutimi * (100 + CRESTERE_VIATA * valIndex)) / 10_000)
+  return Math.round((ENEMIES[tip].viata * sutimi * (100 + CRESTERE_VIATA * valIndex) * (100 + extra)) / 1_000_000)
 }
 
 /** Multiplicatorul de viață al valului `valIndex` (pentru afișare): cât din viața de bază are fiecare inamic. */
-export const waveHealth = (valIndex: number): number => (Math.round((WAVES[valIndex]?.viata ?? 1) * 100) * (100 + CRESTERE_VIATA * valIndex)) / 10_000
+export const waveHealth = (valIndex: number, extra = 0): number =>
+  (Math.round((WAVES[valIndex]?.viata ?? 1) * 100) * (100 + CRESTERE_VIATA * valIndex) * (100 + extra)) / 1_000_000
+
+/** Aurul lăsat de un inamic ucis: al tipului, mai puțin cât ia Prada săracă (rotunjit în jos). */
+export const enemyGold = (s: Pick<GameState, 'modificatori'>, tip: EnemyType): number =>
+  Math.floor((ENEMIES[tip].aur * (100 - modValue(s.modificatori, 'saracie'))) / 100)
 
 /** Programul de apariție al unui val, pornit la `startTick`. Ordine stabilă: tick, apoi ordinea grupurilor. */
-export function spawnSchedule(valIndex: number, startTick: number, s: { readonly inima?: boolean; readonly amfibii?: number } = {}): Spawn[] {
+export function spawnSchedule(valIndex: number, startTick: number, s: WaveContext = {}): Spawn[] {
   const wave = waveAt(s, valIndex)
   if (!wave) return []
   const out: { tick: number; tip: EnemyType; trasaturi?: readonly Trait[]; ordine: number }[] = []
@@ -297,12 +355,25 @@ export function spawnSchedule(valIndex: number, startTick: number, s: { readonly
   return out.map(({ tick, tip, trasaturi }) => (trasaturi ? { tick, tip, trasaturi } : { tick, tip }))
 }
 
-/** Câte ocoluri se pun în pregătirea asta: cele de pe val (relicvele le cresc) plus cele din cartea „Ocol în plus”. */
-export const detourLimit = (state: Pick<GameState, 'ocoluriPeVal' | 'ocoluriBonus'>): number => state.ocoluriPeVal + state.ocoluriBonus
+/**
+ * Câte ocoluri se pun în pregătirea asta: cele de pe val (relicvele le cresc) plus cele din cartea „Ocol în plus”. Cu
+ * Drumuri rare, cele de pe val vin doar înaintea valurilor 1, 1 + k, 1 + 2k… (k = cifra treptei).
+ */
+export function detourLimit(state: Pick<GameState, 'ocoluriPeVal' | 'ocoluriBonus' | 'val' | 'modificatori'>): number {
+  const k = Math.max(1, modValue(state.modificatori, 'drumuri'))
+  return (state.val % k === 0 ? state.ocoluriPeVal : 0) + state.ocoluriBonus
+}
+
+/** Cu Drumuri rare: indicele valului dinaintea căruia vine următorul ocol (după valul curent). */
+export function nextDetourWave(state: Pick<GameState, 'val' | 'modificatori'>): number {
+  const k = Math.max(1, modValue(state.modificatori, 'drumuri'))
+  return Math.ceil((state.val + 1) / k) * k
+}
 
 /** Se poate pune un ocol acum (faza, limita pe val)? Dacă nu, de ce. Folosit și de UI. */
 export function checkDetourAllowed(state: GameState): Result<true> {
   if (state.faza !== 'pregatire') return fail('drumul se modelează doar între valuri')
+  if (detourLimit(state) === 0) return fail(`Drumuri rare: valul ăsta vine fără ocol — următorul, înaintea valului ${nextDetourWave(state) + 1}`)
   if (state.ocoluriFolosite >= detourLimit(state)) {
     const n = detourLimit(state)
     return fail(n === 1 ? 'ocolul acestui val e deja pus — următorul vine după val' : `ai pus deja cele ${n} ocoluri ale acestui val — următoarele vin după val`)
@@ -376,10 +447,11 @@ export function towerReload(state: Pick<GameState, 'imbunatatiri'>, tip: TowerTy
   return Math.max(1, Math.floor((TOWERS[tip].reincarcare * 200 + (100 + p)) / (2 * (100 + p))))
 }
 
-/** Raza turnului: a tipului, plus ce dă terenul pe care stă (dealul). */
-export function towerRange(state: GameState, tip: TowerType, hex: string): number {
+/** Raza turnului: a tipului, plus ce dă terenul pe care stă (dealul) — dar nu prin Ceața de treapta a doua. */
+export function towerRange(state: Pick<GameState, 'map' | 'modificatori'>, tip: TowerType, hex: string): number {
   const t = state.map.terrain.get(hex)
-  return TOWERS[tip].raza + (t === undefined ? 0 : (TERRAIN[t].bonusRaza ?? 0))
+  const ceata = modValue(state.modificatori, 'ceata') >= 2
+  return TOWERS[tip].raza + (t === undefined || ceata ? 0 : (TERRAIN[t].bonusRaza ?? 0))
 }
 
 /**
@@ -792,9 +864,10 @@ export function step(state: GameState): GameState {
   // 2. Apar inamicii programați pentru tick-ul ăsta (pornesc de la intrare, se mișcă de la tick-ul următor).
   let i = 0
   let urmatorulId = state.urmatorulId
+  const piele = modValue(state.modificatori, 'piele')
   while (i < state.deGenerat.length && (state.deGenerat[i] as Spawn).tick <= tick) {
     const sp = state.deGenerat[i] as Spawn
-    const nou = { id: urmatorulId++, tip: sp.tip, viata: enemyHealth(sp.tip, valIndex), progres: 0, stari: {}, fost: -1 }
+    const nou = { id: urmatorulId++, tip: sp.tip, viata: enemyHealth(sp.tip, valIndex, piele), progres: 0, stari: {}, fost: -1 }
     live.push(sp.trasaturi ? { ...nou, trasaturi: sp.trasaturi } : nou)
     i++
   }
@@ -806,7 +879,7 @@ export function step(state: GameState): GameState {
     const puls = ENEMIES[e.tip].puls
     if (!puls || e.viata <= 0 || tick % puls.interval !== 0) continue
     for (let n = 0; n < puls.numar; n++) {
-      live.push({ id: urmatorulId++, tip: puls.tip, viata: enemyHealth(puls.tip, valIndex), progres: e.progres, stari: {}, fost: indexOf(e.progres) })
+      live.push({ id: urmatorulId++, tip: puls.tip, viata: enemyHealth(puls.tip, valIndex, piele), progres: e.progres, stari: {}, fost: indexOf(e.progres) })
     }
   }
 
@@ -883,7 +956,7 @@ export function step(state: GameState): GameState {
   let aur = state.aur
   const inamici: Enemy[] = []
   for (const e of live) {
-    if (e.viata <= 0) aur += ENEMIES[e.tip].aur
+    if (e.viata <= 0) aur += enemyGold(state, e.tip)
     else {
       const { fost: _fost, ...enemy } = e
       inamici.push(enemy)
@@ -946,6 +1019,7 @@ export function fingerprint(state: GameState): string {
     `urmatorulId=${state.urmatorulId}`,
     `inima=${state.inima}`,
     `amfibii=${state.amfibii}`,
+    `mod=${MODIFICATOR_IDS.map((id) => state.modificatori[id] ?? 0).join(',')}`,
   ]
   for (const [k, t] of state.map.terrain) parts.push(`${k}:${t}`)
   parts.push(`path=${state.path.map(key).join(';')}`)

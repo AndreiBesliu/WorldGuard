@@ -9,6 +9,26 @@ import { drawTerrain } from '../render/terrain'
 import './planeta.css'
 
 export type Acces = 'salvata' | 'accesibila' | 'blocata'
+export type Sigiliu = 'bronz' | 'argint' | 'aur'
+
+/** Alegerea modificatorilor de dificultate pentru regiunea aleasă (GDD §9.2), gata de arătat. */
+export interface ThreatView {
+  readonly total: number
+  /** Ce aduce o partidă câștigată cu alegerea asta. */
+  readonly rezumat: string
+  /** Cea mai mare amenințare câștigată aici, cu sigiliul ei, dacă e vreuna. */
+  readonly record?: string
+  readonly presetari: readonly { readonly nume: string; readonly activ: boolean; readonly amenintare: number }[]
+  readonly modificatori: readonly {
+    readonly id: string
+    readonly nume: string
+    /** Treapta aleasă; 0 = neales. */
+    readonly treapta: number
+    readonly trepte: readonly { readonly amenintare: number; readonly descriere: string }[]
+    /** De ce nu se poate alege aici, dacă nu se poate. */
+    readonly motiv?: string
+  }[]
+}
 
 export interface PlanetView {
   readonly titlu: string
@@ -24,6 +44,8 @@ export interface PlanetView {
     readonly acces: Acces
     readonly inima: boolean
     readonly aleasa: boolean
+    /** Sigiliul câștigat cu modificatori (cel mai înalt prag atins). */
+    readonly sigiliu?: Sigiliu
   }[]
   readonly aleasa?: {
     readonly cheie: string
@@ -35,6 +57,8 @@ export interface PlanetView {
     readonly harta: GameMap
     /** Hexagoanele schimbate de partidele de dinainte. */
     readonly editate: readonly string[]
+    /** Modificatorii, doar pe o regiune salvată (la revenire). */
+    readonly amenintare?: ThreatView
   }
 }
 
@@ -42,6 +66,10 @@ export interface PlanetActions {
   alege(cheie: string): void
   joaca(): void
   planetaNoua(): void
+  /** Treapta modificatorului `id` (0 = scos). */
+  modificator(id: string, treapta: number): void
+  /** O presetare (I, II, III) sau „fără”. */
+  presetare(nume: string): void
 }
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string)
@@ -67,8 +95,8 @@ export function createPlanetScreen(actions: PlanetActions): PlanetScreen {
   root.innerHTML =
     `<header class="planeta-cap"><h1></h1><p class="sub"></p></header>` +
     `<div class="planeta-corp"><svg class="harta-planetei" viewBox="-170 -150 340 300" role="img" aria-label="Regiunile planetei"></svg>` +
-    `<aside class="regiune-card"><h2></h2><p class="stare"></p><canvas class="mini"></canvas><ul class="randuri"></ul><p class="motiv"></p>` +
-    `<button class="btn primar joaca">▶ Apără regiunea <kbd>Enter</kbd></button></aside></div>` +
+    `<aside class="regiune-card"><div class="stanga"><h2></h2><p class="stare"></p><canvas class="mini"></canvas><ul class="randuri"></ul><p class="motiv"></p>` +
+    `<button class="btn primar joaca">▶ Apără regiunea <kbd>Enter</kbd></button></div><section class="amenintare"></section></aside></div>` +
     `<footer class="planeta-jos"><span class="indiciu">Click pe o regiune ca s-o vezi. Ce faci terenului rămâne: canalele, dealurile, pădurile arse.</span>` +
     `<button class="btn noua">Planetă nouă</button></footer>`
   const $ = <T extends Element>(sel: string): T => root.querySelector(sel) as T
@@ -81,9 +109,44 @@ export function createPlanetScreen(actions: PlanetActions): PlanetScreen {
     if (k) actions.alege(k)
   })
   joaca.addEventListener('click', () => actions.joaca())
+  const amenintare = $<HTMLElement>('.amenintare')
+  amenintare.addEventListener('click', (e) => {
+    const b = (e.target as Element).closest('button')
+    if (!b || b.disabled) return
+    const preset = b.getAttribute('data-preset')
+    if (preset !== null) actions.presetare(preset)
+    const mod = b.getAttribute('data-mod')
+    if (mod !== null) actions.modificator(mod, Number(b.getAttribute('data-treapta')))
+  })
   $<HTMLButtonElement>('.noua').addEventListener('click', () => actions.planetaNoua())
 
   let lastSvg = ''
+  let lastAmenintare = ''
+
+  const threatHtml = (a: ThreatView): string =>
+    `<h3>Amenințare <span class="total">${a.total}</span></h3>` +
+    `<div class="presetari">${a.presetari
+      .map((p) => `<button class="btn mic${p.activ ? ' activ' : ''}" data-preset="${esc(p.nume)}" title="Amenințare ${p.amenintare}">${esc(p.nume)}</button>`)
+      .join('')}</div>` +
+    `<ul class="modificatori">${a.modificatori
+      .map((m) => {
+        const titlu = m.motiv ?? (m.treapta > 0 ? (m.trepte[m.treapta - 1]?.descriere ?? '') : 'neales')
+        const trepte = [0, ...m.trepte.map((_, i) => i + 1)]
+          .map((t) => {
+            const info = t > 0 ? m.trepte[t - 1] : undefined
+            const tt = info ? `${info.descriere} (+${info.amenintare})` : 'fără'
+            return `<button class="treapta${t === m.treapta ? ' activ' : ''}" data-mod="${m.id}" data-treapta="${t}" title="${esc(tt)}"${m.motiv && t > 0 ? ' disabled' : ''}>${t === 0 ? '–' : t}</button>`
+          })
+          .join('')
+        return `<li class="${m.treapta > 0 ? 'ales' : ''}${m.motiv ? ' indisponibil' : ''}" title="${esc(titlu)}"><span class="nume">${esc(m.nume)}</span><span class="trepte">${trepte}</span></li>`
+      })
+      .join('')}</ul>` +
+    `<ul class="efecte">${a.modificatori
+      .filter((m) => m.treapta > 0)
+      .map((m) => `<li><b>${esc(m.nume)}:</b> ${esc(m.trepte[m.treapta - 1]?.descriere ?? '')}</li>`)
+      .join('')}</ul>` +
+    `<p class="rezumat">${esc(a.rezumat)}</p>` +
+    (a.record ? `<p class="record">${esc(a.record)}</p>` : '')
   let lastMini: GameMap | undefined
   let lastEditate = ''
 
@@ -129,8 +192,9 @@ export function createPlanetScreen(actions: PlanetActions): PlanetScreen {
           const cls = `regiune ${g.acces}${g.inima ? ' inima' : ''}${g.aleasa ? ' aleasa' : ''}`
           const eticheta = g.inima ? 'Inima' : g.nume.replace('Ținutul de ', '')
           const semn = g.acces === 'salvata' ? '✓' : g.acces === 'blocata' ? '🔒' : g.inima ? '♥' : '▶'
+          const sigiliu = g.sigiliu ? `<circle class="sigiliu ${g.sigiliu}" cx="${cx.toFixed(1)}" cy="${(cy - 30).toFixed(1)}" r="7"><title>Sigiliul de ${g.sigiliu}</title></circle>` : ''
           return (
-            `<g class="${cls}" data-cheie="${g.cheie}"><polygon points="${hexPoints(cx, cy, R * 0.95)}"/>` +
+            `<g class="${cls}" data-cheie="${g.cheie}"><polygon points="${hexPoints(cx, cy, R * 0.95)}"/>${sigiliu}` +
             `<text x="${cx.toFixed(1)}" y="${(cy - 4).toFixed(1)}" class="semn">${semn}</text>` +
             `<text x="${cx.toFixed(1)}" y="${(cy + 16).toFixed(1)}" class="eticheta">${esc(eticheta)}</text></g>`
           )
@@ -147,6 +211,12 @@ export function createPlanetScreen(actions: PlanetActions): PlanetScreen {
       $<HTMLElement>('.regiune-card h2').textContent = a.nume
       $<HTMLElement>('.stare').textContent = a.stare
       $<HTMLElement>('.randuri').innerHTML = a.randuri.map((x) => `<li>${esc(x)}</li>`).join('')
+      const am = a.amenintare ? threatHtml(a.amenintare) : ''
+      if (am !== lastAmenintare) {
+        amenintare.innerHTML = am
+        lastAmenintare = am
+      }
+      amenintare.hidden = !a.amenintare
       $<HTMLElement>('.motiv').textContent = a.motiv ?? ''
       joaca.disabled = a.motiv !== undefined
       const ed = a.editate.join(';')

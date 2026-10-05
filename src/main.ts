@@ -67,7 +67,9 @@ import {
   incompatiblePair,
   isCombined,
   naturalAmphibians,
+  naturalRoadsideWater,
   newGame,
+  nextDetourWave,
   pathLength,
   replay,
   step,
@@ -85,6 +87,8 @@ import {
   type Tower,
 } from './sim/game'
 import { distance, fromKey, key, type Hex } from './sim/hex'
+import { MODIFICATOR_IDS, MODIFICATORI, PRAGURI, PRESETARI, type ModificatorId, type Modificatori } from './data/modificatori'
+import { checkModifiers, modValue, parseModifiers, sealOf, threat, unavailableReason } from './sim/modificatori'
 import { optionsAround, type DetourOption } from './sim/path'
 import { createHud, type HudView, type Row, type TowerAction } from './ui/hud'
 
@@ -95,13 +99,28 @@ const params = new URLSearchParams(location.search)
 /** Partida liberă: cu `?seed=` în URL, o singură hartă, fără planetă (și pentru scripturile de verificare). */
 const liber = params.has('seed')
 let seed = Number(params.get('seed') ?? '2026') || 2026
-let state: GameState = newGame(seed)
+/** Modificatorii partidei libere, din `?mod=hoarde2,piele1` (pentru verificări și pentru botul din browser). */
+const modLiber = parseModifiers(params.get('mod') ?? '')
+/** Modificatorii din URL pe harta `s`, verificați (Sezonul inundațiilor cere apă lângă drum), sau de ce nu se pot. */
+function modOn(s: number): { modificatori: Modificatori } | { motiv: string } {
+  if (!modLiber.ok) return { motiv: modLiber.reason }
+  const r = checkModifiers(modLiber.value, naturalRoadsideWater(s))
+  return r.ok ? { modificatori: r.value } : { motiv: r.reason }
+}
+/** Cu ce pornește o partidă liberă pe harta `s`: cu modificatorii din URL, dacă se pot alege pe ea. */
+const startLiber = (s: number): Start => {
+  const m = modOn(s)
+  return 'modificatori' in m && Object.keys(m.modificatori).length > 0 ? { modificatori: m.modificatori } : {}
+}
+let state: GameState = newGame(seed, startLiber(seed))
 /** Lumea care ține minte (GDD §9.1); lipsește în partida liberă. */
 let lume: Lume | undefined
 /** Regiunea pe care se joacă acum și terenul cu care a pornit partida (rejucarea, la „anulează”, pornește din el). */
 let regiune: { cheie: string; start: Start } | undefined
 /** Regiunea arătată pe ecranul planetei. */
 let regiuneAleasa: string | undefined
+/** Modificatorii aleși pe cardul planetei, pe regiune (cât e pagina deschisă). Se folosesc doar pe o regiune salvată. */
+const modAlese = new Map<string, Modificatori>()
 /** O părăsire a partidei care așteaptă confirmarea (a doua apăsare, în câteva secunde). */
 let confirmare: { act: 'restart' | 'new'; pana: number } | undefined
 let extra = 2
@@ -451,7 +470,7 @@ function contextView(): { view: HudView['context']; overlay: Partial<Overlay> } 
         ...COMBINARE.armura.map((c) => ({ k: `Combinat ${comboTowers(c)}`, v: `${c.nume}: ${comboEffect(c)}` })),
       ],
       nota:
-        'Ocolul e obligatoriu înainte de fiecare val. Uleiul de pe hartă unge inamicii: du drumul pe lângă el cu un ocol, apoi aprinde-i cu Foc. Focul și Frigul sunt incompatibile — se anulează și nu se combină. Pe planetă, cenușa de lângă apă devine noroi (încetinește), iar canalele săpate aduc amfibi.',
+        'Ocolul e obligatoriu înainte de fiecare val. Uleiul de pe hartă unge inamicii: du drumul pe lângă el cu un ocol, apoi aprinde-i cu Foc. Focul și Frigul sunt incompatibile — se anulează și nu se combină. Pe planetă, cenușa de lângă apă devine noroi (încetinește), iar canalele săpate aduc amfibi. O regiune salvată se poate juca din nou cu modificatori (Amenințare), pentru sigilii.',
     },
     overlay: {},
   }
@@ -487,9 +506,20 @@ function toolView(u: Terraform | 'mina', h: Hex): { view: HudView['context']; ov
   }
 }
 
+/** Ceața (modificatorul): în pregătire, valul următor nu se vede. */
+const inCeata = (): boolean => state.faza === 'pregatire' && modValue(state.modificatori, 'ceata') > 0
+
 function waveView(): HudView['wave'] {
   const w = waveAt(state, state.val)
   if (state.faza === 'castigat' || state.faza === 'pierdut' || !w) return { titlu: 'Partida s-a încheiat', randuri: [], nota: '' }
+  if (inCeata()) {
+    const venit = waveIncome(state)
+    return {
+      titlu: `Valul următor: ${state.val + 1} din ${WAVES.length}`,
+      randuri: [],
+      nota: `Ceața: nu se vede ce aduce până nu pornește · la sfârșit: +${venit.aur} aur dobândă, +${venit.pamant} pământ`,
+    }
+  }
   // Un rând pe tip și trăsături: bossii cu trăsături diferite apar separat, cu ce-i face imuni.
   const rows = new Map<string, { nume: string; culoare: string; numar: number; boss: boolean; trasaturi?: string }>()
   for (const g of w.grupuri) {
@@ -510,7 +540,7 @@ function waveView(): HudView['wave'] {
   const randuri = [...rows.values()]
   const venit = waveIncome(state)
   const laSfarsit = `la sfârșit: +${venit.aur} aur dobândă, +${venit.pamant} pământ`
-  const hp = waveHealth(state.val)
+  const hp = waveHealth(state.val, modValue(state.modificatori, 'piele'))
   const viata = hp === 1 ? '' : `viață ×${String(Math.round(hp * 100) / 100).replace('.', ',')}`
   if (state.faza === 'val') {
     return {
@@ -564,6 +594,7 @@ function ocolView(): HudView['ocol'] {
   const done = `${state.ocoluriFolosite}/${detourLimit(state)}`
   const variante = options.length > 0 && checkDetourAllowed(state).ok ? `${optionIndex + 1}/${options.length}` : '—'
   if (state.faza !== 'pregatire') return { stare: 'doar între valuri', extra, variante: '—', activ: false }
+  if (detourLimit(state) === 0) return { stare: `fără ocol acum (Drumuri rare) — următorul înaintea valului ${nextDetourWave(state) + 1}`, extra, variante: '—', activ: false }
   if (!checkDetourAllowed(state).ok) return { stare: `pus (${done})`, extra, variante: '—', activ: false }
   if (!detourPossible(state)) return { stare: 'nu mai încape niciunul', extra, variante: '—', activ: false }
   return { stare: `obligatoriu (${done})`, extra, variante, activ: true }
@@ -582,15 +613,31 @@ function finalView(): HudView['final'] {
         { act: 'restart', text: '⟳ Aceeași hartă', tasta: 'R', primar: true },
         { act: 'new', text: 'Hartă nouă', tasta: 'N' },
       ]
+  const t = threat(state.modificatori)
   if (state.faza === 'castigat') {
     const titlu = r ? (r.inima ? 'Ai salvat planeta' : `Ai salvat ${r.nume.replace('Ținutul', 'ținutul')}`) : 'Ai apărat lumea'
-    return { titlu, text: `Toate cele ${WAVES.length} valuri, cu ${state.vieti} vieți rămase și ${total} reacții.`, castigat: true, butoane }
+    // Sigiliul nou, dacă e unul: lumea încă nu știe de câștigul ăsta (îl află când pleci de pe regiune).
+    const sigiliu = sealOf(t)
+    const avut = r && lume ? sealOf(lume.regiuni[r.cheie]?.amenintare ?? 0) : undefined
+    const nou = r && sigiliu && (!avut || avut.amenintare < sigiliu.amenintare) ? ` ${sigiliu.nume} e acum al regiunii.` : ''
+    const am = t > 0 ? ` Amenințare ${t}.${nou}` : ''
+    return { titlu, text: `Toate cele ${WAVES.length} valuri, cu ${state.vieti} vieți rămase și ${total} reacții.${am}`, castigat: true, butoane }
   }
   if (state.faza === 'pierdut') {
     const rest = r ? ' Doar partidele câștigate lasă urme pe teren.' : ''
     return { titlu: 'Baza a căzut', text: `În valul ${state.val + 1} din ${WAVES.length}, după ${total} reacții.${rest}`, castigat: false, butoane }
   }
   return undefined
+}
+
+/** Amenințarea partidei, pentru bara de sus: cifra și, la hover, modificatorii. */
+function threatPill(): HudView['amenintare'] {
+  const t = threat(state.modificatori)
+  if (t === 0) return undefined
+  const lista = MODIFICATOR_IDS.filter((id) => state.modificatori[id] !== undefined).map(
+    (id) => `${MODIFICATORI[id].nume} ${state.modificatori[id]}: ${MODIFICATORI[id].trepte[(state.modificatori[id] ?? 1) - 1]?.descriere ?? ''}`,
+  )
+  return { total: t, detalii: lista.join('\n') }
 }
 
 function render(): void {
@@ -600,8 +647,9 @@ function render(): void {
   const start = checkStartWave(state)
   hud.update({
     regiune: regiune && lume ? regionOf(lume, regiune.cheie)?.nume : undefined,
+    amenintare: threatPill(),
     val: `Val ${Math.min(state.val + 1, WAVES.length)}/${WAVES.length}`,
-    boss: (waveAt(state, state.val)?.grupuri ?? []).some((g) => g.tip === 'boss' || g.tip === 'paznic'),
+    boss: !inCeata() && (waveAt(state, state.val)?.grupuri ?? []).some((g) => g.tip === 'boss' || g.tip === 'paznic'),
     vieti: state.vieti,
     vietiMax: Math.max(VIETI_BAZA, state.vieti),
     aur: state.aur,
@@ -790,7 +838,7 @@ function undo(): void {
   // Se anulează doar ce s-a hotărât în pregătirea curentă: o decizie luată la tick-ul de acum.
   const lastDecision = state.jurnal.at(-1)
   if (state.faza === 'pregatire' && lastDecision !== undefined && lastDecision.la === state.tick) {
-    state = replay(seed, state.jurnal.slice(0, -1), state.tick, regiune?.start)
+    state = replay(seed, state.jurnal.slice(0, -1), state.tick, regiune?.start ?? { modificatori: state.modificatori })
     saveRun()
   } else {
     refuz('Nu e nimic de anulat: se anulează doar deciziile din pregătirea curentă — un val jucat nu se dă înapoi.')
@@ -820,7 +868,11 @@ function newKey(): void {
 
 function restart(newSeed: number): void {
   seed = newSeed
-  resetRun(newGame(seed))
+  resetRun(newGame(seed, startLiber(seed)))
+  if (params.has('mod')) {
+    const m = modOn(seed)
+    if ('motiv' in m) hud.toast(`Modificatorii din URL nu merg pe harta asta (${m.motiv}): partida e fără ei.`)
+  }
 }
 
 /** O partidă nouă din starea dată: tot ce ține de partida veche (alegeri, efecte, cache-uri) se uită. */
@@ -850,7 +902,10 @@ function saveRun(): void {
   if (!regiune) return
   try {
     if (neinceputa(state)) localStorage.removeItem(CHEIE_PARTIDA)
-    else localStorage.setItem(CHEIE_PARTIDA, JSON.stringify({ cheie: regiune.cheie, tick: state.tick, jurnal: state.jurnal }))
+    else {
+      const p: PartidaSalvata = { cheie: regiune.cheie, tick: state.tick, jurnal: state.jurnal, modificatori: state.modificatori }
+      localStorage.setItem(CHEIE_PARTIDA, JSON.stringify(p))
+    }
   } catch {
     // Fără spațiu de stocare: partida ține doar cât e pagina deschisă.
   }
@@ -925,6 +980,45 @@ function formatCeas(tickuri: number): string {
 
 const planetName = (s: number): string => `Planeta ${(s % 0xffff).toString(16).toUpperCase().padStart(4, '0')}`
 
+/** Modificatorii aleși pentru regiune, fără cei care nu se pot alege pe harta ei. */
+function chosenModifiers(cheie: string, apa: number): Modificatori {
+  const m = modAlese.get(cheie) ?? {}
+  return Object.fromEntries(Object.entries(m).filter(([id]) => !unavailableReason(id as ModificatorId, apa))) as Modificatori
+}
+
+/** Cardul modificatorilor (GDD §9.2): presetările, treptele, amenințarea și ce sigiliu ar aduce un câștig. */
+function threatView(m: Modificatori, record: number, apa: number): NonNullable<NonNullable<PlanetView['aleasa']>['amenintare']> {
+  const total = threat(m)
+  const sigiliu = sealOf(total)
+  const avut = sealOf(record)
+  const prim = PRAGURI[0] as (typeof PRAGURI)[number]
+  const rezumat =
+    total === 0
+      ? `Fără modificatori: dificultatea obișnuită. ${prim.nume} cere Amenințare ${prim.amenintare}.`
+      : !sigiliu
+        ? `Sub primul prag (${prim.amenintare}): un câștig nu aduce sigiliu.`
+        : avut && avut.amenintare >= sigiliu.amenintare
+          ? `${sigiliu.nume} e deja al regiunii: un câștig nu aduce nimic nou.`
+          : `Câștigată, partida aduce ${sigiliu.nume}.`
+  const egal = (a: Modificatori, b: Modificatori): boolean => MODIFICATOR_IDS.every((id) => (a[id] ?? 0) === (b[id] ?? 0))
+  return {
+    total,
+    rezumat,
+    record: record > 0 ? `Cea mai mare câștigată aici: ${record}${avut ? ` — ${avut.nume}` : ''}.` : undefined,
+    presetari: [
+      { nume: 'Fără', activ: total === 0, amenintare: 0 },
+      ...Object.entries(PRESETARI).map(([nume, p]) => ({ nume, activ: egal(p, m), amenintare: threat(p) })),
+    ],
+    modificatori: MODIFICATOR_IDS.map((id) => ({
+      id,
+      nume: MODIFICATORI[id].nume,
+      treapta: m[id] ?? 0,
+      trepte: MODIFICATORI[id].trepte,
+      motiv: unavailableReason(id, apa),
+    })),
+  }
+}
+
 function planetView(l: Lume): PlanetView {
   const regiuni = planetRegions(l.planeta.seed)
   const acces = (k: string): ReturnType<typeof regionAccess> => regionAccess(l, k)
@@ -934,9 +1028,13 @@ function planetView(l: Lume): PlanetView {
   if (r) {
     const st = l.regiuni[r.cheie]
     const teren = regionTerrain(l, r.cheie)
-    // Terenul de pe hartă, nu doar etapa editării: cenușa de lângă apă e deja noroi.
+    const a = acces(r.cheie)
+    const apa = naturalRoadsideWater(r.seed)
+    // Modificatorii, doar la revenire; cei care nu se pot alege aici (inundațiile, pe o hartă uscată) cad.
+    const alese = a === 'salvata' ? chosenModifiers(r.cheie, apa) : {}
+    // Terenul de pe hartă, nu doar etapa editării: cenușa de lângă apă e deja noroi, iar inundația se vede dinainte.
     const din = regionAmphibians(l, r.cheie)
-    const partida = newGame(r.seed, { teren, amfibii: din })
+    const partida = newGame(r.seed, { teren, amfibii: din, modificatori: alese })
     const harta = partida.map
     const naturali = naturalAmphibians(generateMap(r.seed).map, partida.path)
     const numar = new Map<Terrain, number>()
@@ -944,7 +1042,14 @@ function planetView(l: Lume): PlanetView {
       const t = harta.terrain.get(k)
       if (t) numar.set(t, (numar.get(t) ?? 0) + 1)
     }
-    const surse = [naturali > 0 ? `apa de lângă drum: ${naturali}` : '', din > 0 ? `canalele săpate: ${din}` : ''].filter(Boolean).join(', ')
+    const inundatii = modValue(alese, 'inundatii')
+    const surse = [
+      naturali > 0 ? `apa de lângă drum: ${naturali}` : '',
+      din > 0 ? `canalele săpate: ${din}` : '',
+      inundatii > 0 ? `inundațiile: ${inundatii}` : '',
+    ]
+      .filter(Boolean)
+      .join(', ')
     const randuri = [
       teren.size > 0
         ? `Terenul schimbat: ${[...numar].map(([t, n]) => `${n} × ${TERRAIN[t].nume.toLowerCase()}`).join(', ')}`
@@ -955,8 +1060,7 @@ function planetView(l: Lume): PlanetView {
       `Partide jucate aici: ${st?.partide ?? 0}`,
       ...(r.inima ? ['Ultima regiune: cine îi salvează inima salvează planeta.'] : []),
     ]
-    const a = acces(r.cheie)
-    const pornire = startRun(l, r.cheie)
+    const pornire = startRun(l, r.cheie, alese)
     detalii = {
       cheie: r.cheie,
       nume: r.nume,
@@ -965,13 +1069,23 @@ function planetView(l: Lume): PlanetView {
       motiv: pornire.ok ? undefined : pornire.reason,
       harta,
       editate: [...teren.keys()],
+      amenintare: a === 'salvata' ? threatView(alese, st?.amenintare ?? 0, apa) : undefined,
     }
   }
   return {
     titlu: planetName(l.planeta.seed),
     subtitlu: `ceasul lumii: ${formatCeas(l.ceas)} jucate · ${savedRing(l) + (planetSaved(l) ? 1 : 0)} din ${regiuni.length} regiuni salvate`,
     salvata: planetSaved(l),
-    regiuni: regiuni.map((g) => ({ cheie: g.cheie, nume: g.nume, q: g.hex.q, r: g.hex.r, acces: acces(g.cheie), inima: g.inima, aleasa: g.cheie === aleasa })),
+    regiuni: regiuni.map((g) => ({
+      cheie: g.cheie,
+      nume: g.nume,
+      q: g.hex.q,
+      r: g.hex.r,
+      acces: acces(g.cheie),
+      inima: g.inima,
+      aleasa: g.cheie === aleasa,
+      sigiliu: sealOf(l.regiuni[g.cheie]?.amenintare ?? 0)?.sigiliu,
+    })),
     aleasa: detalii,
   }
 }
@@ -982,6 +1096,19 @@ const planeta = createPlanetScreen({
     showPlanet()
   },
   joaca: () => playRegion(),
+  modificator: (id, treapta) => {
+    if (!regiuneAleasa || !(MODIFICATOR_IDS as string[]).includes(id)) return
+    const m: Partial<Record<ModificatorId, number>> = { ...modAlese.get(regiuneAleasa) }
+    if (treapta > 0) m[id as ModificatorId] = treapta
+    else delete m[id as ModificatorId]
+    modAlese.set(regiuneAleasa, m)
+    showPlanet()
+  },
+  presetare: (nume) => {
+    if (!regiuneAleasa) return
+    modAlese.set(regiuneAleasa, PRESETARI[nume as keyof typeof PRESETARI] ?? {})
+    showPlanet()
+  },
   planetaNoua: () => {
     if (!lume || !planetSaved(lume)) return
     // Planeta salvată rămâne în arhivă (harta galaxiei vine mai târziu); lumea pornește pe o planetă nouă.
@@ -1007,7 +1134,9 @@ function playRegion(dorita?: string): void {
   if (!lume) return
   const cheie = dorita ?? regiuneAleasa ?? planetView(lume).aleasa?.cheie
   if (!cheie) return
-  const r = startRun(lume, cheie)
+  const info0 = regionOf(lume, cheie)
+  const alese = info0 && regionAccess(lume, cheie) === 'salvata' ? chosenModifiers(cheie, naturalRoadsideWater(info0.seed)) : {}
+  const r = startRun(lume, cheie, alese)
   if (!r.ok) {
     refuz(`Nu se poate: ${r.reason}`)
     return
@@ -1021,7 +1150,9 @@ function playRegion(dorita?: string): void {
   render()
   const info = regionOf(lume, cheie)
   const partide = lume.regiuni[cheie]?.partide ?? 0
-  hud.banner(info?.nume ?? cheie, partide > 0 ? `Partida ${partide + 1} aici — terenul își amintește` : 'Prima partidă aici')
+  const t = threat(r.value.state.modificatori)
+  const sub = partide > 0 ? `Partida ${partide + 1} aici — terenul își amintește` : 'Prima partidă aici'
+  hud.banner(info?.nume ?? cheie, t > 0 ? `${sub} · Amenințare ${t}` : sub)
 }
 
 /**
@@ -1222,6 +1353,10 @@ for (const ev of ['pointerdown', 'keydown'] as const) window.addEventListener(ev
 window.addEventListener('resize', resize)
 resize()
 // Fără `?seed=`, jocul pornește pe planetă (lumea salvată în browser, sau una nouă).
+if (liber && params.has('mod')) {
+  const m = modOn(seed)
+  if ('motiv' in m) window.setTimeout(() => hud.toast(`Modificatorii din URL nu merg pe harta asta (${m.motiv}): partida e fără ei.`), 500)
+}
 if (!liber) {
   lume = loadWorld()
   settleUnfinishedRun()

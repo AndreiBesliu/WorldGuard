@@ -58,6 +58,15 @@ npm run build
   inima (al cărei ultim val, `VAL_INIMA`, are Paznicul inimii) —, iar `replay` primește același `start`. Valul unei
   partide se ia prin `waveAt`, nu din `WAVES` direct (pe inimă are Paznicul, pe o regiune cu canale săpate are și
   amfibii — `Start.amfibii`, din `regionAmphibians`).
+- **Modificatorii de dificultate** (GDD §9.2): datele în `data/modificatori.ts` (`MODIFICATORI`, `PRAGURI`,
+  `PRESETARI`), alegerea și sigiliile în `sim/modificatori.ts`. Se aleg la pornire (`Start.modificatori`, verificați de
+  `checkModifiers`), stau în `GameState.modificatori` (și în amprentă) și nu se schimbă în partidă. Efectele lor trec
+  prin funcțiile care le citesc deja: `waveAt` (Hoardele, Avangarda), `enemyHealth` (Pielea groasă), `enemyGold`
+  (Prada săracă), `detourLimit` (Drumuri rare), `towerRange` (Ceața), `newGame` (inundația). **Nu citi `WAVES`,
+  `ENEMIES[tip].aur` sau `TOWERS[tip].raza` direct în reguli** — ar ocoli modificatorii. Pe planetă se aleg doar pe o
+  regiune salvată; lumea ține pe regiune doar cea mai mare amenințare câștigată (`StareRegiune.amenintare`), iar
+  sigiliul se calculează din ea (`sealOf`). O partidă salvată la jumătate își ține modificatorii (`PartidaSalvata`).
+  În partida liberă: `?mod=hoarde2,piele1`.
 - **Amestecurile de teren** (`AMESTECURI` în `data/terrain.ts`, aplicate de `mixTerrain`): cenușa de lângă apă e
   noroi. Se aplică la începutul partidei (`newGame`) și după fiecare terraformare — nu altundeva, ca harta unei
   partide să nu se schimbe pe ascuns.
@@ -233,4 +242,7 @@ Felia 6, decisă de owner (05.10.2026). Cifrele în `src/data/economie.ts`.
 - **Felia 10 (05.10.2026):** urmele cu două tăișuri — noroiul (cenușă + apă, împotmolește) și amfibii (canalele săpate
   îi aduc; apa îi grăbește). Reguli pe date: `AMESTECURI` (terenuri), `EnemyInfo.inLoc` (stări primite altfel),
   `StateInfo.grabire`. Amfibii vin și din apa naturală de lângă drum (`naturalAmphibians`, decis de owner). 186 de teste.
+- **Felia 11 (05.10.2026):** modificatorii de dificultate (GDD §9.2) — șapte modificatori cu trepte și puncte de
+  Amenințare, presetările I / II / III, sigiliile de bronz, argint și aur pe regiune (o dată pe prag), cardul planetei
+  cu a doua coloană, `?mod=` în partida liberă. Reglați cu botul. 215 teste.
 - **Următorul:** de ales cu owner-ul (vezi DEVLOG).
