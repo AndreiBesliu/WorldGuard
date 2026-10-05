@@ -65,6 +65,7 @@ boss la valurile 5, 10 și 15 (în prototip)
 - 4 stări de durată (arde, uns cu ulei, ud, înghețat parțial) și 2 lovituri instantanee (impact, fulger), ca la Mindustry.
 - ~5–6 reacții: explozie (ulei + foc, consumă uleiul), îngheț (ud + frig), spargere (înghețat + impact, consumă înghețul), electrocutare (ud + fulger, sare la vecinii uzi), abur sau smoală. Focul anulează udul și frigul.
 - **Regulile se scriu pe etichete, nu pe perechi.** De exemplu „inflamabil + foc”, ca un viitor „smoală” să moștenească reacția automat.
+- **În prototip (felia 3, 05.10.2026):** stările arde, ud, răcit (înghețat parțial), înghețat și uns; reacțiile explozie, abur, dezgheț, îngheț, spargere și electrocutare. Apa de lângă drum udă, dealul dă rază +1 cu un cost. Cifrele sunt propuneri, măsurate cu un bot; detaliile în DEVLOG.
 - **Vecinătatea schimbă cifre sau etichete, nu creează reacții noi.** Contează câte etichete *diferite* ai în jur (plafon ~3), ca șase turnuri identice lipite să nu fie soluția. Câteva vecinătăți negative dau tensiune la plasare.
 - **Prezentare:**
   - la plasare, un preview cu bonusurile și cu reacțiile care s-ar produce pe traseu;

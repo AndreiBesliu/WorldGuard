@@ -52,11 +52,12 @@ describe('construcția', () => {
     expect(checkBuild(s, 'fizic', water)).toEqual({ ok: false, reason: 'pe apă nu se construiește' })
     const withTower = build(s, 'fizic')
     expect(checkBuild(withTower, 'foc', withTower.turnuri[0]!.hex)).toEqual({ ok: false, reason: 'aici e deja un turn' })
-    const poor = build(withTower, 'fizic') // 120 − 2×55 = 10
-    // hexagonul liber se caută cu aur din belșug, ca refuzul să vină doar din aur
-    expect(checkBuild(poor, 'fulger', bestHex({ ...poor, aur: 1e9 }, 'fulger'))).toEqual({
+    const poor: GameState = { ...withTower, aur: 10 }
+    // Un hexagon de câmpie liber: acolo turnul costă exact prețul lui.
+    const plain = [...poor.map.terrain].find(([k, t]) => t === 'campie' && checkBuild({ ...poor, aur: 1e9 }, 'fulger', k).ok)![0]
+    expect(checkBuild(poor, 'fulger', plain)).toEqual({
       ok: false,
-      reason: `nu ajunge aurul: turnul Fulger costă ${TOWERS.fulger.cost}, ai ${poor.aur}`,
+      reason: `nu ajunge aurul: turnul Fulger costă ${TOWERS.fulger.cost}, ai 10`,
     })
     const inWave = startWave(s)
     expect(applyDecision(inWave, { tip: 'turn', turn: 'fizic', hex: bestHex(s, 'fizic') })).toEqual({
@@ -118,7 +119,7 @@ describe('țintirea', () => {
   })
 
   it('refuzuri: turnul de zonă n-are țintă de ales, modul repetat, partida încheiată', () => {
-    const s = build(build(newGame(8), 'frig'), 'fizic')
+    const s = build(build({ ...newGame(8), aur: 1000 }, 'frig'), 'fizic')
     expect(applyDecision(s, { tip: 'tintire', turn: 1, mod: 'slab' })).toEqual({
       ok: false,
       reason: 'turnul Frig lovește toți inamicii din rază — nu are țintă de ales',

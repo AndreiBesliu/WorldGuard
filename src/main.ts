@@ -14,6 +14,8 @@
 
 import { WAVES, describeWave } from './data/enemies'
 import { TICK_MS, VIETI_BAZA, VITEZE_UI } from './data/joc'
+import { REACTION_RULES, REACTIONS, STATES, TAG_NAMES, type ReactionType } from './data/reactions'
+import { TERRAIN } from './data/terrain'
 import { TARGET_MODES, TARGET_NAMES, TOWERS, TOWER_TYPES, type TowerType } from './data/towers'
 import { draw, fitLayout, pixelToHex, type Layout, type Overlay } from './render/canvas'
 import {
@@ -26,7 +28,9 @@ import {
   newGame,
   replay,
   step,
+  towerCost,
   towerKeys,
+  towerRange,
   type GameState,
   type Tower,
 } from './sim/game'
@@ -55,6 +59,15 @@ let vitezaIndex = 0
 let paused = false
 let acumulat = 0
 let last = performance.now()
+
+// Reacțiile de pe hartă (doar desen): textele care urcă și se sting, și anunțul primei descoperiri, cu un scurt
+// freeze-frame (GDD §6). Timpul de aici e al ecranului, nu al simulării — simularea nu știe de ele.
+const POPUP_MS = 900
+const BANNER_MS = 3200
+const FREEZE_MS = 600
+let popups: { text: string; culoare: string; progres: number; la: number }[] = []
+let banner: { text: string; pana: number } | undefined
+let freezeUntil = 0
 
 function resize(): void {
   const dpr = window.devicePixelRatio || 1
@@ -123,10 +136,11 @@ function hoverLine(): { text: string; overlay: Partial<Overlay> } {
   const t = towerAt(hoverHex)
   if (t) {
     const info = TOWERS[t.tip]
+    const raza = towerRange(state, t.tip, t.hex)
     const tinta = info.zona ? 'lovește toți inamicii din rază' : `țintește: ${TARGET_NAMES[t.tintire]} · Click = schimbă ținta`
     return {
-      text: `${info.nume} #${t.id} · daună ${info.dauna} · rază ${info.raza} · o lovitură la ${seconds(info.reincarcare)} · ${tinta}`,
-      overlay: { range: { hex: hoverHex as Hex, raza: info.raza, culoare: info.culoare } },
+      text: `${info.nume} #${t.id} · daună ${info.dauna} · rază ${raza} · o lovitură la ${seconds(info.reincarcare)} · ${tinta} · ${reactionsOf(t.tip)}`,
+      overlay: { range: { hex: hoverHex as Hex, raza, culoare: info.culoare } },
     }
   }
   if (hovered !== undefined) {
@@ -140,16 +154,41 @@ function hoverLine(): { text: string; overlay: Partial<Overlay> } {
   if (hoverHex === undefined || !state.map.terrain.has(key(hoverHex))) return { text: '', overlay: {} }
   if (state.path.some((h) => key(h) === key(hoverHex as Hex))) return { text: '', overlay: {} }
   const info = TOWERS[turnAles]
-  const r = checkBuild(state, turnAles, key(hoverHex))
+  const hex = key(hoverHex)
+  const r = checkBuild(state, turnAles, hex)
+  const raza = towerRange(state, turnAles, hex)
+  const teren = state.map.terrain.get(hex)
+  const deal = teren !== undefined && TERRAIN[teren].bonusRaza ? ` · pe ${TERRAIN[teren].nume.toLowerCase()}: rază +${TERRAIN[teren].bonusRaza}, +${TERRAIN[teren].costTurn ?? 0} aur` : ''
   return {
     text: r.ok
-      ? `${info.nume} (${info.cost} aur): ${info.descriere} · daună ${info.dauna}, rază ${info.raza}, o lovitură la ${seconds(info.reincarcare)} · Click = construiește`
+      ? `${info.nume} (${towerCost(state, turnAles, hex)} aur${deal}): ${info.descriere} · daună ${info.dauna}, rază ${raza}, o lovitură la ${seconds(info.reincarcare)} · ${reactionsOf(turnAles)} · Click = construiește`
       : `${info.nume} aici: nu se poate — ${r.reason}`,
     overlay: {
       ghost: { hex: hoverHex, tip: turnAles, ok: r.ok },
-      range: r.ok ? { hex: hoverHex, raza: info.raza, culoare: info.culoare } : undefined,
+      range: r.ok ? { hex: hoverHex, raza, culoare: info.culoare } : undefined,
     },
   }
+}
+
+/** Ce lasă turnul pe inamic și în ce reacții intră — din date, ca să nu existe cifre ascunse. */
+function reactionsOf(tip: TowerType): string {
+  const info = TOWERS[tip]
+  const seen = new Set<string>()
+  const parts: string[] = []
+  for (const r of REACTION_RULES) {
+    const k = `${r.tip}/${r.eticheta}`
+    if (r.element !== info.element || seen.has(k)) continue
+    seen.add(k)
+    parts.push(`${REACTIONS[r.tip].nume} pe ${TAG_NAMES[r.eticheta]}`)
+  }
+  const lasa = info.aplica ? `lasă: ${STATES[info.aplica].nume.toLowerCase()} ${seconds(STATES[info.aplica].durata)}` : ''
+  return [lasa, parts.length ? `reacții: ${parts.join(', ')}` : ''].filter(Boolean).join(' · ')
+}
+
+/** Rezumatul reacțiilor din partida asta: „Îngheț 12 · Spargere 3”. */
+function reactionSummary(): string {
+  const parts = (Object.keys(REACTIONS) as ReactionType[]).filter((r) => (state.reactii[r] ?? 0) > 0).map((r) => `${REACTIONS[r].nume} ${state.reactii[r]}`)
+  return parts.length ? ` · reacții: ${parts.join(' · ')}` : ''
 }
 
 /** Ocolul previzualizat: doar când se poate pune unul acum (în pregătire, sub limita pe val). */
@@ -165,11 +204,13 @@ function render(): void {
     preview: chosen?.hexes,
     alpha: state.faza === 'val' && !paused ? Math.min(1, acumulat / TICK_MS) : 0,
     ...hover.overlay,
+    popups: popups.map((p) => ({ text: p.text, culoare: p.culoare, progres: p.progres, varsta: (performance.now() - p.la) / POPUP_MS })),
+    banner: banner && performance.now() < banner.pana ? banner.text : undefined,
     lines: [
       `World Guard — prototip · Val ${Math.min(state.val + 1, WAVES.length)}/${WAVES.length} · Vieți ${state.vieti}/${VIETI_BAZA} · Aur ${state.aur} · drum ${state.path.length} hexagoane · ${speed}×${paused ? ' · PAUZĂ' : ''}`,
       phaseLine(),
       towerLine(),
-      `seed ${seed} · tick ${state.tick} · ${state.jurnal.length} decizii · amprentă ${fingerprint(state)} · I = intrarea · B = baza · R = de la capăt · N = hartă nouă`,
+      `seed ${seed} · tick ${state.tick} · ${state.jurnal.length} decizii · amprentă ${fingerprint(state)} · I/B = intrarea/baza${reactionSummary()}`,
       hover.text,
     ],
     message,
@@ -181,17 +222,38 @@ function restart(newSeed: number): void {
   state = newGame(seed)
   acumulat = 0
   paused = false
+  popups = []
+  banner = undefined
   syncHover()
+}
+
+/** După un pas: reacțiile lui devin texte pe hartă, iar o reacție văzută prima dată în partidă — anunț + pauză scurtă. */
+function noteReactions(before: GameState, now: number): void {
+  for (const ev of state.evenimente) {
+    popups.push({ text: REACTIONS[ev.tip].nume, culoare: REACTIONS[ev.tip].culoare, progres: ev.progres, la: now })
+  }
+  if (popups.length > 60) popups = popups.slice(-60)
+  for (const r of Object.keys(REACTIONS) as ReactionType[]) {
+    if ((before.reactii[r] ?? 0) === 0 && (state.reactii[r] ?? 0) > 0) {
+      const rule = REACTION_RULES.find((x) => x.tip === r)
+      const reteta = rule ? ` (${rule.element === 'apa' ? 'apă' : rule.element} pe ${TAG_NAMES[rule.eticheta]})` : ''
+      banner = { text: `Reacție nouă: ${REACTIONS[r].nume}${reteta} — ${REACTIONS[r].efect}`, pana: now + BANNER_MS }
+      freezeUntil = now + FREEZE_MS
+    }
+  }
 }
 
 function frame(now: number): void {
   const dt = Math.min(250, now - last)
   last = now
-  if (state.faza === 'val' && !paused) {
+  popups = popups.filter((p) => now - p.la < POPUP_MS)
+  if (state.faza === 'val' && !paused && now >= freezeUntil) {
     acumulat += dt * (VITEZE_UI[vitezaIndex] ?? 1)
-    while (acumulat >= TICK_MS && state.faza === 'val') {
+    while (acumulat >= TICK_MS && state.faza === 'val' && now >= freezeUntil) {
+      const before = state
       state = step(state)
       acumulat -= TICK_MS
+      noteReactions(before, now)
     }
     if (state.faza !== 'val') {
       // Valul s-a terminat (sau partida): timpul se oprește, drumul se poate modela din nou.
@@ -201,6 +263,8 @@ function frame(now: number): void {
       syncHover()
     }
     render()
+  } else if (popups.length > 0 || (banner && now < banner.pana + 50)) {
+    render() // freeze-frame, pauză sau pregătire: textele și anunțul se sting mai departe
   }
   requestAnimationFrame(frame)
 }

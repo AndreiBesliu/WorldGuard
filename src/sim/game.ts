@@ -13,12 +13,16 @@
 
 import { ENEMIES, WAVES, type EnemyType } from '../data/enemies'
 import { MILI_HEX, VIETI_BAZA } from '../data/joc'
+import type { ReactionType } from '../data/reactions'
 import { INSERARE, TERRAIN } from '../data/terrain'
 import { AUR_START, TARGET_MODES, TOWERS, type TargetMode, type TowerType } from '../data/towers'
-import { distance, fromKey, key, type Hex } from './hex'
+import { distance, fromKey, key, neighbors, type Hex } from './hex'
 import { generateMap, type GameMap } from './map'
 import { detourOptions, insertDetour } from './path'
+import { applyContact, enemySpeed, STATE_ORDER, tickStates, type Contact, type ReactionContext, type States } from './reactions'
 import { fail, ok, type Result } from './result'
+
+export { damageAfterArmor, enemySpeed } from './reactions'
 
 export type Decision =
   | {
@@ -57,6 +61,16 @@ export interface Enemy {
   readonly tip: EnemyType
   readonly viata: number
   /** Cât a parcurs pe drum, în mili-hexagoane de la intrare. */
+  readonly progres: number
+  /** Stările de pe el (arde, ud, răcit…): câte tick-uri mai ține fiecare. */
+  readonly stari: Readonly<States>
+}
+
+/** O reacție produsă într-un tick — pentru desen (textul care apare pe hartă) și, mai târziu, pentru cronică. */
+export interface ReactionEvent {
+  readonly tip: ReactionType
+  readonly inamic: number
+  /** Unde era inamicul pe drum, în mili-hexagoane. */
   readonly progres: number
 }
 
@@ -98,6 +112,10 @@ export interface GameState {
   /** Inamicii care urmează să apară în valul curent, în ordinea tick-ului. */
   readonly deGenerat: readonly Spawn[]
   readonly urmatorulId: number
+  /** De câte ori s-a produs fiecare reacție în partida asta (câți inamici a prins). Date pentru cronică și playtest. */
+  readonly reactii: Readonly<Partial<Record<ReactionType, number>>>
+  /** Reacțiile din ultimul tick. Nu influențează viitorul — doar desenul le citește. */
+  readonly evenimente: readonly ReactionEvent[]
 }
 
 export function newGame(seed: number): GameState {
@@ -119,6 +137,8 @@ export function newGame(seed: number): GameState {
     inamici: [],
     deGenerat: [],
     urmatorulId: 1,
+    reactii: {},
+    evenimente: [],
   }
 }
 
@@ -195,6 +215,18 @@ export function checkStartWave(state: GameState): Result<true> {
 }
 
 /** Se poate construi turnul `tip` pe hexagonul `hex` acum? Dacă nu, de ce. Folosit și de previzualizare. */
+/** Cât costă turnul `tip` pe hexagonul `hex`: prețul lui plus ce cere terenul (dealul). */
+export function towerCost(state: GameState, tip: TowerType, hex: string): number {
+  const t = state.map.terrain.get(hex)
+  return TOWERS[tip].cost + (t === undefined ? 0 : (TERRAIN[t].costTurn ?? 0))
+}
+
+/** Raza turnului: a tipului, plus ce dă terenul pe care stă (dealul). */
+export function towerRange(state: GameState, tip: TowerType, hex: string): number {
+  const t = state.map.terrain.get(hex)
+  return TOWERS[tip].raza + (t === undefined ? 0 : (TERRAIN[t].bonusRaza ?? 0))
+}
+
 export function checkBuild(state: GameState, tip: TowerType, hex: string): Result<true> {
   if (state.faza !== 'pregatire') return fail('turnurile se construiesc doar între valuri')
   const t = state.map.terrain.get(hex)
@@ -202,8 +234,9 @@ export function checkBuild(state: GameState, tip: TowerType, hex: string): Resul
   if (state.path.some((h) => key(h) === hex)) return fail('pe drum nu se construiește')
   if (!TERRAIN[t].permiteTurn) return fail(`pe ${TERRAIN[t].nume.toLowerCase()} nu se construiește`)
   if (state.turnuri.some((x) => x.hex === hex)) return fail('aici e deja un turn')
-  const info = TOWERS[tip]
-  if (state.aur < info.cost) return fail(`nu ajunge aurul: turnul ${info.nume} costă ${info.cost}, ai ${state.aur}`)
+  const cost = towerCost(state, tip, hex)
+  const unde = cost === TOWERS[tip].cost ? '' : ` pe ${TERRAIN[t].nume.toLowerCase()}`
+  if (state.aur < cost) return fail(`nu ajunge aurul: turnul ${TOWERS[tip].nume}${unde} costă ${cost}, ai ${state.aur}`)
   return ok(true)
 }
 
@@ -222,7 +255,9 @@ export function applyDecision(state: GameState, d: Decision): Result<GameState> 
       if (!allowed.ok) return fail(allowed.reason)
       // Turnurile încep fiecare val încărcate.
       const turnuri = state.turnuri.map((t) => (t.reincarcare === 0 ? t : { ...t, reincarcare: 0 }))
-      return ok(logged({ ...state, faza: 'val', turnuri, ocoluriFolosite: 0, deGenerat: spawnSchedule(state.val, state.tick) }))
+      return ok(
+        logged({ ...state, faza: 'val', turnuri, ocoluriFolosite: 0, evenimente: [], deGenerat: spawnSchedule(state.val, state.tick) }),
+      )
     }
     case 'turn': {
       const r = checkBuild(state, d.turn, d.hex)
@@ -231,7 +266,7 @@ export function applyDecision(state: GameState, d: Decision): Result<GameState> 
       return ok(
         logged({
           ...state,
-          aur: state.aur - TOWERS[d.turn].cost,
+          aur: state.aur - towerCost(state, d.turn, d.hex),
           turnuri: [...state.turnuri, tower],
           urmatorulTurn: state.urmatorulTurn + 1,
         }),
@@ -297,10 +332,32 @@ export function pickTarget<E extends Pick<Enemy, 'id' | 'viata' | 'progres'>>(ca
   return best
 }
 
-/** Dauna care trece de armură. Minimum 1: orice lovitură contează. */
-export const damageAfterArmor = (dauna: number, tip: EnemyType): number => Math.max(1, dauna - ENEMIES[tip].armura)
+// Ce face terenul inamicilor, pe fiecare hexagon de drum: atingerea primului vecin care are una (apa udă).
+// Depinde de hartă și de drum; se memorează pe perechea lor.
+const contactCache = new WeakMap<GameMap, WeakMap<readonly Hex[], readonly (Contact | undefined)[]>>()
+export function pathContacts(state: Pick<GameState, 'map' | 'path'>): readonly (Contact | undefined)[] {
+  let perMap = contactCache.get(state.map)
+  if (!perMap) {
+    perMap = new WeakMap()
+    contactCache.set(state.map, perMap)
+  }
+  let c = perMap.get(state.path)
+  if (!c) {
+    c = state.path.map((h) => {
+      for (const n of neighbors(h)) {
+        const t = state.map.terrain.get(key(n))
+        const a = t === undefined ? undefined : TERRAIN[t].atingere
+        if (a) return { element: a.element, dauna: 0, aplica: a.aplica }
+      }
+      return undefined
+    })
+    perMap.set(state.path, c)
+  }
+  return c
+}
 
-type LiveEnemy = { -readonly [K in keyof Enemy]: Enemy[K] }
+/** Inamicul în timpul unui pas: obiect nou, modificabil; `fost` = hexagonul de drum de la începutul pasului. */
+type LiveEnemy = { -readonly [K in keyof Enemy]: Enemy[K] } & { stari: States; fost: number }
 
 /** Un pas de simulare. În afara unui val, starea rămâne neschimbată (timpul stă pe loc). */
 export function step(state: GameState): GameState {
@@ -309,15 +366,16 @@ export function step(state: GameState): GameState {
   const end = pathLength(state)
   const valIndex = state.val
   const multiplier = WAVES[valIndex]?.viata ?? 1
+  const indexOf = (progres: number): number => Math.min(state.path.length - 1, Math.floor((progres + MILI_HEX / 2) / MILI_HEX))
 
-  // 1. Inamicii existenți merg înainte; cei care ajung la bază îi iau vieți.
-  //    (Obiectele de aici sunt noi, deci se pot modifica până la sfârșitul pasului.)
+  // 1. Inamicii existenți merg înainte, cu viteza dată de stări (răcit încetinește, înghețat oprește);
+  //    cei care ajung la bază îi iau vieți. Obiectele de aici sunt noi, deci se pot modifica până la sfârșitul pasului.
   let vieti = state.vieti
   const live: LiveEnemy[] = []
   for (const e of state.inamici) {
-    const progres = e.progres + ENEMIES[e.tip].viteza
+    const progres = e.progres + enemySpeed(e)
     if (progres >= end) vieti -= ENEMIES[e.tip].dauna
-    else live.push({ ...e, progres })
+    else live.push({ ...e, stari: { ...e.stari }, progres, fost: indexOf(e.progres) })
   }
 
   // 2. Apar inamicii programați pentru tick-ul ăsta (pornesc de la intrare, se mișcă de la tick-ul următor).
@@ -325,12 +383,37 @@ export function step(state: GameState): GameState {
   let urmatorulId = state.urmatorulId
   while (i < state.deGenerat.length && (state.deGenerat[i] as Spawn).tick <= tick) {
     const sp = state.deGenerat[i] as Spawn
-    live.push({ id: urmatorulId++, tip: sp.tip, viata: Math.round(ENEMIES[sp.tip].viata * multiplier), progres: 0 })
+    live.push({ id: urmatorulId++, tip: sp.tip, viata: Math.round(ENEMIES[sp.tip].viata * multiplier), progres: 0, stari: {}, fost: -1 })
     i++
   }
   const deGenerat = state.deGenerat.slice(i)
 
-  // 3. Turnurile lovesc, în ordinea id-urilor. Un inamic ucis de un turn nu mai e țintă pentru următorul.
+  // 3. Stările trec cu un tick: arsura lovește, cele expirate dispar.
+  for (const e of live) tickStates(e)
+
+  // Reacțiile se numără și se notează pentru desen. Vecinii unui inamic = inamicii vii până la `raza`
+  // hexagoane de hexagonul lui de drum.
+  const evenimente: ReactionEvent[] = []
+  const reactii = { ...state.reactii }
+  const hexOf = (e: LiveEnemy): Hex => state.path[indexOf(e.progres)] as Hex
+  const ctx: ReactionContext<LiveEnemy> = {
+    neighbors: (v, raza) => live.filter((n) => n !== v && n.viata > 0 && distance(hexOf(n), hexOf(v)) <= raza),
+    emit: (tip, v) => {
+      evenimente.push({ tip, inamic: v.id, progres: v.progres })
+      reactii[tip] = (reactii[tip] ?? 0) + 1
+    },
+  }
+
+  // 4. Terenul: cine intră pe un hexagon de drum vecin cu apa se udă (o dată pe hexagon, la intrare).
+  const contacts = pathContacts(state)
+  for (const e of live) {
+    const at = indexOf(e.progres)
+    const c = contacts[at]
+    if (at !== e.fost && c && e.viata > 0) applyContact(e, c, ctx)
+  }
+
+  // 5. Turnurile lovesc, în ordinea id-urilor. Un inamic ucis nu mai e țintă pentru următorul.
+  //    Fiecare lovitură e o atingere cu elementul turnului: reacțiile se decid în `applyContact`.
   const turnuri: Tower[] = []
   for (const t of state.turnuri) {
     const info = TOWERS[t.tip]
@@ -339,28 +422,29 @@ export function step(state: GameState): GameState {
       turnuri.push({ ...t, reincarcare })
       continue
     }
-    const cover = coverage(state.path, t.hex, info.raza)
-    const inRange = live.filter((e) => e.viata > 0 && cover[enemyPathIndex(state, e)] === true)
+    const cover = coverage(state.path, t.hex, towerRange(state, t.tip, t.hex))
+    const inRange = live.filter((e) => e.viata > 0 && cover[indexOf(e.progres)] === true)
     const target = info.zona ? undefined : pickTarget(inRange, t.tintire)
     const tinte = info.zona ? inRange : target ? [target] : []
     if (tinte.length === 0) {
       turnuri.push(t.reincarcare === 0 ? t : { ...t, reincarcare: 0 })
       continue
     }
-    for (const e of tinte) e.viata -= damageAfterArmor(info.dauna, e.tip)
+    const lovitura: Contact = { element: info.element, dauna: info.dauna, aplica: info.aplica }
+    for (const e of tinte) applyContact(e, lovitura, ctx)
     turnuri.push({ ...t, reincarcare: info.reincarcare, lovitura: { tick, tinte: tinte.map((e) => e.id) } })
   }
 
-  // 4. Cei uciși dispar și lasă aur.
+  // 6. Cei uciși dispar și lasă aur.
   let aur = state.aur
   const inamici: Enemy[] = []
   for (const e of live) {
     if (e.viata <= 0) aur += ENEMIES[e.tip].aur
-    else inamici.push(e)
+    else inamici.push({ id: e.id, tip: e.tip, viata: e.viata, progres: e.progres, stari: e.stari })
   }
 
-  // 5. Sfârșitul valului sau al partidei.
-  const next = { ...state, tick, vieti, aur, turnuri, inamici, deGenerat, urmatorulId }
+  // 7. Sfârșitul valului sau al partidei.
+  const next = { ...state, tick, vieti, aur, turnuri, inamici, deGenerat, urmatorulId, reactii, evenimente }
   if (vieti <= 0) return { ...next, vieti: 0, faza: 'pierdut' }
   if (deGenerat.length === 0 && inamici.length === 0) {
     const val = valIndex + 1
@@ -409,7 +493,13 @@ export function fingerprint(state: GameState): string {
   ]
   for (const [k, t] of state.map.terrain) parts.push(`${k}:${t}`)
   parts.push(`path=${state.path.map(key).join(';')}`)
-  parts.push(`inamici=${state.inamici.map((e) => `${e.id}/${e.tip}/${e.viata}/${e.progres}`).join(';')}`)
+  const stari = (e: Enemy): string =>
+    STATE_ORDER.filter((st) => e.stari[st] !== undefined)
+      .map((st) => `${st}:${e.stari[st]}`)
+      .join(',')
+  parts.push(`inamici=${state.inamici.map((e) => `${e.id}/${e.tip}/${e.viata}/${e.progres}/${stari(e)}`).join(';')}`)
+  const reactii = Object.entries(state.reactii).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0))
+  parts.push(`reactii=${reactii.map(([r, n]) => `${r}:${n}`).join(',')}`)
   parts.push(`deGenerat=${state.deGenerat.length}`)
   parts.push(`turnuri=${state.turnuri.map((t) => `${t.id}/${t.tip}/${t.hex}/${t.tintire}/${t.reincarcare}`).join(';')}`)
   let h = 0x811c9dc5
