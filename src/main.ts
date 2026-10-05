@@ -22,7 +22,7 @@ import { MILI_HEX, TICK_MS, VIETI_BAZA, VITEZE_UI } from './data/joc'
 import { ELEMENT_NAMES, REACTION_RULES, REACTIONS, STATES, TAG_NAMES, type ReactionType } from './data/reactions'
 import { TERRAIN } from './data/terrain'
 import { COMBINARE, TARGET_MODES, TARGET_NAMES, TOWERS, TOWER_TYPES, type ArmorCombo, type TowerType } from './data/towers'
-import { decisionPan, decisionSound, stepCues } from './audio/cues'
+import { decisionPan, decisionSound, stareFundal, stepCues } from './audio/cues'
 import { Sunet } from './audio/sunet'
 import { NIVELURI_SUNET } from './data/sunete'
 import { stepEvents, type StepEvent } from './events'
@@ -111,6 +111,21 @@ function nivelSalvat(): number {
   }
 }
 const sunet = new Sunet(nivelSalvat())
+const CHEIE_FUNDAL = 'worldguard.fundal'
+try {
+  sunet.fundalPornit = localStorage.getItem(CHEIE_FUNDAL) !== '0'
+} catch {
+  // Fără spațiu de stocare: fundalul pornește.
+}
+
+function toggleFundal(): void {
+  sunet.fundalPornit = !sunet.fundalPornit
+  try {
+    localStorage.setItem(CHEIE_FUNDAL, sunet.fundalPornit ? '1' : '0')
+  } catch {
+    // Alegerea ține doar sesiunea asta.
+  }
+}
 
 function cycleSound(): void {
   const i = (NIVELURI_SUNET as readonly number[]).indexOf(sunet.volum)
@@ -128,6 +143,7 @@ const hud = createHud({
   togglePause: () => act(() => (paused = !paused)),
   cycleSpeed: () => act(() => (vitezaIndex = (vitezaIndex + 1) % VITEZE_UI.length)),
   cycleSound: () => act(cycleSound),
+  toggleFundal: () => act(toggleFundal),
   undo: () => act(undo),
   restart: () => act(() => restart(seed)),
   newMap: () => act(() => restart(seed + 1)),
@@ -397,7 +413,7 @@ function contextView(): { view: HudView['context']; overlay: Partial<Overlay> } 
         { k: 'După fiecare val', v: 'alegi 1 carte din 3 (8 / 9 / 0)' },
         { k: 'Q / W / E', v: 'canal, deal, arzi pădurea (cu pământ)' },
         { k: 'M pe un filon', v: 'mină: pământ la fiecare val' },
-        { k: 'S', v: 'sunetul: tare, încet, oprit' },
+        { k: 'S / B', v: 'sunetul (tare, încet, oprit) / fundalul muzical' },
         ...COMBINARE.armura.map((c) => ({ k: `Combinat ${comboTowers(c)}`, v: `${c.nume}: ${comboEffect(c)}` })),
       ],
       nota:
@@ -549,6 +565,7 @@ function render(): void {
     paused,
     speed: VITEZE_UI[vitezaIndex] ?? 1,
     sunet: sunet.volum,
+    fundal: sunet.fundalPornit,
     canUndo: state.faza === 'pregatire' && lastDecision !== undefined && lastDecision.la === state.tick,
     towers: TOWER_TYPES.map((tip, i) => ({
       tip,
@@ -792,6 +809,7 @@ function frame(now: number): void {
   }
   // Desenul rulează la fiecare cadru, și între valuri: apa, jarul, drumul și efectele se mișcă tot timpul.
   render()
+  sunet.fundal(stareFundal(state))
   requestAnimationFrame(frame)
 }
 
@@ -840,6 +858,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'f' || e.key === 'F') fn = () => (vitezaIndex = (vitezaIndex + 1) % VITEZE_UI.length)
   else if (e.key === 'p' || e.key === 'P') fn = () => (paused = !paused)
   else if (e.key === 's' || e.key === 'S') fn = cycleSound
+  else if (e.key === 'b' || e.key === 'B') fn = toggleFundal
   else if (e.key === '1' || e.key === '2' || e.key === '3') fn = () => setExtra(Number(e.key))
   else if (towerKey >= 0) fn = () => selectTower(TOWER_TYPES[towerKey] ?? turnAles)
   else if (TOOL_KEYS.includes(e.key.toUpperCase())) fn = () => (unealta = TERRAFORM_TYPES[TOOL_KEYS.indexOf(e.key.toUpperCase())])

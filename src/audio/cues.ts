@@ -1,7 +1,7 @@
 // Ce sunet face fiecare lucru din joc: evenimentele unui pas (`events.ts`) și deciziile jucătorului. Pur: întoarce
 // doar numele sunetelor și poziția lor în stereo (după locul de pe hartă), ca maparea să se poată testa fără browser.
 
-import type { SoundId } from '../data/sunete'
+import type { SoundId, StareFundal } from '../data/sunete'
 import type { StepEvent } from '../events'
 import { MILI_HEX } from '../data/joc'
 import type { Decision, GameState } from '../sim/game'
@@ -85,4 +85,11 @@ export function decisionPan(d: Decision, s: GameState): number {
   if (d.tip === 'turn' || d.tip === 'mina' || d.tip === 'teren') return panOf(fromKey(d.hex), s.map.radius)
   if (d.tip === 'ocol') return panOf(s.path[d.start] ?? s.map.spawn, s.map.radius)
   return 0
+}
+
+/** Starea fundalului muzical: pregătirea e calmă, valul tensionat, un boss pe hartă întunecă totul; după final, liniște. */
+export function stareFundal(s: GameState): StareFundal {
+  if (s.faza === 'pregatire') return 'pregatire'
+  if (s.faza === 'val') return s.inamici.some((e) => e.tip === 'boss') ? 'boss' : 'val'
+  return 'liniste'
 }

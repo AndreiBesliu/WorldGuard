@@ -369,3 +369,55 @@ export const NIVELURI_SUNET = [1, 0.5, 0] as const
 
 /** Volumul general, înainte de compresor: lasă loc pentru multe sunete deodată. */
 export const VOLUM_GENERAL = 0.6
+
+/** Starea fundalului: calm în pregătire, mai tensionat în val, întunecat la boss, tăcut la sfârșitul partidei. */
+export type StareFundal = 'pregatire' | 'val' | 'boss' | 'liniste'
+
+/**
+ * Fundalul muzical (decis de owner: „un fundal discret”): acorduri lungi, moi, care se schimbă încet. Fiecare notă =
+ * un triunghi și un sinus ușor dezacordat (sună „larg”), printr-un filtru trece-jos care respiră încet. Acordurile se
+ * suprapun: fiecare se stinge cât intră următorul. Cifrele și acordurile sunt propunerea mea (DEVLOG, felia 8).
+ */
+export const FUNDAL = {
+  /** Volumul fundalului, față de efecte: ținut jos, ca să nu acopere nimic (măsurat: ~−35 dB, sub efecte). */
+  volum: 0.04,
+  /** Cât crește un acord și cât se stinge după ce vine următorul (s). */
+  atac: 2.2,
+  eliberare: 3,
+  /** Dezacordul celui de-al doilea oscilator al fiecărei note, în cenți. */
+  dezacord: 7,
+  /** Filtrul trece-jos comun și „respirația” lui (o oscilație lentă a frecvenței). */
+  filtru: { frecventa: 850, respiratie: { frecventa: 0.05, adancime: 300 } },
+  stari: {
+    // Re major, liniștit: D – Bm – G – A.
+    pregatire: {
+      durata: 8,
+      acorduri: [
+        [146.83, 220.0, 293.66, 369.99],
+        [123.47, 185.0, 246.94, 293.66],
+        [98.0, 196.0, 246.94, 293.66],
+        [110.0, 220.0, 277.18, 329.63],
+      ],
+    },
+    // Re minor, mai tensionat: Dm – B♭ – Gm – A.
+    val: {
+      durata: 6,
+      acorduri: [
+        [146.83, 220.0, 293.66, 349.23],
+        [116.54, 233.08, 293.66, 349.23],
+        [98.0, 196.0, 233.08, 293.66],
+        [110.0, 220.0, 277.18, 329.63],
+      ],
+    },
+    // Grav și apăsător: Dm jos – E♭ – Dm – C♯ micșorat.
+    boss: {
+      durata: 5,
+      acorduri: [
+        [73.42, 146.83, 174.61, 220.0],
+        [77.78, 155.56, 196.0, 233.08],
+        [73.42, 146.83, 174.61, 220.0],
+        [69.3, 138.59, 164.81, 196.0],
+      ],
+    },
+  },
+} as const

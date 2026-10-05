@@ -1260,3 +1260,55 @@ plafonul de 24 de sunete deodată.
 3. **Ce urmează?** Lista din GDD §10 e acoperită, iar jocul arată și sună. Variante:
    - un playtest al tău pe previzualizare, cu criteriul din §10 („fiecare val pune o alegere reală”);
    - meta-progresia (stratul C, lumea care ține minte), care e în afara prototipului.
+
+---
+
+## 05.10.2026 (14) — Răspunsurile owner-ului la felia 8 și fundalul muzical
+
+**Răspunsuri:**
+1. „Care sunet sună greșit?”: **încă nu le-a testat**.
+2. „Muzică?”: **un fundal discret**. E făcut mai jos, tot în felia 8.
+3. „Ce urmează?”: **meta-progresia**. E felia 9, în PR-ul ei. GDD §10 o lăsa în afara prototipului 1; alegerea
+   owner-ului o aduce acum, începând cu stratul C (Lumea, §9.1), cel decis să se construiască primul.
+
+**Făcut — fundalul** (`src/audio/fundal.ts`, cifrele în `FUNDAL`, `src/data/sunete.ts`):
+- **Sunetul:** acorduri lungi și moi, tot sintetizate. Fiecare notă e un triunghi și un sinus ușor dezacordat,
+  trecute printr-un filtru care „respiră” încet.
+- **Starea jocului schimbă fundalul:**
+  - pregătirea e calmă (Re major);
+  - valul e mai tensionat (Re minor);
+  - un boss pe hartă îl face grav;
+  - după victorie sau înfrângere, se stinge în 2 s.
+- La o stare nouă, progresia ei intră aproape imediat.
+- **Tasta B** (sau butonul ♪) oprește și pornește fundalul, separat de efecte. Alegerea se ține minte. Nivelul S
+  „oprit” îl oprește și pe el.
+- **Testabil:** `Planificator` alege ce acord vine și când, fără browser. Nu recuperează acordurile pierdute după o
+  pauză (fila ascunsă).
+
+**Măsurat** (randare offline, aceeași cale ca în joc):
+- **Prima variantă avea două probleme:**
+  - era mult prea tare: −22 dB RMS în pregătire, peste efectele unui val (secunda mediană −30,5 dB);
+  - la fiecare schimbare de acord, volumul scădea cu ~9 dB: cu rampe exponențiale, acordul nou stătea aproape mut
+    cât se stingea cel vechi.
+- **Un bug real, găsit tot prin măsurare:** stingerea fundalului la final pornea de la al doilea 2, nu de la momentul
+  stingerii, deci fundalul se stingea treptat un minut întreg (−3 dB la 20 s, −30 dB la 58 s).
+  - Cauza: `cancelAndHoldAtTime` din Chromium nu pune punctul de sprijin când nu mai urmează nimic.
+  - În joc, același cod ar fi făcut volumul să sară la schimbarea stării.
+  - Acum valoarea de pornire o calculează codul, iar rampele acordurilor sunt liniare.
+- **Acum:**
+  - fundalul stă la −32 … −34 dB RMS în toate stările, cu vârfuri sub −19 dB;
+  - nu mai scade la schimbarea acordurilor;
+  - urcă scurt (la −30 dB) când se schimbă starea;
+  - după final ajunge la −118 dB, adică liniște, în 2 s.
+- Cu efectele unui val, totul împreună stă la −27 dB RMS, fără distorsiune.
+
+**Verificat în browser:**
+- primul acord pornește după primul click;
+- B oprește fundalul: în 9 s nu mai pornește niciun acord, deși unul era programat la 8 s;
+- alegerea rămâne după reîncărcare, iar B îl repornește;
+- fără erori.
+
+**Teste: 154** (de la 150): datele fundalului, starea după joc, planificatorul (ritmul, progresia, intrarea rapidă a
+unei stări noi, fără rafală după o pauză).
+
+**Propuneri ale mele, nedecise:** acordurile și tonalitățile, volumul fundalului, tasta B.

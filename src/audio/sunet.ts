@@ -4,7 +4,8 @@
 // Browserele nu lasă o pagină să cânte până nu apasă jucătorul ceva: contextul real se face la primul gest
 // (`unlock`). Până atunci, `play` nu face nimic. În verificări, `attach` primește un context offline.
 
-import { SOUNDS, soundLength, VOLUM_GENERAL, type SoundId } from '../data/sunete'
+import { SOUNDS, soundLength, VOLUM_GENERAL, type SoundId, type StareFundal } from '../data/sunete'
+import { Fundal } from './fundal'
 import { Gate } from './gate'
 import { playRecipe } from './synth'
 
@@ -13,6 +14,9 @@ export class Sunet {
   private general?: GainNode
   private readonly gate = new Gate()
   private nivel: number
+  private fundalNod?: Fundal
+  /** Fundalul muzical pornit sau oprit (tasta B); volumul lui urmează și nivelul general. */
+  fundalPornit = true
   /** Câte sunete au pornit (pentru verificări). */
   pornite = 0
 
@@ -34,6 +38,7 @@ export class Sunet {
     general.connect(comp)
     this.ac = ac
     this.general = general
+    this.fundalNod = undefined
     this.gate.reset()
   }
 
@@ -50,6 +55,22 @@ export class Sunet {
   set volum(n: number) {
     this.nivel = n
     if (this.ac && this.general) this.general.gain.setValueAtTime(VOLUM_GENERAL * n, this.ac.currentTime)
+  }
+
+  /** Fundalul, după starea jocului; se cheamă la fiecare cadru. `at` = momentul (implicit: acum). */
+  fundal(stare: StareFundal, at?: number): void {
+    if (!this.ac || !this.general) return
+    const s = this.nivel === 0 || !this.fundalPornit ? 'liniste' : stare
+    if (!this.fundalNod) {
+      if (s === 'liniste') return
+      this.fundalNod = new Fundal(this.ac, this.general)
+    }
+    this.fundalNod.update(s, at ?? this.ac.currentTime)
+  }
+
+  /** Câte acorduri de fundal au pornit (pentru verificări). */
+  get acorduri(): number {
+    return this.fundalNod?.acorduri ?? 0
   }
 
   /**

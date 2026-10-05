@@ -19,7 +19,7 @@ npm run check    # typecheck + teste + build
   turn sau îl separă, `Esc` = renunți la alegere. Aceleași butoane sunt și în panoul din dreapta.
 - **După fiecare val:** alegi 1 carte din 3 (click sau `8` / `9` / `0`): un turn gratuit, o îmbunătățire, o relicvă
   sau un ocol în plus. Valul următor pornește abia după alegere.
-- `Spațiu` pornește valul, `P` pauză, `F` viteza, `S` sunetul (tare, încet, oprit), `Z` anulezi ultima decizie din
+- `Spațiu` pornește valul, `P` pauză, `F` viteza, `S` sunetul (tare, încet, oprit), `B` fundalul muzical, `Z` anulezi ultima decizie din
   pregătire, `R` de la capăt, `N` hartă nouă. Seed fix: `?seed=123` în URL.
 - **Economia:** după fiecare val primești dobândă (10% din aur, cel mult 30) și pământ. Cu pământul modelezi terenul:
   `Q` canal, `W` deal, `E` arzi pădurea (inamicii de pe drumul vecin iau foc). `M` sapă o mină pe un filon (40 de aur):

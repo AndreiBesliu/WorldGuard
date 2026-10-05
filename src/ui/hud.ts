@@ -14,6 +14,8 @@ export interface HudActions {
   cycleSpeed(): void
   /** Volumul: tare, încet, oprit. */
   cycleSound(): void
+  /** Fundalul muzical: pornit sau oprit. */
+  toggleFundal(): void
   undo(): void
   restart(): void
   newMap(): void
@@ -52,6 +54,7 @@ export interface HudView {
   readonly speed: number
   /** Volumul sunetului: 1 = tare, 0,5 = încet, 0 = oprit. */
   readonly sunet: number
+  readonly fundal: boolean
   readonly canUndo: boolean
   readonly towers: readonly {
     readonly tip: TowerType
@@ -171,6 +174,7 @@ export function createHud(actions: HudActions): Hud {
   const pauseBtn = btn('⏸ <kbd>P</kbd>', 'Pauză', actions.togglePause)
   const speedBtn = btn('1× <kbd>F</kbd>', 'Viteza jocului', actions.cycleSpeed)
   const soundBtn = btn('🔊 <kbd>S</kbd>', 'Sunetul: tare, încet, oprit', actions.cycleSound)
+  const fundalBtn = btn('♪ <kbd>B</kbd>', 'Fundalul muzical: pornit sau oprit', actions.toggleFundal)
   const undoBtn = btn('↶ <kbd>Z</kbd>', 'Anulează ultima decizie din pregătirea asta', actions.undo)
   btn('⟳ <kbd>R</kbd>', 'Aceeași hartă, de la capăt', actions.restart)
   btn('Hartă nouă <kbd>N</kbd>', 'Altă hartă', actions.newMap)
@@ -281,6 +285,8 @@ export function createHud(actions: HudActions): Hud {
       speedBtn.innerHTML = `${v.speed}× <kbd>F</kbd>`
       soundBtn.innerHTML = `${v.sunet >= 1 ? '🔊' : v.sunet > 0 ? '🔉' : '🔇'} <kbd>S</kbd>`
       soundBtn.classList.toggle('activ', v.sunet === 0)
+      fundalBtn.innerHTML = `${v.fundal ? '♪' : '♪̸'} <kbd>B</kbd>`
+      fundalBtn.classList.toggle('activ', !v.fundal)
       undoBtn.disabled = !v.canUndo
 
       towerSlot(

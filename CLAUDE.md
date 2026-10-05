@@ -209,5 +209,5 @@ Felia 6, decisă de owner (05.10.2026). Cifrele în `src/data/economie.ts`.
 - **Răspunsurile owner-ului la felia 7 (05.10.2026):** scuturarea ecranului rămâne; prototipul e pentru desktop.
 - **Felia 8 (05.10.2026):** sunetul, sintetizat fără fișiere: loviturile pe turn, reacțiile, morțile, bossul, baza,
   valul, deciziile, refuzurile; stereo după hartă; volumul pe S. Evenimentele pasului (`src/events.ts`), comune pentru
-  efecte și sunet. 150 de teste.
+  efecte și sunet. Fundalul muzical discret (decis de owner): acorduri lungi după starea jocului, tasta B. 154 de teste.
 - **Următorul:** de ales cu owner-ul (vezi DEVLOG).
