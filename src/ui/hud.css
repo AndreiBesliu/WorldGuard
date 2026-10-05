@@ -106,6 +106,7 @@ kbd {
 .ocol .eticheta { font-weight: 700; }
 .ocol .stare { font-weight: 400; color: var(--sters); margin-left: 6px; }
 
+/* `top` și `bottom` le pune `mapArea()`, după înălțimea măsurată a barelor; cele de aici sunt doar primul cadru. */
 .panou {
   position: fixed;
   right: 8px;
@@ -151,17 +152,21 @@ ul.carti-alese .nume { font-weight: 600; }
 ul.carti-alese .nr { color: var(--sters); font-variant-numeric: tabular-nums; }
 ul.carti-alese .fel { grid-column: 1 / span 2; font-size: 12px; color: var(--sters); }
 
+/* Centrată peste hartă: `left` + `right` + `width: fit-content` + `margin: auto`, nu `left: 50%` + translate — cu acela
+   lățimea maximă era jumătate din ecran și cărțile se rupeau pe două rânduri sub 1350 px. `top` și `right` le pune
+   `mapArea()`, după bare și panou; cele de aici sunt doar primul cadru. */
 .draft {
   position: fixed;
   top: 66px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 8px;
+  right: 8px;
+  width: fit-content;
+  margin-inline: auto;
   display: none;
   background: var(--panou);
   border: 1px solid var(--accent);
   border-radius: 12px;
   padding: 6px 12px 12px;
-  max-width: calc(100vw - 16px);
 }
 .draft.vizibil { display: block; }
 .draft h3 { margin: 4px 0 8px; font-size: 14px; color: var(--accent); text-align: center; }
@@ -171,7 +176,8 @@ ul.carti-alese .fel { grid-column: 1 / span 2; font-size: 12px; color: var(--ste
   display: flex;
   flex-direction: column;
   gap: 3px;
-  width: 210px;
+  flex: 1 1 170px;
+  max-width: 210px;
   font: inherit;
   text-align: left;
   color: var(--text);
@@ -215,6 +221,27 @@ ul.carti-alese .fel { grid-column: 1 / span 2; font-size: 12px; color: var(--ste
   text-align: center;
 }
 .anunt.vizibil { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.banner {
+  position: fixed;
+  left: 50%;
+  top: 34%;
+  transform: translate(-50%, -50%) scale(0.92);
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s, transform 0.35s;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+}
+.banner.vizibil { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.banner .titlu-val { font-size: 38px; font-weight: 800; letter-spacing: 0.04em; color: var(--accent); }
+.banner .sub-val { margin-top: 4px; font-size: 16px; color: var(--text); }
+
+@keyframes puls {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 215, 110, 0.55); }
+  50% { box-shadow: 0 0 0 7px rgba(245, 215, 110, 0); }
+}
+.btn.primar.gata { animation: puls 1.6s ease-in-out infinite; }
 
 .final { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(10, 12, 16, 0.55); }
 .final.vizibil { display: flex; }

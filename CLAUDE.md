@@ -5,7 +5,7 @@ Faptele stabile și regulile proiectului. Se încarcă la fiecare sesiune.
 ## Ce e
 **World Guard** (nume de lucru; jucătorii sunt **Guardians**) — un tower defense roguelite pe hexagoane,
 în care modelezi pământul unor planete vii, iar ele țin minte ce le-ai făcut. Țintă: joc comercial
-pe Steam; acum, **prototip în browser**.
+pe Steam; acum, **prototip în browser, pentru desktop** (decis 05.10.2026: telefonul nu se optimizează).
 
 - Designul complet: [`docs/GDD.md`](docs/GDD.md), inclusiv registrul deciziilor (§14).
 - Tabla de design (FigJam): https://www.figma.com/board/OKHd5kH7tHWGhDcRH7GQP5
@@ -40,6 +40,16 @@ npm run build
   constantele partidei).
   **Un număr de gameplay scris direct în cod e o greșeală**: îl muți în `src/data/`.
 - `src/render/` — desenarea hărții pe Canvas 2D. Citește starea, nu o modifică.
+  - `canvas.ts`: straturile, de jos în sus — teren, drum, fantome, grupuri, turnuri, inamici, lovituri, efecte.
+  - `terrain.ts`: fundalul și plăcile, desenate o dată într-un canvas ascuns, ținut pe hartă (`WeakMap`) și pe
+    aranjament. Terraformarea face o hartă nouă, deci cache-ul se reface singur. Decorul vine dintr-un hash al
+    hexagonului, nu din aleator.
+  - `fx.ts`: particule, fulgere, scuturarea ecranului. `main.ts` (`stepEffects`) le pornește din diferența dintre
+    două stări: reacțiile, morțile, scăpările la bază, loviturile. Aici `Math.random` e voie: e doar desen, iar
+    simularea nu-l vede.
+  - **Nu crea gradienți la fiecare cadru** (`createRadialGradient` per inamic și fundalul pe tot ecranul triplau
+    costul desenului, DEVLOG felia 7): desenează forma în coordonate locale și refolosește gradientul din
+    `gradient(ctx, cheie, …)`.
 - `src/ui/` — interfața HTML peste hartă (bare, panou, cărți, notificări). Nu citește starea: primește o vedere
   gata calculată (`HudView`) și trimite înapoi acțiuni (`HudActions`).
 - `src/main.ts` — input și legătura dintre ele (controlerul). În `npm run dev` expune `window.wg.state` (doar citire),
@@ -184,5 +194,8 @@ Felia 6, decisă de owner (05.10.2026). Cifrele în `src/data/economie.ts`.
 - **Răspunsurile owner-ului la felia 5 (05.10.2026):** un singur tip cu toate cărțile pe el e un build bun (rămâne);
   partida se lungește prin mai multe valuri: 25, cu boss la fiecare al cincilea (20 și 25 sunt propunerea mea).
 - **Felia 6 (05.10.2026):** economia — dobânda, pământul, minele pe filoane și terraformarea (canal, deal, arzi
-  pădurea). 133 de teste.
+  pădurea). 133 de teste. Răspunsurile owner-ului: pământ de start (3), terraformarea rămâne cum e.
+- **Felia 7 (05.10.2026):** finisarea vizuală, tot din forme simple: terenul cu decor și animații, turnurile care se
+  întorc spre țintă, inamicii după tip, cu stările pe ei, loviturile după turn, efectele reacțiilor, anunțul valului.
+  Panoul și banda draftului se așază după barele măsurate. 133 de teste (simularea e neatinsă).
 - **Următorul:** de ales cu owner-ul (vezi DEVLOG).
