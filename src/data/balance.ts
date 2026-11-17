@@ -58,7 +58,7 @@ export const BALANCE = {
     grunt: { r: 10, speed: 46, dmg: 3 },     // dușmanul obișnuit: raza px, viteza px/s, lovitura
     brute: { r: 15, speed: 30, dmg: 9, hpTimes: 4, every: 7, after: 120 }, // bruta: raza, viteza, lovitura, de câte ori mai multă viață, la a câta apariție, după câte secunde
   },
-  fx: { textLife: 0.9, puffLife: 0.3 },      // cât trăiesc textele plutitoare și norișorii, secunde
+  fx: { textLife: 0.9, puffLife: 0.3, puffPad: 6 }, // cât trăiesc textele plutitoare și norișorii, secunde; cât adaugă norișorul unui dușman la raza lui, px
 } as const
 
 // Costul de a AJUNGE la nivelul dat (nu cel de a-l păstra).

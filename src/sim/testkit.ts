@@ -1,6 +1,7 @@
 // Ajutoare pentru teste (și, mai târziu, pentru jucătorii automați).
 import { BALANCE } from '../data/balance'
-import { createGame, NEVER, type GameState, type Input, type Pad, type PadKind, type Res, type ResNode } from './state'
+import { createGame, NEVER, type Foe, type GameState, type Input, type Pad, type PadKind, type Res, type ResNode } from './state'
+import { makeFoe } from './foes'
 import { step } from './step'
 
 /** createGame fără noduri și fără apariții. */
@@ -32,4 +33,9 @@ export function padOf(s: GameState, kind: PadKind, i = 0): Pad {
   const pad = s.pads.filter((p) => p.kind === kind)[i]
   if (!pad) throw new Error(`nu există cercul ${kind} #${i}`)
   return pad
+}
+
+/** Un dușman obișnuit în punctul dat; `over` îi schimbă câmpurile. */
+export function addFoe(s: GameState, x: number, y: number, over: Partial<Foe> = {}): Foe {
+  return Object.assign(makeFoe(s, x, y, false), over)
 }

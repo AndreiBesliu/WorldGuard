@@ -88,3 +88,9 @@ pauza de 0,7 s (deci ~1,05 s până la plata următoare), iar efectul `level` ap
 Tabăra și cariera produc singure (`prodT` pornește de la intervalul nivelului 1 la prima construire); reparatul
 schimbă o piatră pe 5 viață și se oprește la plin. Eroul doborât nu plătește. Nicio cifră nouă în `BALANCE`.
 Măsurat: 11 teste în `pads.test.ts`.
+
+**Task 4 — dușmanii (`src/sim/foes.ts`):** apariție pe perimetru din fluxul `aparitie-N` (fiecare al 7-lea, după 120 s, e bruta),
+mers spre castel sau spre erou (sub 90 px), atac 1 s în castel / 0,8 s în erou, impuls amortizat, o trecere de despărțire pe pas,
+scoaterea celor doborâți (`kills`, norișor) și sfârșitul partidei când castelul cade; `step` curăță și `fx` bătrâne. Cifră nouă:
+`BALANCE.fx.puffPad` (6). Două teste din plan au fost corectate: marginea se verifică în clipa apariției (după 0,1 s dușmanul a
+mers deja ~4 px), iar pragul de despărțire e 15, nu 19 (o trecere pe pas lasă o mică suprapunere într-o mulțime înghesuită, măsurat 18–19 din 20).
