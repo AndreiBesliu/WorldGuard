@@ -15,6 +15,7 @@ import { BALANCE } from './data/balance'
 import { bindInput } from './input/bind'
 import { createRenderer } from './render/canvas'
 import { spawnFoe } from './sim/foes'
+import { heroMaxHp } from './sim/hero'
 import { createGame, DT, type GameState } from './sim/state'
 import { step } from './sim/step'
 import { createCards } from './ui/cards'
@@ -47,7 +48,7 @@ const flags = parseFlags(location.search)
 type Phase = 'ready' | 'playing' | 'over'
 let phase: Phase = 'ready'
 let stress = false
-let fps: number | null = null
+let fps: { now: number; min: number } | null = null
 let fpsFrames = 0, fpsTime = 0
 let s: GameState = createGame(flags.seed ?? Date.now() >>> 0)
 const input = bindInput(canvas, () => phase === 'playing')
@@ -58,6 +59,7 @@ let last = performance.now()
 function begin(seed: number, isStress: boolean): void {
   s = createGame(seed)
   stress = isStress
+  if (stress) s.spawnT = 1e9                    // în testul de viteză nu apar dușmani de la sine: numărul rămâne exact STRESS_FOES
   fps = null; fpsFrames = 0; fpsTime = 0
   acc = 0; last = performance.now()
   input.release()
@@ -87,17 +89,25 @@ if (flags.debug) {
 document.addEventListener('visibilitychange', () => { last = performance.now(); acc = 0 })
 
 function frame(now: number): void {
+  requestAnimationFrame(frame)                  // întâi cadrul următor: o excepție într-un cadru nu oprește bucla
   const frameDt = Math.min(0.1, Math.max(0, (now - last) / 1000))
   last = now
+  let camDt = frameDt                           // cât timp „a trecut” pentru cameră
   if (phase === 'playing') {
     const r = advance(acc, frameDt)
     acc = r.acc
     for (let i = 0; i < r.steps; i++) step(s, input.read())
+    camDt = r.steps * DT                        // camera se mișcă doar cu pașii simulării: eroul nu tremură pe ecrane de 120 Hz
     if (stress) {
-      while (s.foes.length < STRESS_FOES) spawnFoe(s)   // terenul rămâne plin, castelul nu cade
+      while (s.foes.length < STRESS_FOES) spawnFoe(s)   // terenul rămâne plin, castelul și eroul nu cad
       s.castle.hp = BALANCE.castle.hp
+      s.hero.dead = false; s.hero.hp = heroMaxHp(s)
       fpsFrames++; fpsTime += frameDt
-      if (fpsTime >= FPS_WINDOW) { fps = Math.round(fpsFrames / fpsTime); fpsFrames = 0; fpsTime = 0 }
+      if (fpsTime >= FPS_WINDOW) {
+        const now = Math.round(fpsFrames / fpsTime)
+        fps = { now, min: fps === null ? now : Math.min(fps.min, now) }
+        fpsFrames = 0; fpsTime = 0
+      }
     }
   }
   if (phase === 'playing' && s.mode === 'over') {
@@ -106,8 +116,7 @@ function frame(now: number): void {
     const secs = Math.floor(s.t)
     cards.showOver({ secs, ...(stress ? { record: secs, isNew: false } : saveIfRecord(secs)), kills: s.kills })   // testul de viteză nu atinge recordul
   }
-  renderer.frame(s, phase === 'playing' ? input.read() : still, phase === 'playing' ? input.stick : null, frameDt)
+  renderer.frame(s, phase === 'playing' ? input.read() : still, phase === 'playing' ? input.stick : null, camDt)
   hud.sync(s, { hint: phase === 'playing' && !s.hero.moved, fps })
-  requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame)

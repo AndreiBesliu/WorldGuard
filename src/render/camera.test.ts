@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { advance } from '../app/loop'
+import { DT } from '../sim/state'
+import { step } from '../sim/step'
 import { quietGame, heroAt } from '../sim/testkit'
 import { followCamera, viewScale, type View } from './camera'
 
@@ -29,5 +32,23 @@ describe('camera', () => {
     const s = quietGame(); const cam = { x: 0, y: 0 }; const v = view(0, 0)
     for (let i = 0; i < 10; i++) followCamera(cam, s, v, 1 / 60)
     expect(Number.isFinite(cam.x)).toBe(true); expect(Number.isFinite(cam.y)).toBe(true)
+  })
+  it('la mers cu viteză maximă, poziția eroului pe ecran nu tremură la 60, 90, 120 și 144 Hz', () => {
+    for (const hz of [60, 90, 120, 144]) {
+      const s = quietGame(); heroAt(s, 250, 1200)
+      const cam = { x: 250, y: 1200 + 50 }; const v = view(412, 915)
+      const onScreen = (): number => (s.hero.x - cam.x) * v.scale
+      let acc = 0, prev = onScreen(), skipped = 0
+      for (let i = 0, n = 2 * hz; i < n; i++) {
+        const r = advance(acc, 1 / hz); acc = r.acc
+        for (let k = 0; k < r.steps; k++) step(s, { x: 1, y: 0 })
+        followCamera(cam, s, v, r.steps * DT)        // ca în main.ts: camera se mișcă doar când simularea a făcut pași
+        const now = onScreen()
+        if (r.steps === 0) { expect(now).toBe(prev); skipped++ }
+        expect(now).toBeGreaterThanOrEqual(prev - 1e-9)   // niciodată înapoi
+        prev = now
+      }
+      if (hz > 60) expect(skipped).toBeGreaterThan(0)
+    }
   })
 })

@@ -30,7 +30,10 @@
   color-scheme: dark;
 }
 [hidden] { display: none !important; }
-html { height: 100%; background: var(--edge); }
+html { height: 100%; background: var(--edge); overscroll-behavior: none; }
+/* Fără ciupire de zoom pe toată pagina; atingerile pe butoane și derularea pe verticală a unui cartonaș mai înalt rămân.
+   touch-action se combină doar până la cel mai apropiat element care derulează, deci .veil îl repetă. */
+html, body, .veil { touch-action: pan-y; }
 body {
   height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none;
   background: var(--ground); color: var(--ink); font-family: var(--font-ui);
@@ -86,14 +89,15 @@ body {
 .hint span { display: inline-block; background: var(--panel); padding: 9px 15px; border-radius: 999px; }
 
 .veil {
-  position: absolute; inset: 0; display: grid; place-items: center; background: var(--veil);
+  position: absolute; inset: 0; display: grid; background: var(--veil);
+  overflow-y: auto; overscroll-behavior: contain;      /* telefon culcat: cartonașul mai înalt decât ecranul se derulează */
   padding-top: max(24px, env(safe-area-inset-top, 0px));
   padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 .card {
-  box-sizing: border-box; width: 100%; max-width: 344px;
+  box-sizing: border-box; width: 100%; max-width: 344px; margin: auto;   /* margin: auto centrează fără să taie capătul de sus când se depășește */
   background: var(--night); border: 1px solid var(--line); border-radius: 18px;
   padding: 22px 22px 22px;
   display: flex; flex-direction: column; gap: 16px;

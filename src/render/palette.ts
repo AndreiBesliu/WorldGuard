@@ -18,10 +18,18 @@ export function palette(): Palette {
   return cached
 }
 
-/** '#rrggbb' + opacitate -> 'rgba(...)'. */
+const alphas = new Map<string, string>()
+
+/** '#rrggbb' + opacitate -> 'rgba(...)'; rezultatul se ține minte, ca desenul să nu construiască texte în fiecare cadru. */
 export function alpha(hex: string, a: number): string {
-  const v = parseInt(hex.slice(1), 16)
-  return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`
+  const key = hex + a
+  let out = alphas.get(key)
+  if (out === undefined) {
+    const v = parseInt(hex.slice(1), 16)
+    out = `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`
+    alphas.set(key, out)
+  }
+  return out
 }
 
 export const FONT_UI = '"Rubik", system-ui, sans-serif'

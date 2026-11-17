@@ -1,12 +1,18 @@
 // Lumea: cercurile, nodurile, castelul, clădirile, dușmanii, eroul, săgețile și efectele.
 // Citește starea; nu scrie nimic în ea.
 import { BALANCE } from '../data/balance'
-import { CASTLE, HOME, PAD_R } from '../data/layout'
+import { CASTLE, HOME, LOW_FRAC, PAD_R } from '../data/layout'
 import { heroMaxHp } from '../sim/hero'
 import { levelOf, nextCost } from '../sim/pads'
 import type { Foe, Fx, GameState, Input, Pad, PadKind, ResNode, Res } from '../sim/state'
 import { STR } from '../ui/strings'
 import { alpha, FONT_UI, palette } from './palette'
+
+/** Dreptunghiul de lume care se vede, în coordonate de lume. */
+export interface Visible { l: number; t: number; r: number; b: number }
+const CULL_MARGIN = 160      // cât din afara ecranului se desenează încă: etichete, umbre, săgeți, text care se ridică (prezentare)
+const seen = (v: Visible, x: number, y: number): boolean =>
+  x >= v.l - CULL_MARGIN && x <= v.r + CULL_MARGIN && y >= v.t - CULL_MARGIN && y <= v.b + CULL_MARGIN
 
 const TAU = Math.PI * 2
 const clamp = (v: number, a: number, b: number): number => (v < a ? a : v > b ? b : v)
@@ -85,7 +91,7 @@ function drawCastle(ctx: CanvasRenderingContext2D, s: GameState): void {
   ctx.closePath(); ctx.fillStyle = C.hero; ctx.fill()
   if (s.t - s.castle.hitT < 0.12) disc(ctx, CX, CY, R, alpha(C.ink, 0.35))
   const frac = s.castle.hp / BALANCE.castle.hp
-  bar(ctx, CX - 40, CY - R - 18, 80, 7, frac, frac < 0.35 ? C.foe : C.ink)
+  bar(ctx, CX - 40, CY - R - 18, 80, 7, frac, frac < LOW_FRAC ? C.foe : C.ink)
 }
 
 function drawBuilding(ctx: CanvasRenderingContext2D, s: GameState, p: Pad): void {
@@ -203,7 +209,7 @@ function drawHero(ctx: CanvasRenderingContext2D, s: GameState, input: Input): vo
   const sa = s.t - h.slashT
   if (sa < 0.16) {
     ctx.globalAlpha = 1 - sa / 0.16
-    ctx.beginPath(); ctx.arc(h.x, h.y, BALANCE.hero.reach * 0.8, h.slashA - 1.2 + sa * 5, h.slashA + 1.2)
+    ctx.beginPath(); ctx.arc(h.x, h.y, BALANCE.hero.reach * 0.8, h.slashA - BALANCE.hero.arc + sa * 5, h.slashA + BALANCE.hero.arc)
     ctx.lineWidth = 6; ctx.strokeStyle = C.ink; ctx.stroke(); ctx.globalAlpha = 1
   }
   bar(ctx, h.x - 16, h.y - R - 13, 32, 4, h.hp / heroMaxHp(s), C.hero)
@@ -216,9 +222,10 @@ function gainLift(s: GameState, fx: Extract<Fx, { kind: 'gain' }>): number {
   return atBuilding ? 28 : 20
 }
 
-function drawFx(ctx: CanvasRenderingContext2D, s: GameState): void {
+function drawFx(ctx: CanvasRenderingContext2D, s: GameState, v: Visible): void {
   const C = palette()
   for (const f of s.fx) {
+    if (!seen(v, f.x, f.y)) continue
     const age = s.t - f.t0
     if (f.kind === 'puff') {
       ctx.globalAlpha = 1 - age / BALANCE.fx.puffLife
@@ -236,15 +243,15 @@ function drawFx(ctx: CanvasRenderingContext2D, s: GameState): void {
 }
 
 /** Tot ce e în coordonate de lume, în ordinea prototipului: cercuri, apoi obiecte sortate după y, apoi săgeți și efecte. */
-export function drawWorld(ctx: CanvasRenderingContext2D, s: GameState, input: Input): void {
+export function drawWorld(ctx: CanvasRenderingContext2D, s: GameState, input: Input, v: Visible): void {
   const C = palette()
-  for (const p of s.pads) drawPad(ctx, s, p)
+  for (const p of s.pads) if (seen(v, p.x, p.y)) drawPad(ctx, s, p)
 
   const h = s.hero
   const items: { y: number; f: () => void }[] = [{ y: CASTLE.y + 20, f: () => drawCastle(ctx, s) }]
-  for (const n of s.nodes) items.push({ y: n.y, f: () => drawNode(ctx, s, n) })
-  for (const p of s.pads) if (p.lvl > 0 && p.kind !== 'hero') items.push({ y: p.by, f: () => drawBuilding(ctx, s, p) })
-  for (const f of s.foes) items.push({ y: f.y, f: () => drawFoe(ctx, s, f) })
+  for (const n of s.nodes) if (seen(v, n.x, n.y)) items.push({ y: n.y, f: () => drawNode(ctx, s, n) })
+  for (const p of s.pads) if (p.lvl > 0 && p.kind !== 'hero' && seen(v, p.bx, p.by)) items.push({ y: p.by, f: () => drawBuilding(ctx, s, p) })
+  for (const f of s.foes) if (seen(v, f.x, f.y)) items.push({ y: f.y, f: () => drawFoe(ctx, s, f) })
   if (!h.dead) items.push({ y: h.y, f: () => drawHero(ctx, s, input) })
   items.sort((a, b) => a.y - b.y)
   for (const it of items) it.f()
@@ -255,6 +262,6 @@ export function drawWorld(ctx: CanvasRenderingContext2D, s: GameState, input: In
     label(ctx, String(Math.ceil(h.respawnT)), HOME.x, HOME.y + 0.5, 15, C.hero)
   }
   ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.lineCap = 'round'
-  for (const sh of s.shots) { ctx.beginPath(); ctx.moveTo(sh.x, sh.y); ctx.lineTo(sh.x - Math.cos(sh.a) * 11, sh.y - Math.sin(sh.a) * 11); ctx.stroke() }
-  drawFx(ctx, s)
+  for (const sh of s.shots) { if (!seen(v, sh.x, sh.y)) continue; ctx.beginPath(); ctx.moveTo(sh.x, sh.y); ctx.lineTo(sh.x - Math.cos(sh.a) * 11, sh.y - Math.sin(sh.a) * 11); ctx.stroke() }
+  drawFx(ctx, s, v)
 }

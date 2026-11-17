@@ -19,7 +19,7 @@ npm run single   # dist-single/world-guard.html: tot jocul într-un singur fiși
 dușmanii din apropiere și plătește stând pe cercurile punctate de pe jos. Partida se termină când cade castelul; scorul e timpul rezistat, iar recordul rămâne în telefon.
 
 **Test de viteză:** butonul de pe cartonașul de start pornește o partidă cu 150 de dușmani mereu pe teren și
-castelul mereu plin, și arată în bandă câte cadre pe secundă desenează telefonul. Nu atinge recordul.
+castelul și eroul mereu pe picioare (fără dușmani noi în afara celor 150), și arată în bandă câte cadre pe secundă desenează telefonul, plus cea mai mică valoare de la pornire (`min`). Nu atinge recordul. Din test se iese doar reîncărcând pagina.
 
 **Semne în adresă:** `?seed=7` fixează sămânța (aceeași partidă la fiecare pornire); `?debug=1` pune în fereastră
 `window.__wg` (starea jocului și `run(secunde)`), folosit de proba din browser.

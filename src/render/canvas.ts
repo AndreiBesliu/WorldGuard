@@ -40,7 +40,7 @@ export function createRenderer(canvas: HTMLCanvasElement): {
       const left = cam.x - w / sc / 2, top = cam.y - h / sc / 2
       ctx.save(); ctx.scale(sc, sc); ctx.translate(-left, -top)
       ctx.drawImage(ground, 0, 0)
-      drawWorld(ctx, s, input)
+      drawWorld(ctx, s, input, { l: left, t: top, r: left + w / sc, b: top + h / sc })
       ctx.restore()
       drawOverlay(ctx, s, cam, view, stick)
     },

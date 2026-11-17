@@ -11,7 +11,7 @@ let chromium
 try {
   ({ chromium } = require('playwright'))
 } catch {
-  console.log('SMOKE: Playwright nu este instalat (npm i -g playwright); proba nu poate rula.')
+  console.log("SMOKE: Playwright trebuie să poată fi găsit de require('playwright') (instalat local sau cu NODE_PATH spre modulele globale); proba nu poate rula.")
   process.exit(2)
 }
 
@@ -162,7 +162,7 @@ async function main() {
     await shot('05-test.png')
     const foes = await page.evaluate(() => window.__wg.state().foes.length)
     const fpsText = await page.locator('#fps').innerText()
-    check(9, 'testul de viteză are 150 de dușmani și banda arată „fps”', foes === 150 && fpsText.includes('fps'), `dușmani ${foes}, bandă „${fpsText}”`)
+    check(9, 'testul de viteză are 150 de dușmani și banda arată „fps” și „min”', foes === 150 && fpsText.includes('fps') && fpsText.includes('min'), `dușmani ${foes}, bandă „${fpsText}”`)
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))

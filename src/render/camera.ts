@@ -1,5 +1,5 @@
 // Camera: scara ecranului și urmărirea eroului. Nu scrie nimic în starea jocului.
-import { HOME, WORLD } from '../data/layout'
+import { HOME, VIEW_H, WORLD } from '../data/layout'
 import type { GameState } from '../sim/state'
 
 export interface View { w: number; h: number; scale: number; dpr: number; hudBottom: number }
@@ -11,9 +11,9 @@ const OVERSCAN = 30       // cât poate ieși centrul camerei dincolo de margine
 
 const clamp = (v: number, a: number, b: number): number => (v < a ? a : v > b ? b : v)
 
-/** max(înălțime / 880, lățime / 1100); 1 când mărimea nu e un număr bun. */
+/** max(înălțime / VIEW_H, lățime / WORLD.w); 1 când mărimea nu e un număr bun. */
 export function viewScale(w: number, h: number): number {
-  const k = Math.max(h / 880, w / 1100)
+  const k = Math.max(h / VIEW_H, w / WORLD.w)
   return Number.isFinite(k) && k > 0 ? k : 1
 }
 
