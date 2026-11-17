@@ -22,6 +22,10 @@ export const BALANCE = {
     regen: 4,                                // viață recăpătată pe secundă
     respawn: 5,                              // secunde până reapare după ce cade
     maxLevel: 5,                             // nivelul maxim al eroului
+    deadzone: 0.01,                          // sub această lungime a comenzii, eroul stă pe loc
+    faceLock: 0.25,                          // secunde după o lovitură în care privirea nu urmează mersul
+    edge: 20,                                // distanța minimă dintre erou și marginea hărții, px
+    puffR: 26,                               // raza norișorului când eroul cade, px
   },
   node: {
     wood: { amount: 8, every: 0.3, regrow: 18, r: 9 },    // copac: bucăți, secunde între bucăți, secunde până crește la loc, raza px

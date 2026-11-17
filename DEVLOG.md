@@ -75,3 +75,9 @@ e o decizie în jurnal” (la un joc cu joystick ar însemna direcția la fiecar
 - `src/main.ts` ciot, ca build-ul să aibă intrare până la Task 7.
 
 **Rămâne:** task-urile 2–9 din planul fazei 1 (erou, cercuri, dușmani, luptă, desen, interfață).
+
+**Task 2 — eroul (`src/sim/hero.ts`):** mers (165 px/s, proporțional cu comanda), coliziuni cerc pe cerc
+(castel, resurse cu `left > 0`, turnuri/tabere/cariere construite, marginea la 20), strâns la cel mult 16 px
+de margine (prima bucată imediat), refacere 4/s după 3 s, cădere și reapariție după 5 s lângă castel;
+`step` readuce resursele epuizate la plin. Cifrele noi (zonă moartă 0,01, blocarea privirii 0,25 s după
+lovitură, marginea 20, norișorul de 26) stau în `BALANCE.hero`. Măsurat: 8 teste în `hero.test.ts`.
