@@ -14,6 +14,7 @@ export interface Strings {
   stone: string
   castle: string
   hint: string
+  fpsLabel(n: number): string
   ruleMove: string
   ruleGather: string
   ruleInvest: string
@@ -40,6 +41,7 @@ export const STR: Strings = {
   wood: 'lemn',
   stone: 'piatră',
   castle: 'Castel',
+  fpsLabel: (n) => `TEST · ${n} fps`,
   hint: 'Ține degetul pe ecran și trage ca să miști eroul',
   ruleMove: 'Ține degetul pe ecran și trage. Eroul merge încotro tragi.',
   ruleGather: 'Stai lângă copaci și stânci ca să strângi lemn și piatră.',

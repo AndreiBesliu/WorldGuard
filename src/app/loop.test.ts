@@ -11,6 +11,7 @@ describe('bucla cu pas fix', () => {
     expect(advance(0, 1)).toEqual({ steps: 5, acc: 0 })
     expect(advance(0, 600)).toEqual({ steps: 5, acc: 0 })
     expect(advance(0, -1)).toEqual({ steps: 0, acc: 0 })
+    expect(advance(0, NaN)).toEqual({ steps: 0, acc: 0 })
   })
   it('zece secunde înseamnă 600 de pași la orice număr de cadre', () => {
     for (const fps of [30, 60, 90, 120, 144]) {

@@ -25,4 +25,9 @@ describe('camera', () => {
     expect(cam.x).toBeGreaterThanOrEqual(519.9); expect(cam.x).toBeLessThanOrEqual(580.1)
     expect(cam.y).toBeCloseTo(800, 0)
   })
+  it('înainte de primul resize (vedere 0 × 0) camera rămâne un număr finit', () => {
+    const s = quietGame(); const cam = { x: 0, y: 0 }; const v = view(0, 0)
+    for (let i = 0; i < 10; i++) followCamera(cam, s, v, 1 / 60)
+    expect(Number.isFinite(cam.x)).toBe(true); expect(Number.isFinite(cam.y)).toBe(true)
+  })
 })
