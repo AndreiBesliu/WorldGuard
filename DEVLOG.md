@@ -100,3 +100,7 @@ apropiat, impuls 140 / 60 pe bruta), turnurile trag la 0,8 s în cel mai apropia
 a țintei și lovesc la un pas + 6 px; `updateCombat` stă între `updatePads` și `updateFoes`. Cifre noi în `BALANCE`: `tower.arrive` (6),
 `foe.stopCastle` (1), `foe.stopHero` (2) — ultimele două erau literale în `foes.ts`. Măsurat: partida fără niciun gest cade la
 71,3 / 62,0 / 65,1 / 60,5 / 64,9 s (semințile 1–5; prototipul a avut 94 s); un pas cu 150 de dușmani sub 1 ms.
+Corectură Task 5: „94 s” din plan era o singură rulare norocoasă. Măsurat la 60 de pași/s: prototipul 67–88 s (fără erou 58–72 s), simularea nouă
+60,5–72,2 s pe semințele 1–8 (fără erou 54–58 s). Cauza, verificată: în prototip un dușman ajuns singur la zid putea rămâne la ~1,4e-14 de distanța de
+oprire și nu lovea niciodată (12 din 40 de încercări); la noi comparația cu `EPS` îl face să lovească mereu, cum cere specificația. Jocul nou e deci
+puțin mai aspru (fără apărare, castelul cade în ~56 s, nu în ~64 s), iar limitele testului „fără niciun gest” au fost corectate pe baza măsurătorii.
