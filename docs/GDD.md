@@ -1,233 +1,305 @@
-# World Guard — documentul de design, v0.1
+# World Guard: designul primei versiuni
 
-**Nume:** **World Guard** (nume de lucru); jucătorii sunt **Guardians** · **Data:** 04.10.2026 · **Owner:** Andrei
-**Stare:** preproducție. Designul de ansamblu e stabilit; urmează prototipul 1.
-**Tabla de design (FigJam):** https://www.figma.com/board/OKHd5kH7tHWGhDcRH7GQP5
+Scris pe 2026-11-13, actualizat pe 2026-11-17. Sursa: documentul „World Guard: designul primei versiuni”, aprobat de Andrei pe 2026-11-17.
 
-Documentul rezumă discuția de design din 04.10.2026 și cele trei scanări de piață. Ce e marcat **„propunere”** nu e decis; ce e marcat **„decis”** e al owner-ului.
+Prima versiune este jocul din prototip făcut ca proiect adevărat: instalat pe telefon, jucabil fără internet, cu cifre ușor de reglat și cu o plasă care prinde stricarea dificultății. Se construiește în repo-ul WorldGuard, unde ia locul jocului de acolo.
 
----
+## Intenția
 
-## 1. Jocul într-o propoziție
+Andrei vrea un joc de mobil de tip castle defense pe care să-l joace el, deocamdată. Miezul, în cuvintele lui: „Jucătorul adună resurse și decide unde le investește.”
 
-> **Un tower defense roguelite în care modelezi pământul unor planete vii, iar ele țin minte ce le-ai făcut.**
+„Deocamdată” contează. Nimic din v1 nu trebuie să blocheze o publicare ulterioară, dar nimic nu se construiește pentru ea acum.
 
-**Imaginea de 5 secunde, cea care trebuie să se vadă într-un GIF:** arzi pădurea de lângă drum, iar inamicii unși cu ulei explodează în lanț pe traseul construit de tine.
+Referința pentru cum arată și cum se simte jocul este [prototipul de aruncat](https://claude.ai/artifact/ENwSUvGDA7eXnFRDiP7atc), pe care Andrei l-a încercat. Unde documentul ăsta și prototipul diferă, câștigă documentul.
 
-## 2. Pilonii
+## Cine a hotărât ce
 
-1. **Harta e un partener de joc, nu un decor.** Traseul și terenul le modelezi tu, în partidă și între partide.
-2. **Combinațiile.** Turnurile lasă stări pe inamici care reacționează între ele, vecinătatea dintre turnuri dă bonusuri, iar terenul participă la reacții.
-3. **Investiția e decizia centrală.** Cheltui acum sau economisești? Întărești apărarea sau modelezi terenul?
-4. **Lumea ține minte.** Fiecare hexagon modificat rămâne exact cum l-ai lăsat și evoluează în timp.
-5. **Zeii răspund deciziilor tale.** Panteonul te favorizează după ce faci, iar zeul căzut te urmărește tot mai atent.
+**Hotărât de Andrei. Nu se redeschide fără el.**
 
-## 3. Universul — decis
+1. Jocul e pentru el, deocamdată.
+2. Totul e în timp real. Dușmanii vin continuu și investești sub presiune.
+3. Resursele le strânge un erou controlat cu joystick virtual.
+4. Eroul luptă și el: atacă singur ce e aproape și se poate investi în el.
+5. A încercat prototipul și a spus că totul pare în regulă pentru acum.
+6. Joacă pe un Samsung Galaxy A54.
+7. Jocul se construiește în repo-ul WorldGuard.
+8. Jocul nou înlocuiește ce e făcut acolo.
 
-- **Galaxia e bolnavă.** Corupția unui **zeu căzut**, rival celorlalți, trece de la o lume la alta și revine în valuri.
-- **Planetele sunt vii.** Fiecare e un trup elementar adormit. Terraformarea îl vindecă sau îl rănește, iar cicatricile sunt memoria lui.
-- **Panteonul** (propunere): cinci zei elementali — focul, apa, frigul, furtuna, pământul și creșterea. Familiile de turnuri și stările din combinații corespund lor.
-- **Tu ești trimisul lor, un Guardian:** cobori pe o planetă, îi modelezi pământul și o cureți regiune cu regiune.
-- **Tonul:** serios, mitic, science-fantasy.
-- **Lore-ul se livrează ieftin:** o frază pe regiune, replici scurte, textul regiunii care se schimbă odată cu starea ei, fragmente deblocate de modificatorii de Amenințare.
+**Propus de Claude și acceptat de Andrei când i-a fost arătat întregul.**
 
-## 4. Partida (20–30 de minute) — decis
+- Trei direcții de investit: economie, apărare, erou.
+- Eroul doborât reapare la castel după câteva secunde. Partida se termină doar când cade castelul.
+- Partida nu are sfârșit și devine tot mai grea. Scorul e cât ai rezistat.
+- Aspect din forme simple. Arta vine mai târziu.
+- Fără îmbunătățiri păstrate de la o partidă la alta în prima versiune.
 
-```
-val → recompense (aur, pământ) → alegi 1 din 3 cărți → modelezi harta / plasezi turnuri → combinații → val
-boss la valurile 5, 10 și 15 (în prototip)
-```
+**Hotărât de Claude, nevăzut încă de Andrei.**
 
-**Cărțile din draft:** o bucată de traseu, un turn, o îmbunătățire sau o relicvă.
+Andrei a vorbit despre rezultate, nu despre unelte, deci alegerile de mai jos sunt ale lui Claude și pot fi respinse.
 
-## 5. Harta în partidă — decis
+- Uneltele și împărțirea codului (secțiunea „Cum se construiește”), inclusiv desenatul pe Canvas 2D.
+- Ce e nou față de prototip: pauza, instalarea, reluarea unei partide întrerupte.
+- Plasa pentru dificultate, inclusiv care strategii trebuie să piardă.
+- Ce se păstrează din WorldGuard și ce se înlocuiește.
+- Jocul nou preia numele de lucru World Guard.
+- Găzduirea pe GitHub Pages.
 
-- **Grilă de hexagoane.**
-- **Traseu cu capete fixe:** intrarea inamicilor și baza nu se mută. Pornești cu un drum drept între ele, iar la fiecare val aplici o bucată aleasă din trei: un **ocol** care **înlocuiește o porțiune de 1–3 hexagoane** cu un drum mai lung cu +1, +2 sau +3. Drumul se lungește ca o sfoară; puzzle-ul e *cât drum încape între două puncte fixe, și pe unde*.
-  - **Drumul nu are voie să se atingă singur:** două hexagoane de drum neconsecutive nu pot fi vecine.
-  - **Măsurat în prototip:** pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoane. Prima variantă, inserția între doi vecini, nu permitea nimic peste +1.
-- **Bucățile se aleg, nu se trag la noroc.** E răspunsul direct la reclamația numărul 1 din gen („când am nevoie de turn, primesc drum”).
-- **Ramificații deterministe și lizibile.** Inamicii nu aleg o ramură la întâmplare; regula se vede pe ecran.
-- **Terenul participă la reacții:**
-  - **apa** de lângă drum îi udă pe inamici: ud + frig = îngheț, ud + fulger = electrocutare;
-  - **pădurea** arde: pădure arsă + inamici unși cu ulei = explozie în lanț;
-  - **dealul** dă rază mai mare, dar cu un cost, ca să nu existe un teren evident cel mai bun (capcana Nordhold);
-  - **filonul** dă pământ dacă îl exploatezi.
-- **Terraformarea e o acțiune activă,** plătită cu pământ: sapi un canal, ridici un deal, arzi o pădure.
+## Ce se întâmplă cu WorldGuard
 
-## 6. Turnuri și combinații
+Jocul nou ia locul celui din repo, iar designul vechi nu se continuă. Scheletul proiectului și regulile de lucru rămân.
 
-**Decis:** reacții pe inamic + bonusuri de vecinătate; fuziunea turnurilor rămâne pentru mai târziu.
+Azi repo-ul are un singur commit, din 04.10.2026: designul v0.1 al unui tower defense roguelite pe hexagoane, cu țintă comercială pe Steam, și pasul 0 al prototipului lui. Designul are 19 decizii marcate „decis”. Codul are 1.122 de linii și, după jurnalul proiectului, 33 de teste.
 
-**Propunerea pentru prototip** (din cercetare):
-- 4 stări de durată (arde, uns cu ulei, ud, înghețat parțial) și 2 lovituri instantanee (impact, fulger), ca la Mindustry.
-- ~5–6 reacții: explozie (ulei + foc, consumă uleiul), îngheț (ud + frig), spargere (înghețat + impact, consumă înghețul), electrocutare (ud + fulger, sare la vecinii uzi), abur sau smoală. Focul anulează udul și frigul.
-- **Regulile se scriu pe etichete, nu pe perechi.** De exemplu „inflamabil + foc”, ca un viitor „smoală” să moștenească reacția automat.
-- **Vecinătatea schimbă cifre sau etichete, nu creează reacții noi.** Contează câte etichete *diferite* ai în jur (plafon ~3), ca șase turnuri identice lipite să nu fie soluția. Câteva vecinătăți negative dau tensiune la plasare.
-- **Prezentare:**
-  - la plasare, un preview cu bonusurile și cu reacțiile care s-ar produce pe traseu;
-  - prima reacție descoperită apare cu numele ei și un scurt freeze-frame;
-  - un codex care se completează pe măsură ce descoperi, cu necunoscutele ca siluete;
-  - nicio cifră ascunsă.
-- **Împotriva combo-ului dominant:**
-  - valuri cu trăsături care contracarează anumite etichete (imun la foc, uscat, greu de înghețat);
-  - draftul ține cont de ce ai, dar oferă mereu și o carte din afara stilului tău;
-  - win rate pe combinații, măsurat din playtest.
+| Ce e în repo | Soarta | De ce |
+| --- | --- | --- |
+| Designul vechi (`docs/GDD.md`) și cele 19 decizii din el | înlocuit | Jocul nou e alt joc: fără hexagoane și fără traseu, cu erou, pentru telefon. Deciziile vechi nu i se aplică. |
+| Harta, drumul, jurnalul de decizii, desenatul și testele lor | înlocuite | Sunt regulile jocului vechi. |
+| Scheletul: TypeScript, Vite, Vitest, poarta `npm run check` | păstrat | E exact ce cere jocul nou. |
+| `rng.ts`, `result.ts`, `discipline.test.ts` | păstrate | Dau hazard cu sămânță și păzesc simularea de ceasul mașinii și de hazardul global. |
+| Regulile de lucru din `CLAUDE.md` | păstrate | Sunt ale lui Andrei, nu ale jocului vechi. |
+| `DEVLOG.md` | continuat | E un jurnal care doar crește. Primește o intrare despre înlocuire. |
 
-## 7. Economia — decis
+Regulile de lucru care rămân:
 
-- **Aur:** din inamici uciși, plus dobândă pe ce economisești. Se cheltuiește pe turnuri și îmbunătățiri.
-- **Pământ:** din filoane și din valurile încheiate. Se cheltuiește doar pe terraformare.
-- **Tensiunea:** apărare acum sau teren mai bun pentru mai târziu.
+- Poarta `npm run check` trece înainte de fiecare commit.
+- Fiecare felie primește o intrare în `DEVLOG.md`.
+- Fișierele se stagează explicit, niciodată cu `git add -A`.
+- Designul e al lui Andrei. Ce propune Claude se marchează ca propunere până decide el.
+- O cifră care ajunge într-o decizie se măsoară, nu se estimează.
+- Cifrele de joc stau în `src/data/`, nu în cod.
+- Întâi un joc jucabil, apoi infrastructura de verificare.
 
-## 8. Inamicii
+O regulă veche nu se păstrează: „orice acțiune a jucătorului e o decizie în jurnal”. Era făcută pentru un joc cu mutări rare. La un joc cu joystick, jurnalul ar însemna direcția la fiecare pas. Rămâne determinismul: aceeași sămânță cu aceleași comenzi dă aceeași stare.
 
-- **Prototip:** normal, rapid, blindat, roi, plus boss.
-- **Manifestările zeului căzut** diferă după tipul de planetă.
-- **Previzualizarea valului următor** e obligatorie; lipsa ei e o reclamație frecventă în gen.
+Înlocuirea se face printr-un commit obișnuit pe o ramură, cu pull request. Istoria nu se rescrie. Ultimul commit al jocului vechi primește o etichetă, ca designul și codul vechi să poată fi regăsite oricând.
 
-## 9. Între partide: meta-progresia
+Jocul nou preia numele de lucru World Guard, care e și numele repo-ului. „Straja Castelului” a fost doar numele prototipului.
 
-### 9.1 Stratul C — Lumea (decis, se construiește primul)
+## Ce a arătat prototipul
 
-- **Structura:** galaxie → planetă → regiune → partidă.
-  - **Galaxia** e harta planetelor și rămâne pentru totdeauna.
-  - **Planeta** e un ciclu: generată din seed, cu 6–10 partide. Ultima regiune e **inima planetei**, cu un boss.
-  - **Regiunile** sunt hexagoane pe planetă; fiecare regiune e o partidă.
-  - **Planeta salvată** rămâne pe harta galaxiei; te poți întoarce pe ea.
-- **Persistență exactă pe fiecare hexagon** (decis). Metoda (propunere tehnică):
-  - planeta = seed + versiunea generatorului, fixată pe planetă (un generator schimbat nu strică planetele vechi);
-  - se salvează doar **jurnalul de editări** (hexagon + ora lumii);
-  - **reguli deterministe de evoluție:** cenușa devine puiet, apoi pădure; canalele se colmatează;
-  - starea = generator + editări + timp scurs, recalculată identic oricând; după fiecare partidă, compactare într-un instantaneu;
-  - cost: câțiva KB pe planetă.
-- **Echilibru fără compromis pe date:**
-  - traseul și turnurile se reiau la fiecare partidă; rămâne doar terenul;
-  - urme cu două tăișuri (cenușa nu mai arde, dar cenușă + apă = noroi care încetinește);
-  - regiunea reacționează (canalul săpat aduce inamici amfibii);
-  - un bot joacă în simulare regiunile modificate și le semnalează pe cele devenite banale;
-  - o opțiune scumpă de a relua regiunea de la zero.
-- **Ceasul lumii** (decis): lucrurile evoluează în timp. Propunere: ceasul personal merge după **timpul jucat**, cel al galaxiei comune în **timp real**.
-- **Tipuri de planete** (decis: 3–4 la lansare), cu specializare: experiența pe un tip deblochează turnuri și abilități ale biomului.
+Investiția doar în erou ține la fel de mult ca a construi, deci tensiunea dintre cele trei direcții nu e încă asigurată de cifre. V1 trebuie să o asigure (vezi „Plasa pentru dificultate”).
 
-  | Tip | Elemente |
-  |---|---|
-  | Ocean | apă, frig, fulger |
-  | Vulcanică | foc, ulei, rocă |
-  | Junglă | pădure, otravă, creștere |
-  | Gheață | frig, spargere, teren care se rupe |
+Măsurători făcute în prototip cu jucători automați, la 30 de pași pe secundă:
 
-### 9.2 Dificultatea — decis
+| Jucător automat | Ce face | Cât a rezistat |
+| --- | --- | --- |
+| Nimic | stă pe loc | 94 s (o partidă) |
+| Constructor | strânge și construiește într-o ordine fixă; nu luptă intenționat, nu repară | 247 s, 294 s, 303 s |
+| Doar erou | pune totul în nivelul eroului și luptă lângă castel | 291 s, 293 s, 295 s, 297 s |
 
-- **Dificultatea implicită e fixă.**
-- **După ce bați o regiune,** la revenire poți alege modificatori care o fac mai grea, pentru recompense mai mari.
-- **Propunerea de structură** (din cercetare: Thronefall, Hades, Deep Rock Galactic):
-  - 6–8 modificatori pe regiune, ~5 globali și 1–2 legați de terenul ei; fiecare cu 1–3 trepte care dau puncte de **Amenințare**; presetări cu un clic (I / II / III);
-  - **modificatori care schimbă reguli, nu doar cifre:** Sezonul inundațiilor, Avangarda de cenușă, Drumuri rare, Al doilea front, Ceață;
-  - **recompensele se plătesc o singură dată pe prag**, per regiune; peste un prag, doar cosmetice (sigiliu de bronz, argint sau aur pe hartă); modificatorul-semnătură deblochează lore;
-  - un singur modificator pe axă; preview pe hartă înainte de start; alegerile sunt blocate în partidă.
+Neverificat: performanța pe un telefon real. Despre cum se simte la atingere există doar spusa lui Andrei că e în regulă.
 
-### 9.3 Stratul A — Favoarea zeilor (decis în principiu; detaliile când ajungem la el)
+## Scopuri și limite
 
-Favoarea crește din ce faci, nu se alege: arzi păduri, te favorizează zeul focului. Favoarea deblochează variante și reacții noi în familia zeului.
+### Scopuri pentru v1
 
-### 9.4 Stratul B — Cronica (decis în principiu; detaliile când ajungem la el)
+1. Jocul din prototip, cu aceleași reguli și aceeași senzație, reconstruit ca proiect.
+2. Se instalează pe ecranul de pornire al telefonului, rulează pe tot ecranul și merge fără internet.
+3. Se poate pune pe pauză, cu buton și automat când aplicația trece în fundal.
+4. Recordul rămâne pe telefon între sesiuni.
+5. Toate cifrele de echilibru stau într-un singur loc și se pot schimba fără a atinge restul codului.
+6. O comandă arată cât rezistă jucătorii automați, iar testele pică dacă dificultatea iese din limite.
+7. Nicio strategie care ignoră o direcție nu bate un amestec: nici „doar erou”, nici „fără erou”.
+8. O partidă întreruptă de telefon se poate relua.
 
-Fapte notabile deblochează conținut (de exemplu, 200 de păduri arse dau doctrina *Piromantului*), inclusiv fapte care te împing spre stiluri neîncercate.
+### Ne-scopuri pentru v1
 
-### 9.5 Notorietatea — decis
+- Conturi, salvare în cloud, clasamente, multiplayer.
+- Magazin de aplicații, monetizare, reclame.
+- Firebase sau orice alt server. Regula lui Andrei despre instanțe test și live nu are obiect aici până nu apare un backend.
+- Sunet, muzică, vibrații.
+- Grafică desenată. Rămân formele simple.
+- Îmbunătățiri păstrate de la o partidă la alta, mai multe hărți, tipuri noi de clădiri sau de dușmani. Reluarea unei partide întrerupte nu intră aici; ea este în v1.
+- Altă limbă decât româna.
+- iPhone.
 
-- Crește în ochii zeului căzut cu cât joci și câștigi. Cu cât e mai mare, manifestările lui sunt mai puternice, cu **rezistențe la elementele tale preferate, vizibile și plafonate**, iar recompensele sunt mai rare.
-- **Scade când nu joci:** revenirea după pauză e mai blândă, nu o pedeapsă.
+### Anti-scopuri
 
-### 9.6 Războiul galactic comun — decis ca strat opțional, după ce bucla de bază e dovedită
+Jocul a eșuat, chiar dacă merge tehnic, dacă:
 
-- O singură galaxie pentru toți jucătorii. Fiecare joacă pe planetele lui, dar planetele curățate împing frontul comun. Jucătorii nu interacționează direct; vezi doar **ecouri** (numele păzitorilor care au salvat planete în sectorul tău).
-- **Sezoane automate**, generate din reguli, **plus Inițiativele zeului căzut**, create de owner: documente de date care compun efecte din piese existente (ex. planetele-ocean inundate la 3 valuri, corupția rezistă la foc, notorietate ×2), cu un obiectiv comun și două deznodăminte. Fiecare se testează pe instanța de test cu botul și se publică pe live doar de owner, cu confirmare și jurnal.
-- **Condiții:**
-  - jocul merge complet offline;
-  - partidele se verifică pe server rejucând seed-ul și jurnalul deciziilor;
-  - obiectivele se scalează după jucătorii activi;
-  - backend candidat: Firebase.
+- **O singură direcție de investit e răspunsul evident.** Atunci nu mai există decizie, iar decizia e jocul.
+- **Devine joc de acțiune.** Eroul luptă, dar partida se câștigă prin ce alegi să construiești.
+- **Cheltui fără să vrei.** Trecutul în fugă peste un cerc nu trebuie să consume resurse.
+- **Are nevoie de internet ca să pornească o partidă.**
+- **Primul minut cere citit.** Regulile trebuie să se vadă din ce e pe ecran.
 
-## 10. Prototipul 1
+### Constrângeri
 
-**Intră:**
-- grila hex, traseul cu inserții (3 variante pe val), 4 tipuri de teren care participă la reacții;
-- terraformare: canal, deal, arde;
-- 4 turnuri de bază (fizic, foc, frig, fulger), ~6 reacții și bonusuri de vecinătate;
-- 4 inamici + boss la valurile 5 și 10, 15 valuri, draft 1 din 3;
-- aur cu dobândă și pământ;
-- **jurnalul deciziilor din prima zi**: e baza meta-progresiei, a verificării pe server și a datelor de playtest.
+- Telefon ținut vertical, jucat cu un singur deget. Orizontal trebuie doar să nu se strice.
+- Telefonul de referință e Samsung Galaxy A54 al lui Andrei: Android, ecran de 120 Hz.
+- Țintă de 60 de cadre pe secundă cu 150 de dușmani pe hartă, pe telefonul de referință. Simularea rulează la 60 de pași pe secundă indiferent de ecran.
+- Fără niciun apel de rețea în timpul jocului.
+- Interfața e în română. Textele stau într-un singur modul, ca o traducere să fie ieftină mai târziu.
+- Simularea dă același rezultat pentru aceeași sămânță și aceleași comenzi, indiferent de numărul de cadre pe secundă.
 
-**Formă:** forme simple, zero artă.
+## Regulile jocului
 
-**Criteriu:** o partidă de 20–30 de minute în care fiecare val pune o alegere reală. Dacă nu trece, refacem bucla înainte să adăugăm conținut.
+**Lumea.** Hartă văzută de sus, de 1100 × 1500 unități, aceeași la fiecare partidă. Castelul e un cerc cu raza 54, în centru (550, 750). Camera urmărește eroul și îl ține puțin deasupra mijlocului ecranului, ca degetul să nu-l acopere. Scara este cea mai mare dintre înălțimea ecranului / 880 și lățimea / 1100.
 
-**Nu intră:** meta-progresia, harta lumii, zeii, partea online.
+**Eroul.** Se mișcă cu un joystick care apare unde atingi ecranul. Baza joystickului urmează degetul la o tragere lungă. Viteza maximă se atinge la 70% din cursă, iar sub 14% eroul stă. Pe calculator merg și tastele WASD sau săgețile. Eroul se lovește de castel, de copaci și stânci neepuizate și de clădiri. Trece prin dușmani.
 
-## 11. Tehnic
+**Strânsul.** Cât eroul e la cel mult 16 unități de marginea unui copac sau a unei stânci, strânge singur, bucată cu bucată. Copacul și stânca se micșorează pe măsură ce se golesc, apoi cresc la loc după un timp.
 
-- **Prototip:** TypeScript + Vite + Canvas 2D (sau PixiJS).
-- **Simulare deterministă:** seed, generator aleator pe fluxuri numite, tick fix, nicio dependență de ceasul mașinii. Aceeași simulare servește prototipul, botul de echilibrare, persistența hărții și verificarea pe server.
-- **Teste pe logica de joc** (valuri, daune, reacții, economie). Fără infrastructură de verificare înaintea unui joc jucabil — lecția de la Kinstead.
-- **Motorul pentru varianta comercială se decide după ce prototipul dovedește că e distractiv.** Riscuri cunoscute pentru tehnologia web pe Steam: overlay-ul Steam în Electron, performanța în valurile târzii, Steam Deck. Niciun TD de succes găsit pe tehnologie web.
+**Investitul.** Fiecare lucru de cumpărat are un cerc punctat pe jos, cu raza 28, cu numele și costul rămas scrise sub el.
 
-## 12. Piața — din scanarea de pe 04.10.2026
+- Plata începe după 0,35 s de stat pe cerc și curge bucată cu bucată.
+- Plata parțială rămâne în cerc dacă pleci.
+- După ce un nivel e plătit, urmează o pauză de aproximativ o secundă înainte să înceapă plata pentru următorul.
+- Un cost pe care nu ți-l permiți e scris estompat.
+- Cât stai pe cercul unui turn, se vede raza lui de tragere.
 
-Cifrele vin din extrase de căutare; vânzările sunt estimări.
+**Ce se poate cumpăra.**
 
-- **Genul e aglomerat:** ~550–650 de TD-uri pe an; doar ~3,5% ajung la 1.000 de recenzii (≈ $150.000 brut). Succesele recente sunt hibrizi: Thronefall, 9 Kings, Tower Dominion.
-- **Concurenții direcți:**
-  - Tower Dominion (~219k copii);
-  - Hexguardian (hex + bucăți de traseu, ~52k);
-  - Nordhold (hex + teren);
-  - Rogue Tower;
-  - Emberward (capete fixe, reacții prin relicve);
-  - Isle of Arrows.
-- **Golul găsit, nefiind la nimeni:**
-  - capete fixe + bucăți alese;
-  - terraformare activă cu resursa ei;
-  - reacții legate de teren;
-  - **terenul care persistă între partide** (n-am găsit niciun TD care să facă asta).
-- **Ținte comerciale orientative:**
-  - preț $9,99–14,99;
-  - demo pe Steam, pentru că jocurile cu demo au în medie 90% recenzii pozitive, față de 82% fără;
-  - 5–7k wishlist-uri înainte de Next Fest și ~15k la lansare (reperul Gnomes: $367k brut).
-- **Riscuri:**
-  - echilibrarea cere testeri din afară devreme;
-  - prea multe sisteme diluează identitatea;
-  - eticheta „tower defense” vinde mai prost; poziționare pe roguelite / strategie.
+| Direcție | Ce | Ce face |
+| --- | --- | --- |
+| Apărare | 4 turnuri, la colțurile castelului (±125, ±125 față de centru) | trag singure în cel mai apropiat dușman din rază |
+| Apărare | reparat castelul | schimbă piatră pe viața castelului |
+| Economie | tabăra de tăietori, lângă copacii din vest | produce lemn singură |
+| Economie | cariera, lângă stâncile din nord | produce piatră singură |
+| Erou | nivelul eroului | mai multă viață și lovitură mai tare |
 
-## 13. Întrebări deschise
+**Lupta.** Eroul lovește singur, la intervale fixe, toți dușmanii aflați în raza lui într-un arc de aproximativ 143° în jurul celui mai apropiat, și îi împinge înapoi. Își reface viața dacă nu e lovit o vreme. Doborât, reapare lângă castel după câteva secunde, timp în care nu strânge și nu plătește.
 
-- **Numele comercial.** Numele de lucru e World Guard. Înainte de varianta comercială se verifică pe Steam, ca marcă și ca domeniu. „WorldGuard” e deja un plugin foarte cunoscut de Minecraft, deci concurează la căutări.
-- Numele și personalitatea zeilor; identitatea zeului căzut.
-- Stilul vizual pentru varianta comercială.
-- Detaliile straturilor A și B.
-- Câte regiuni are o planetă; ce înseamnă „curățată”.
-- Modelul de preț și eventualul DLC (nediscutat).
+**Dușmanii.** Apar într-un punct la întâmplare de pe marginea hărții și merg drept spre castel. Ajunși la zid, îl lovesc. Dacă eroul e la mai puțin de 90 de unități, îl urmăresc și îl lovesc pe el. Nu atacă turnurile sau clădirile. Există două feluri: cel obișnuit și cel greu, care apare mai rar, mai târziu, cu mai multă viață.
 
-## 14. Registrul deciziilor (04.10.2026)
+**Sfârșitul.** Partida se termină când viața castelului ajunge la zero. Ecranul de final arată cât ai rezistat, recordul și câți dușmani ai doborât.
 
-| Decizie | Stare |
-|---|---|
-| Roguelite TD, traseu fix, prototip în browser, țintă comercială | decis |
-| Grilă de hexagoane | decis |
-| Combinații: reacții pe inamic + vecinătate; fuziunea mai târziu | decis |
-| Modelarea hărții: bucăți de traseu + terraformare | decis |
-| Partide de 20–30 de minute | decis |
-| Traseu cu capete fixe, lungit prin ocoluri (o porțiune de 1–3 hexagoane devine un drum mai lung) | decis |
-| Terenul participă la reacții | decis |
-| Meta-progresie în trei straturi (A, B, C); se începe cu C | decis |
-| Fiecare ciclu = o planetă nouă; galaxie salvată planetă cu planetă | decis |
-| Persistență exactă pe fiecare hexagon | decis |
-| Ceasul lumii: lucrurile evoluează în timp | decis |
-| Dificultate implicită fixă + modificatori la revenire, cu recompense | decis |
-| Corupția = un zeu căzut; favoarea zeilor crește din ce faci | decis |
-| Ton serios; 3–4 tipuri de planete la lansare | decis |
-| Notorietatea: crește jucând, scade la pauză | decis |
-| Două ceasuri: personal după timpul jucat, galaxia în timp real | decis |
-| Războiul galactic comun ca strat opțional, după ce bucla e dovedită | decis |
-| Sezoane automate + Inițiativele zeului create de owner | decis |
-| Numele de lucru: World Guard; jucătorii sunt Guardians | decis |
+**Ce se vede mereu.** O bandă sus cu lemnul, piatra, ceasul și viața castelului, care se înroșește când castelul e lovit. Când castelul iese din ecran, un indicator pe margine arată încotro e și câtă viață are, și pulsează roșu când e atacat.
+
+## Cifrele de pornire
+
+Sunt cifrele cu care s-a încheiat prototipul. Sunt punct de plecare, nu țintă: se vor schimba ca să treacă plasa pentru dificultate. Timpul t e în secunde de la începutul partidei.
+
+| Lucru | Valoare |
+| --- | --- |
+| Castel | 400 viață |
+| Erou | raza 13; viteză 165/s; 60 viață, +20 pe nivel; lovitură 10, +6 pe nivel; raza loviturii 58; o lovitură la 0,45 s; împinge 140 (60 pe cei grei); reface 4 viață/s după 3 s fără lovituri; reapare după 5 s; nivel maxim 5 |
+| Start | 20 lemn, 0 piatră |
+| Copac | 8 lemn; o bucată la 0,3 s; crește la loc la 18 s după ce se golește |
+| Stâncă | 6 piatră; o bucată la 0,42 s; crește la loc la 24 s |
+| Turn | raza 190; o tragere la 0,8 s; lovitură 6 + 5 × (nivel − 1); nivel maxim 5 |
+| Cost turn, nivelul n | lemn 20 + 15 × (n − 1); piatră 15 × (n − 1) |
+| Tăietori, nivelurile 1–3 | un lemn la 1,6 / 1,0 / 0,7 s; cost 25 lemn / 40 lemn + 15 piatră / 60 lemn + 35 piatră |
+| Carieră, nivelurile 1–3 | o piatră la 2,4 / 1,5 / 1,0 s; cost 35 lemn / 45 lemn + 20 piatră / 60 lemn + 40 piatră |
+| Cost erou, nivelul n (2–5) | lemn 25 + 15 × (n − 2); piatră 10 + 15 × (n − 2) |
+| Reparat | 1 piatră dă 5 viață castelului; 10 pietre pe secundă |
+| Plată | o bucată la 0,035 s |
+| Primul dușman | la 10 s |
+| Ritmul dușmanilor | unul la fiecare max(0,6; 5 / (1 + t / 90)) secunde |
+| Viața dușmanului | 14 × (1 + t / 80) |
+| Dușman obișnuit | raza 10; viteză 46/s; 3 viață pe lovitură; lovește castelul o dată pe secundă, eroul la 0,8 s |
+| Dușman greu | fiecare al 7-lea, după 120 s; viață × 4; raza 15; viteză 30/s; 9 viață pe lovitură |
+
+Resursele apropiate sunt puține, iar piatra multă e departe. Asta e intenționat: distanța e prețul.
+
+| Fel | Centrul grupului | Câte | Raza grupului |
+| --- | --- | --- | --- |
+| copaci | (300, 640) | 6 | 62 |
+| copaci | (810, 900) | 6 | 62 |
+| copaci | (180, 230) | 8 | 78 |
+| copaci | (420, 1300) | 8 | 78 |
+| copaci | (900, 330) | 7 | 72 |
+| stânci | (560, 400) | 4 | 50 |
+| stânci | (980, 640) | 5 | 56 |
+| stânci | (150, 1050) | 6 | 62 |
+| stânci | (900, 1330) | 5 | 56 |
+
+Cercurile de investit:
+
+- Turnurile au cercul la 44 de unități sub ele.
+- Tăietorii au clădirea la (300, 730) și cercul la (300, 776).
+- Cariera are clădirea la (650, 392) și cercul la (650, 438).
+- Eroul are cercul la 150 deasupra castelului.
+- Reparatul are cercul la 100 sub castel.
+
+## Ce e nou față de prototip
+
+1. **Pauză.** Buton în banda de sus și pauză automată când aplicația trece în fundal. Cartonașul de pauză are „Continuă” și „Partidă nouă”. Cât e pauză, simularea nu avansează.
+2. **Instalare și joc fără internet.** Aplicație web instalabilă, cu toate fișierele păstrate pe telefon. O versiune nouă se activează la următoarea pornire, niciodată în mijlocul unei partide.
+3. **Ecranul rămâne aprins** cât ține partida, acolo unde telefonul permite.
+4. **Simulare cu pas fix și sămânță.** Fiecare partidă are o sămânță pentru punctele de apariție ale dușmanilor.
+5. **Plasa pentru dificultate**, descrisă mai jos.
+6. **Recordul** se păstrează sub o cheie cu versiune. Dacă telefonul refuză stocarea, jocul merge fără record.
+7. **Reluarea partidei.** Telefoanele închid des aplicațiile trecute în fundal. La fiecare pauză, jocul salvează pe telefon starea întreagă a partidei, cu tot cu starea generatorului de hazard. La următoarea pornire, cartonașul de start oferă „Continuă partida” lângă „Partidă nouă”. Salvarea are versiune și se șterge la sfârșitul partidei sau la o partidă nouă. O salvare cu altă versiune se aruncă fără eroare.
+
+## Abordări
+
+Ales: joc web cu TypeScript și Vite, desenat pe Canvas 2D, fără dependențe de rulare. Andrei a lăsat alegerea uneltelor lui Claude, care a cântărit trei drumuri. Prima variantă a documentului alesese PixiJS; alegerea s-a schimbat după ce Andrei a ales WorldGuard, care folosește deja Canvas 2D.
+
+| Drum | Ce aduce | Ce costă | Verdict |
+| --- | --- | --- | --- |
+| A. Joc web cu Canvas 2D | E ce folosește deja WorldGuard, fără nicio dependență de rulare. Desenatul din prototip se mută aproape neschimbat, deci jocul ajunge mai repede pe telefon. Se poate porni și testa în sesiunile din cloud. | Dacă vin grafică desenată, particule sau mult mai mulți dușmani, desenatul s-ar putea să trebuiască mutat pe PixiJS. | Ales. Costul unei mutări e mic, pentru că simularea e separată de desenat. |
+| B. Joc web cu PixiJS | Mai multă rezervă de viteză și drum pregătit pentru grafică desenată. | O dependență nouă într-un proiect care nu are niciuna și desenatul din prototip rescris, înainte ca vreo măsurătoare să o ceară. | Rezervă. Se trece la el doar dacă măsurătoarea pe A54 o cere. |
+| C. Motor de jocuri: Unity sau Godot | Drumul firesc dacă ținta ar fi magazinul de la început. | În sesiunile din cloud nu poate fi rulat, deci codul s-ar scrie fără a fi văzut mergând. Andrei ar construi și instala pe telefon la fiecare încercare. | Respins |
+
+## Cum se construiește
+
+Jocul are cinci părți care se pot înțelege separat. Trei dintre ele au deja folderul lor în WorldGuard:
+
+- **Simularea** (`src/sim/`). TypeScript curat, fără browser. Ține starea partidei și o avansează cu un pas fix de 1/60 s, primind doar direcția joystickului. Hazardul vine din generatorul cu sămânță care există deja în repo. Starea e din date simple, ca să poată fi salvată și reluată.
+- **Cifrele** (`src/data/`). Cifrele de echilibru și așezarea hărții, ca date.
+- **Desenatul** (`src/render/`). Canvas 2D, pornind de la desenatul din prototip. Citește starea și o arată. Nu schimbă niciodată starea.
+- **Comenzile.** Joystickul și tastele produc un vector de direcție.
+- **Interfața.** Banda de sus și cartonașele (start, pauză, final) sunt HTML și CSS simplu peste terenul de joc, fără bibliotecă de interfață.
+
+Bucla rulează simularea cu acumulator: cel mult 5 pași pe cadru, restul se aruncă, ca un telefon lent să încetinească jocul în loc să-l blocheze.
+
+**Teste.** Vitest pe simulare: plata pe cerc (inclusiv întârzierea și plata parțială), strânsul, ținta turnurilor, curba dușmanilor, căderea și reapariția eroului, sfârșitul partidei, faptul că aceeași sămânță cu aceleași comenzi dă aceeași stare, și faptul că o partidă salvată și reluată continuă identic cu una neîntreruptă.
+
+**Găzduire.** GitHub Pages, publicat de GitHub Actions la fiecare push pe ramura principală. Repo-ul e public, deci adresa jocului va fi de forma `https://andreibesliu.github.io/WorldGuard/`. Poarta `npm run check` și plasa pentru dificultate rulează la fiecare pull request. Azi repo-ul nu are nici verificare automată, nici găzduire.
+
+**Proiectul.** `CLAUDE.md`, `README.md` și `DEVLOG.md` se rescriu pentru jocul nou. Documentul ăsta ia locul lui `docs/GDD.md`, unde proiectul își ține deja designul.
+
+**Ordinea.** Întâi jocul jucabil pe telefon, apoi pauza, instalarea și reluarea, la urmă plasa pentru dificultate și reechilibrarea. E regula din WorldGuard: întâi aflăm dacă e distractiv.
+
+## Plasa pentru dificultate
+
+Cinci jucători automați rulează simularea fără browser, pe 20 de semințe fixe fiecare. O comandă tipărește tabelul, iar limitele rulează ca teste și pică build-ul când sunt depășite.
+
+| Jucător | Ce face | Limită, pe mediana celor 20 de partide |
+| --- | --- | --- |
+| Nimic | stă pe loc | între 60 și 130 s |
+| Amestec | strânge și investește pe rând în turnuri, economie și erou | între 240 și 360 s |
+| Doar erou | investește doar în erou și luptă lângă castel | cel mult 75% din mediana „Amestec” |
+| Fără erou | ca „Amestec”, dar nu investește niciodată în erou | cel mult 90% din mediana „Amestec” |
+| Fără economie | ca „Amestec”, dar nu construiește tăietori sau carieră | fără limită; doar tipărit |
+
+Limita „Doar erou” nu e îndeplinită de cifrele de pornire (vezi măsurătorile). „Fără erou” și „Fără economie” nu au fost măsurate niciodată. Aducerea celor două limite în regulă face parte din v1.
+
+Prima pârghie de încercat, fiindcă nu schimbă senzația eroului pe care Andrei a aprobat-o: dușmanii vin și în grupuri simultane din părți opuse, astfel încât un singur erou să nu poată fi în două locuri.
+
+Pârghia asta avantajează turnurile, deci se verifică de fiecare dată și pe limita „Fără erou”. Dacă patru turnuri ajung singure, investiția în erou a devenit inutilă și anti-scopul e încălcat din partea cealaltă. Abia dacă pârghia nu ajunge se umblă la arcul și la împinsul loviturii eroului.
+
+„Fără economie” rămâne fără limită în v1, ca echilibrarea să nu aibă trei constrângeri care trag una de alta. Dacă tabelul arată că economia e inutilă, asta devine o problemă de rezolvat după v1.
+
+## Înainte de construcție
+
+Repo-ul e ales: WorldGuard, public. Au rămas două lucruri pe care le poate face doar Andrei:
+
+- [ ] Aprobă accesul de scriere la WorldGuard pentru sesiunea care construiește, când apare cererea.
+- [ ] Pornește GitHub Pages din setările repo-ului, cu sursa „GitHub Actions”. Poate aștepta până la prima publicare.
+
+Construcția se face pe o ramură separată din WorldGuard, cu pull request.
+
+## Sfârșitul v1
+
+### Când e gata v1
+
+- Andrei deschide linkul pe telefon, instalează jocul și joacă o partidă în mod avion.
+- Tot ce e în „Regulile jocului” și în „Ce e nou față de prototip” funcționează.
+- Testele trec, inclusiv limitele din plasă.
+- Un pas de simulare cu 150 de dușmani durează în medie sub 1 ms în rularea testelor. Marja e largă intenționat, ca testul să nu depindă de mașină.
+- Viteza reală se verifică pe telefonul lui Andrei, nu în cloud, unde nu există placă grafică. De aceea prima construcție jucabilă ajunge pe telefonul lui înainte de restul v1, cu un afișaj de cadre pe secundă care se poate porni și cu o partidă în care apar 150 de dușmani. Dacă acolo jocul scade sub 60 de cadre pe secundă, desenatul trece pe PixiJS înainte de restul v1.
+
+### Ce ar putea veni după v1
+
+Nimic de aici nu e promis și fiecare ar avea designul lui: sunet și vibrații, grafică desenată, feluri noi de dușmani (rapizi, care trag de la distanță, care atacă turnurile), ziduri, limită la cât cară eroul, îmbunătățiri păstrate între partide, mai multe hărți, împachetare pentru magazin, limba engleză.
+
+### Lăsat constructorului
+
+- Numele fișierelor și ale modulelor, în structura `src/sim`, `src/data`, `src/render`.
+- CSS-ul exact, cât timp arată ca prototipul.
+- Cu ce unealtă se face partea de instalare și de joc fără internet.
+- Dacă și cum se face o variantă într-un singur fișier, de arătat ca pagină privată înainte de publicare.
+- Cum sunt scriși jucătorii automați, cât timp fac ce spune tabelul.
+- Cifrele de echilibru, cât timp plasa trece și regulile rămân cele de mai sus.

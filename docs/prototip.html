@@ -1,0 +1,924 @@
+<!-- Prototip de aruncat. Referință pentru aspect și comportament, nu cod de refolosit ca atare. -->
+<title>Straja Castelului</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Rubik:wght@400;500;700&display=swap">
+<style>
+/* Layout: one full-bleed playfield. A slim banner pinned to the top edge carries stock, clock and
+   castle health; cards sit centred over the field. One visual world (a dusk meadow), no light variant. */
+:root {
+  --ground: #3f5c47;
+  --ground-lift: #4a6a52;
+  --ground-sink: #36503e;
+  --edge: #1b2b23;
+  --dirt: #8b7b5d;
+  --stone: #d3d6d0;
+  --stone-shade: #9aa4a0;
+  --rock: #8d9ba7;
+  --rock-shade: #6a7782;
+  --wood: #d09a57;
+  --trunk: #76532f;
+  --pine: #1f3f33;
+  --pine-lift: #2e5f49;
+  --hero: #f4c542;
+  --hero-shade: #a97f12;
+  --foe: #dc4764;
+  --foe-shade: #8c2640;
+  --ink: #f4f0e3;
+  --ink-soft: #b9c2b6;
+  --night: #14201a;
+  --panel: rgba(20, 32, 26, .86);
+  --veil: rgba(20, 32, 26, .55);
+  --track: rgba(244, 240, 227, .16);
+  --line: rgba(244, 240, 227, .14);
+  --font-display: "Alfa Slab One", Rockwell, Georgia, serif;
+  --font-ui: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html { height: 100%; box-sizing: border-box; background: var(--edge); }
+body {
+  height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none;
+  background: var(--ground); color: var(--ink); font-family: var(--font-ui);
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.stage { position: relative; height: 100%; overflow: hidden; }
+#field { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+.hud {
+  position: absolute; inset: 0 0 auto 0; pointer-events: none;
+  padding-block: 10px 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.banner {
+  box-sizing: border-box; width: 100%; max-width: 460px; margin-inline: auto;
+  background: var(--panel); border: 2px solid transparent; border-radius: 14px;
+  padding: 9px 14px 10px;
+  display: grid; grid-template-columns: auto auto 1fr; column-gap: 18px; row-gap: 8px; align-items: baseline;
+}
+.banner.alarm { border-color: var(--foe); }
+.stock { display: flex; align-items: baseline; gap: 6px; }
+.stock b, .clock, .castle b {
+  font-family: var(--font-display); font-weight: 400; font-size: 20px; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.stock b { min-width: 2.2ch; }
+.stock span, .castle span {
+  font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-soft);
+}
+.chip { width: 11px; height: 11px; border-radius: 3px; align-self: center; flex: none; }
+.chip-wood { background: var(--wood); }
+.chip-stone { background: var(--rock); }
+.chip-ink { background: var(--ink); }
+.chip-hero { background: var(--hero); }
+.chip-foe { background: var(--foe); }
+.clock { justify-self: end; }
+.castle { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+.castle b { font-size: 15px; min-width: 3ch; text-align: right; }
+.meter { height: 9px; border-radius: 5px; background: var(--track); overflow: hidden; }
+.meter i { display: block; height: 100%; width: 100%; border-radius: 5px; background: var(--ink); transition: width .15s linear; }
+.meter.low i { background: var(--foe); }
+
+.hint {
+  position: absolute; left: 0; right: 0; bottom: 20%; margin: 0; text-align: center; pointer-events: none;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  font-size: 14px; line-height: 1.35;
+}
+.hint span { display: inline-block; background: var(--panel); padding: 9px 15px; border-radius: 999px; }
+
+.veil {
+  position: absolute; inset: 0; display: grid; place-items: center; background: var(--veil);
+  padding-block: 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.card {
+  box-sizing: border-box; width: 100%; max-width: 344px;
+  background: var(--night); border: 1px solid var(--line); border-radius: 18px;
+  padding: 22px 22px 22px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.tag {
+  align-self: flex-start; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--night); background: var(--hero); padding: 3px 8px; border-radius: 4px;
+}
+.card h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1.08; text-wrap: balance; }
+.rules { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 14.5px; line-height: 1.4; }
+.rules li { display: grid; grid-template-columns: 11px 1fr; gap: 11px; align-items: start; }
+.rules .chip { margin-top: 5px; }
+.result { display: flex; flex-direction: column; gap: 2px; }
+.result span, .facts dt { font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-soft); }
+.result b { font-family: var(--font-display); font-weight: 400; font-size: 52px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--hero); }
+.facts { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.facts div { display: flex; flex-direction: column; gap: 3px; }
+.facts dd { margin: 0; font-family: var(--font-display); font-size: 20px; line-height: 1; font-variant-numeric: tabular-nums; }
+.go {
+  font-family: var(--font-display); font-weight: 400; font-size: 18px; color: var(--night);
+  background: var(--hero); border: 0; border-radius: 12px; padding: 14px 18px; cursor: pointer;
+}
+.go:active { transform: translateY(1px); }
+.go:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+</style>
+
+<div class="stage" id="stage">
+  <canvas id="field" aria-label="Terenul de joc"></canvas>
+
+  <div class="hud" id="hud">
+    <div class="banner" id="banner">
+      <div class="stock"><i class="chip chip-wood"></i><b id="wood">20</b><span>lemn</span></div>
+      <div class="stock"><i class="chip chip-stone"></i><b id="stone">0</b><span>piatră</span></div>
+      <div class="clock" id="clock">0:00</div>
+      <div class="castle">
+        <span>Castel</span>
+        <div class="meter" id="meter"><i id="castleFill"></i></div>
+        <b id="castleHp">400</b>
+      </div>
+    </div>
+  </div>
+
+  <p class="hint" id="hint" hidden><span>Ține degetul pe ecran și trage ca să miști eroul</span></p>
+
+  <div class="veil" id="startVeil">
+    <div class="card">
+      <span class="tag">Prototip de încercat</span>
+      <h1>Straja Castelului</h1>
+      <ul class="rules">
+        <li><i class="chip chip-ink"></i><span>Ține degetul pe ecran și trage. Eroul merge încotro tragi.</span></li>
+        <li><i class="chip chip-wood"></i><span>Stai lângă copaci și stânci ca să strângi lemn și piatră.</span></li>
+        <li><i class="chip chip-hero"></i><span>Oprește-te pe un cerc punctat ca să investești în turnuri, tăietori, carieră sau erou.</span></li>
+        <li><i class="chip chip-foe"></i><span>Eroul lovește singur ce e aproape. Partida ține până cade castelul.</span></li>
+      </ul>
+      <button class="go" id="start" type="button">Începe</button>
+    </div>
+  </div>
+
+  <div class="veil" id="overVeil" hidden>
+    <div class="card">
+      <h1>Castelul a căzut</h1>
+      <div class="result"><span>Ai rezistat</span><b id="overTime">0:00</b></div>
+      <dl class="facts">
+        <div><dt id="recordLabel">Record</dt><dd id="overRecord">0:00</dd></div>
+        <div><dt>Dușmani doborâți</dt><dd id="overKills">0</dd></div>
+      </dl>
+      <button class="go" id="again" type="button">Încă o partidă</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+const $ = id => document.getElementById(id);
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+// ---------- palette: read from the CSS tokens so the field and the HUD share one source
+const cssRoot = getComputedStyle(document.documentElement);
+const COL = {};
+for (const n of ['ground', 'ground-lift', 'ground-sink', 'edge', 'dirt', 'stone', 'stone-shade', 'rock', 'rock-shade',
+  'wood', 'trunk', 'pine', 'pine-lift', 'hero', 'hero-shade', 'foe', 'foe-shade', 'ink', 'ink-soft', 'night']) {
+  COL[n.replace(/-(\w)/g, (_, c) => c.toUpperCase())] = cssRoot.getPropertyValue('--' + n).trim();
+}
+const alpha = (hex, a) => { const v = parseInt(hex.slice(1), 16); return `rgba(${v >> 16 & 255},${v >> 8 & 255},${v & 255},${a})`; };
+const FONT_UI = '"Rubik", system-ui, sans-serif';
+
+// ---------- world and balance: every number worth tuning lives here
+const W = 1100, H = 1500;
+const CX = 550, CY = 750, CASTLE_R = 54, CASTLE_HP = 400;
+const PAD_R = 28, HOME_X = CX - 86, HOME_Y = CY + 6;
+const HERO = { r: 13, speed: 165, hp: 60, hpLvl: 20, dmg: 10, dmgLvl: 6, reach: 58, swing: 0.45, regenWait: 3, regen: 4, respawn: 5 };
+const NODE = {
+  wood: { amount: 8, regrow: 18, every: 0.3, r: 9 },
+  stone: { amount: 6, regrow: 24, every: 0.42, r: 14 },
+};
+const TOWER = { range: 190, rate: 0.8 };
+const towerDmg = l => 6 + 5 * (l - 1);
+const EVERY = { camp: [0, 1.6, 1.0, 0.7], quarry: [0, 2.4, 1.5, 1.0] };   // seconds per unit, by level
+const MAXLVL = { tower: 5, camp: 3, quarry: 3, hero: 5 };
+const COST = {
+  tower: l => ({ wood: 20 + 15 * (l - 1), stone: 15 * (l - 1) }),
+  camp: l => [{ wood: 25, stone: 0 }, { wood: 40, stone: 15 }, { wood: 60, stone: 35 }][l - 1],
+  quarry: l => [{ wood: 35, stone: 0 }, { wood: 45, stone: 20 }, { wood: 60, stone: 40 }][l - 1],
+  hero: l => ({ wood: 25 + 15 * (l - 2), stone: 10 + 15 * (l - 2) }),
+};
+const REPAIR = { every: 0.1, heal: 5 };
+const PAY_EVERY = 0.035, PAY_DWELL = 0.35;
+const spawnEvery = t => Math.max(0.6, 5 / (1 + t / 90));
+const foeHp = t => 14 * (1 + t / 80);
+const NAME = { tower: 'Turn', camp: 'Tăietori', quarry: 'Carieră', hero: 'Erou' };
+
+const CLUSTERS = [
+  ['wood', 300, 640, 6, 62], ['wood', 810, 900, 6, 62], ['wood', 180, 230, 8, 78],
+  ['wood', 420, 1300, 8, 78], ['wood', 900, 330, 7, 72],
+  ['stone', 560, 400, 4, 50], ['stone', 980, 640, 5, 56], ['stone', 150, 1050, 6, 62], ['stone', 900, 1330, 5, 56],
+];
+
+function rng(seed) {
+  return () => {
+    seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function makeNodes() {
+  const r = rng(7), nodes = [];
+  for (const [type, cx, cy, n, rad] of CLUSTERS) {
+    let placed = 0, tries = 0;
+    while (placed < n && tries++ < 400) {
+      const a = r() * TAU, d = Math.sqrt(r()) * rad;
+      const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d;
+      if (nodes.some(o => Math.hypot(o.x - x, o.y - y) < 36)) continue;
+      nodes.push({
+        type, x, y, left: NODE[type].amount, regrowAt: 0, shakeT: -9, tilt: r() * TAU,
+        shape: type === 'stone' ? Array.from({ length: 7 }, () => 0.78 + r() * 0.3) : null,
+      });
+      placed++;
+    }
+  }
+  return nodes;
+}
+
+const pad = (kind, x, y, bx, by) => ({
+  kind, x, y, bx, by, lvl: 0, paid: { wood: 0, stone: 0 }, dwell: 0, payT: 0, flip: false, cool: 0, prodT: 0, popT: -9,
+});
+function makePads() {
+  const p = [];
+  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const bx = CX + sx * 125, by = CY + sy * 125;
+    p.push(pad('tower', bx, by + 44, bx, by));
+  }
+  p.push(pad('camp', 300, 776, 300, 730));
+  p.push(pad('quarry', 650, 438, 650, 392));
+  p.push(pad('hero', CX, CY - 150, 0, 0));
+  p.push(pad('repair', CX, CY + 100, 0, 0));
+  return p;
+}
+
+// ---------- state
+let S;
+const cam = { x: CX, y: CY };
+const input = { x: 0, y: 0 };
+let override = null;
+
+function newGame() {
+  S = {
+    mode: 'ready', t: 0, wood: 20, stone: 0, kills: 0,
+    castle: { hp: CASTLE_HP, hitT: -9 },
+    hero: {
+      x: HOME_X, y: HOME_Y, face: Math.PI, hp: HERO.hp, lvl: 1, swingT: 0, slashT: -9, slashA: 0,
+      hurtT: -9, dead: false, respawnT: 0, gatherT: 0, moved: false, walk: 0,
+    },
+    nodes: makeNodes(), pads: makePads(), foes: [], shots: [], floats: [], spawnT: 10, spawnN: 0,
+  };
+  cam.x = S.hero.x; cam.y = S.hero.y + 50;
+}
+
+const heroMaxHp = () => HERO.hp + HERO.hpLvl * (S.hero.lvl - 1);
+const heroDmg = () => HERO.dmg + HERO.dmgLvl * (S.hero.lvl - 1);
+const levelOf = p => p.kind === 'hero' ? S.hero.lvl : p.lvl;
+const nextCost = p => p.kind === 'repair' || levelOf(p) >= MAXLVL[p.kind] ? null : COST[p.kind](levelOf(p) + 1);
+const say = (x, y, text, tone) => { S.floats.push({ x, y, text, tone, t0: S.t }); };
+const puff = (x, y, r) => { S.floats.push({ x, y, r, t0: S.t, puff: true }); };
+
+// ---------- simulation
+function step(dt) {
+  if (S.mode !== 'playing') return;
+  S.t += dt;
+  const h = S.hero;
+
+  if (h.dead) {
+    h.respawnT -= dt;
+    if (h.respawnT <= 0) { h.dead = false; h.hp = heroMaxHp(); h.x = HOME_X; h.y = HOME_Y; h.hurtT = -9; }
+  } else {
+    const mag = Math.hypot(input.x, input.y);
+    if (mag > 0.01) {
+      h.x += input.x * HERO.speed * dt; h.y += input.y * HERO.speed * dt;
+      h.moved = true; h.walk += dt * mag;
+      if (S.t - h.slashT > 0.25) h.face = Math.atan2(input.y, input.x);
+    }
+    collideHero();
+    if (S.t - h.hurtT > HERO.regenWait && h.hp < heroMaxHp()) h.hp = Math.min(heroMaxHp(), h.hp + HERO.regen * dt);
+    gather(dt);
+    swing(dt);
+  }
+
+  updatePads(dt);
+
+  S.spawnT -= dt;
+  while (S.spawnT <= 0) { spawnFoe(); S.spawnT += spawnEvery(S.t); }
+
+  updateShots(dt);
+  updateFoes(dt);
+
+  for (const n of S.nodes) if (n.left <= 0 && S.t >= n.regrowAt) n.left = NODE[n.type].amount;
+  if (S.floats.length) S.floats = S.floats.filter(f => S.t - f.t0 < (f.puff ? 0.3 : 0.9));
+
+  if (S.castle.hp <= 0) gameOver();
+}
+
+function pushOut(h, ox, oy, or) {
+  const dx = h.x - ox, dy = h.y - oy, d = Math.hypot(dx, dy), min = HERO.r + or;
+  if (d >= min) return;
+  if (d < 0.001) { h.x = ox + min; return; }
+  h.x = ox + dx / d * min; h.y = oy + dy / d * min;
+}
+function collideHero() {
+  const h = S.hero;
+  pushOut(h, CX, CY, CASTLE_R);
+  for (const n of S.nodes) if (n.left > 0) pushOut(h, n.x, n.y, NODE[n.type].r);
+  for (const p of S.pads) if (p.lvl > 0 && p.kind !== 'hero') pushOut(h, p.bx, p.by, p.kind === 'tower' ? 14 : 18);
+  h.x = clamp(h.x, 20, W - 20); h.y = clamp(h.y, 20, H - 20);
+}
+
+function gather(dt) {
+  const h = S.hero;
+  h.gatherT = Math.max(0, h.gatherT - dt);
+  let best = null, bd = 16;
+  for (const n of S.nodes) {
+    if (n.left <= 0) continue;
+    const d = Math.hypot(n.x - h.x, n.y - h.y) - NODE[n.type].r - HERO.r;
+    if (d < bd) { bd = d; best = n; }
+  }
+  if (!best || h.gatherT > 0) return;
+  best.left--; S[best.type]++; best.shakeT = S.t;
+  h.gatherT = NODE[best.type].every;
+  say(best.x, best.y - 20, '+1', best.type);
+  if (best.left <= 0) best.regrowAt = S.t + NODE[best.type].regrow;
+}
+
+function hurtFoe(f, dmg) { f.hp -= dmg; f.hitT = S.t; }
+
+function swing(dt) {
+  const h = S.hero;
+  h.swingT -= dt;
+  if (h.swingT > 0) return;
+  let best = null, bd = HERO.reach;
+  for (const f of S.foes) {
+    if (f.hp <= 0) continue;
+    const d = Math.hypot(f.x - h.x, f.y - h.y) - f.r;
+    if (d < bd) { bd = d; best = f; }
+  }
+  if (!best) return;
+  const a = Math.atan2(best.y - h.y, best.x - h.x), dmg = heroDmg();
+  for (const f of S.foes) {
+    if (f.hp <= 0) continue;
+    const dx = f.x - h.x, dy = f.y - h.y, d = Math.hypot(dx, dy) || 1;
+    if (d - f.r > HERO.reach) continue;
+    let da = Math.atan2(dy, dx) - a; da = Math.atan2(Math.sin(da), Math.cos(da));
+    if (Math.abs(da) > 1.25) continue;
+    hurtFoe(f, dmg);
+    const k = f.brute ? 60 : 140;
+    f.kx += dx / d * k; f.ky += dy / d * k;
+  }
+  h.swingT = HERO.swing; h.slashT = S.t; h.slashA = a; h.face = a;
+}
+
+function hurtHero(dmg) {
+  const h = S.hero;
+  h.hp -= dmg; h.hurtT = S.t;
+  if (h.hp <= 0) { h.dead = true; h.respawnT = HERO.respawn; puff(h.x, h.y, 26); say(h.x, h.y - 24, 'Eroul a căzut', 'foe'); }
+}
+
+function complete(p) {
+  p.paid.wood = p.paid.stone = 0; p.popT = S.t; p.dwell = -0.7;
+  if (p.kind === 'hero') {
+    S.hero.lvl++; S.hero.hp = heroMaxHp();
+    say(p.x, p.y - 40, 'Erou nivel ' + S.hero.lvl, 'hero');
+  } else {
+    p.lvl++;
+    if (p.lvl === 1) { p.cool = 0.2; p.prodT = p.kind === 'tower' ? 0 : EVERY[p.kind][1]; }
+    say(p.bx, p.by - 34, NAME[p.kind] + ' nivel ' + p.lvl, 'hero');
+  }
+}
+
+function updatePads(dt) {
+  const h = S.hero;
+  for (const p of S.pads) {
+    // what stands, works
+    if (p.kind === 'tower' && p.lvl > 0) {
+      p.cool -= dt;
+      if (p.cool <= 0) {
+        let best = null, bd = TOWER.range;
+        for (const f of S.foes) {
+          if (f.hp <= 0) continue;
+          const d = Math.hypot(f.x - p.bx, f.y - p.by);
+          if (d < bd) { bd = d; best = f; }
+        }
+        if (best) { S.shots.push({ x: p.bx, y: p.by, tx: best.x, ty: best.y, a: 0, target: best, dmg: towerDmg(p.lvl) }); p.cool = TOWER.rate; }
+        else p.cool = 0;
+      }
+    } else if ((p.kind === 'camp' || p.kind === 'quarry') && p.lvl > 0) {
+      p.prodT -= dt;
+      if (p.prodT <= 0) {
+        const res = p.kind === 'camp' ? 'wood' : 'stone';
+        S[res]++; say(p.bx, p.by - 28, '+1', res);
+        p.prodT += EVERY[p.kind][p.lvl];
+      }
+    }
+
+    // paying in while the hero stands on the circle
+    const on = !h.dead && Math.hypot(h.x - p.x, h.y - p.y) < PAD_R;
+    if (!on) { p.dwell = Math.min(p.dwell, 0); if (p.dwell < 0) p.dwell = Math.min(0, p.dwell + dt); continue; }
+    p.dwell += dt;
+    if (p.dwell < PAY_DWELL) continue;
+    p.payT -= dt;
+    if (p.kind === 'repair') {
+      while (p.payT <= 0) {
+        if (S.stone <= 0 || S.castle.hp >= CASTLE_HP) { p.payT = 0; break; }
+        S.stone--; S.castle.hp = Math.min(CASTLE_HP, S.castle.hp + REPAIR.heal); p.payT += REPAIR.every;
+      }
+      continue;
+    }
+    const cost = nextCost(p);
+    if (!cost) { p.payT = 0; continue; }
+    while (p.payT <= 0) {
+      const canW = cost.wood > p.paid.wood && S.wood > 0, canS = cost.stone > p.paid.stone && S.stone > 0;
+      let res = null;
+      if (canW && canS) res = (p.flip = !p.flip) ? 'wood' : 'stone';
+      else if (canW) res = 'wood';
+      else if (canS) res = 'stone';
+      if (!res) { p.payT = 0; break; }
+      S[res]--; p.paid[res]++; p.payT += PAY_EVERY;
+      if (p.paid.wood >= cost.wood && p.paid.stone >= cost.stone) { complete(p); break; }
+    }
+  }
+}
+
+function spawnFoe() {
+  S.spawnN++;
+  const brute = S.t > 120 && S.spawnN % 7 === 0;
+  let u = Math.random() * 2 * (W + H), x, y;
+  if (u < W) { x = u; y = 0; }
+  else if ((u -= W) < H) { x = W; y = u; }
+  else if ((u -= H) < W) { x = u; y = H; }
+  else { x = 0; y = u - W; }
+  const hp = foeHp(S.t) * (brute ? 4 : 1);
+  S.foes.push({
+    x, y, r: brute ? 15 : 10, hp, maxHp: hp, speed: brute ? 30 : 46, dmg: brute ? 9 : 3, brute,
+    atkT: 0.4, hitT: -9, lungeT: -9, kx: 0, ky: 0, a: 0,
+  });
+}
+
+function updateShots(dt) {
+  for (const s of S.shots) {
+    if (s.target && s.target.hp > 0) { s.tx = s.target.x; s.ty = s.target.y; } else s.target = null;
+    const dx = s.tx - s.x, dy = s.ty - s.y, d = Math.hypot(dx, dy), mv = 420 * dt;
+    s.a = Math.atan2(dy, dx);
+    if (d <= mv + 6) { if (s.target) hurtFoe(s.target, s.dmg); s.done = true; }
+    else { s.x += dx / d * mv; s.y += dy / d * mv; }
+  }
+  if (S.shots.length) S.shots = S.shots.filter(s => !s.done);
+}
+
+function updateFoes(dt) {
+  const h = S.hero, foes = S.foes, damp = Math.exp(-7 * dt);
+  for (const f of foes) {
+    if (f.hp <= 0) continue;
+    const chase = !h.dead && Math.hypot(h.x - f.x, h.y - f.y) < 90;
+    const tx = chase ? h.x : CX, ty = chase ? h.y : CY;
+    const stop = chase ? f.r + HERO.r + 2 : CASTLE_R + f.r + 1;
+    const dx = tx - f.x, dy = ty - f.y, d = Math.hypot(dx, dy) || 1;
+    f.a = Math.atan2(dy, dx);
+    if (d > stop) {
+      const s = Math.min(f.speed * dt, d - stop);
+      f.x += dx / d * s; f.y += dy / d * s;
+    } else {
+      f.atkT -= dt;
+      if (f.atkT <= 0) {
+        f.lungeT = S.t;
+        if (chase) { f.atkT = 0.8; hurtHero(f.dmg); }
+        else { f.atkT = 1; S.castle.hp -= f.dmg; S.castle.hitT = S.t; }
+      }
+    }
+    f.x += f.kx * dt; f.y += f.ky * dt; f.kx *= damp; f.ky *= damp;
+  }
+  // keep the crowd from stacking
+  for (let i = 0; i < foes.length; i++) {
+    const a = foes[i];
+    for (let j = i + 1; j < foes.length; j++) {
+      const b = foes[j], dx = b.x - a.x, dy = b.y - a.y, min = a.r + b.r;
+      if (dx > min || dx < -min || dy > min || dy < -min) continue;
+      const d = Math.hypot(dx, dy);
+      if (d >= min) continue;
+      if (d < 0.001) { b.x += 0.5; continue; }
+      const push = (min - d) / 2, ux = dx / d, uy = dy / d;
+      a.x -= ux * push; a.y -= uy * push; b.x += ux * push; b.y += uy * push;
+    }
+    const dx = a.x - CX, dy = a.y - CY, d = Math.hypot(dx, dy), min = CASTLE_R + a.r;
+    if (d < min && d > 0.001) { a.x = CX + dx / d * min; a.y = CY + dy / d * min; }
+  }
+  let dead = 0;
+  for (const f of foes) if (f.hp <= 0) { dead++; S.kills++; puff(f.x, f.y, f.r + 6); }
+  if (dead) S.foes = foes.filter(f => f.hp > 0);
+}
+
+// ---------- record (per phone, best effort)
+const KEY = 'straja-record';
+function readRecord() { try { return Number(localStorage.getItem(KEY)) || 0; } catch { return 0; } }
+function writeRecord(v) { try { localStorage.setItem(KEY, String(v)); } catch { /* play on without it */ } }
+const clock = t => { const s = Math.floor(t); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+
+function gameOver() {
+  S.mode = 'over'; S.castle.hp = 0; joy.on = false;
+  const secs = Math.floor(S.t), rec = readRecord(), isNew = secs > rec;
+  if (isNew) writeRecord(secs);
+  $('overTime').textContent = clock(secs);
+  $('recordLabel').textContent = isNew ? 'Record nou' : 'Record';
+  $('overRecord').textContent = clock(Math.max(secs, rec));
+  $('overKills').textContent = S.kills;
+  $('overVeil').hidden = false;
+  $('again').focus({ preventScroll: true });
+}
+
+// ---------- input: a joystick that appears where the thumb lands, plus keys for a desk
+const canvas = $('field'), stage = $('stage'), ctx = canvas.getContext('2d');
+const joy = { on: false, id: -1, bx: 0, by: 0, x: 0, y: 0 };
+const JOY_R = 48;
+const keys = new Set();
+const at = e => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+
+canvas.addEventListener('pointerdown', e => {
+  if (S.mode !== 'playing' || joy.on) return;
+  const [x, y] = at(e);
+  joy.on = true; joy.id = e.pointerId; joy.bx = joy.x = x; joy.by = joy.y = y;
+  try { canvas.setPointerCapture(e.pointerId); } catch { /* not essential */ }
+  e.preventDefault();
+});
+canvas.addEventListener('pointermove', e => {
+  if (!joy.on || e.pointerId !== joy.id) return;
+  const [x, y] = at(e);
+  joy.x = x; joy.y = y;
+  const dx = x - joy.bx, dy = y - joy.by, d = Math.hypot(dx, dy);
+  if (d > JOY_R) { joy.bx = x - dx / d * JOY_R; joy.by = y - dy / d * JOY_R; }   // the base follows a long drag
+});
+const release = e => { if (e.pointerId === joy.id) joy.on = false; };
+canvas.addEventListener('pointerup', release);
+canvas.addEventListener('pointercancel', release);
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+const MOVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'];
+window.addEventListener('keydown', e => { if (MOVE_KEYS.includes(e.code)) { keys.add(e.code); if (S.mode === 'playing') e.preventDefault(); } });
+window.addEventListener('keyup', e => keys.delete(e.code));
+window.addEventListener('blur', () => { keys.clear(); joy.on = false; });
+
+function readInput() {
+  if (override) { input.x = override.x; input.y = override.y; return; }
+  let x = 0, y = 0;
+  if (joy.on) {
+    const dx = joy.x - joy.bx, dy = joy.y - joy.by, d = Math.hypot(dx, dy);
+    if (d > JOY_R * 0.14) { const m = Math.min(1, d / (JOY_R * 0.7)); x = dx / d * m; y = dy / d * m; }
+  } else {
+    x = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+    y = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0);
+    const d = Math.hypot(x, y);
+    if (d > 1) { x /= d; y /= d; }
+  }
+  input.x = x; input.y = y;
+}
+
+// ---------- view
+const view = { w: 0, h: 0, scale: 1, dpr: 1, hudBottom: 0 };
+function resize() {
+  const r = stage.getBoundingClientRect();
+  view.w = r.width; view.h = r.height;
+  view.dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.max(1, Math.round(view.w * view.dpr));
+  canvas.height = Math.max(1, Math.round(view.h * view.dpr));
+  view.scale = Math.max(view.h / 880, view.w / 1100) || 1;
+  view.hudBottom = $('banner').getBoundingClientRect().bottom - r.top;
+}
+new ResizeObserver(resize).observe(stage);
+
+function moveCamera(dt) {
+  const h = S.hero, vw = view.w / view.scale, vh = view.h / view.scale;
+  const tx = h.dead ? HOME_X : h.x, ty = (h.dead ? HOME_Y : h.y) + 50;
+  const k = 1 - Math.exp(-7 * dt);
+  cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k;
+  cam.x = vw >= W ? W / 2 : clamp(cam.x, vw / 2 - 30, W - vw / 2 + 30);
+  cam.y = vh >= H ? H / 2 : clamp(cam.y, vh / 2 - 30, H - vh / 2 + 30);
+}
+
+// ---------- ground, painted once
+function makeGround() {
+  const g = document.createElement('canvas'); g.width = W; g.height = H;
+  const c = g.getContext('2d'), r = rng(21);
+  c.fillStyle = COL.ground; c.fillRect(0, 0, W, H);
+  for (let i = 0; i < 240; i++) {
+    c.globalAlpha = 0.3 + r() * 0.3;
+    c.fillStyle = r() < 0.5 ? COL.groundLift : COL.groundSink;
+    c.beginPath(); c.ellipse(r() * W, r() * H, 18 + r() * 46, 10 + r() * 26, r() * Math.PI, 0, TAU); c.fill();
+  }
+  c.globalAlpha = 1;
+  const worn = c.createRadialGradient(CX, CY, CASTLE_R, CX, CY, 200);
+  worn.addColorStop(0, alpha(COL.dirt, 0.8)); worn.addColorStop(1, alpha(COL.dirt, 0));
+  c.fillStyle = worn; c.beginPath(); c.arc(CX, CY, 200, 0, TAU); c.fill();
+  c.strokeStyle = COL.groundLift; c.lineWidth = 1.6; c.lineCap = 'round'; c.globalAlpha = 0.8;
+  for (let i = 0; i < 420; i++) {
+    const x = r() * W, y = r() * H;
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x - 2, y - 6); c.moveTo(x + 3, y); c.lineTo(x + 4, y - 5); c.stroke();
+  }
+  c.globalAlpha = 1;
+  // the dark tree line the raiders walk out of
+  const band = 90;
+  for (const [x0, y0, x1, y1, rx, ry, rw, rh] of [
+    [0, 0, band, 0, 0, 0, band, H], [W, 0, W - band, 0, W - band, 0, band, H],
+    [0, 0, 0, band, 0, 0, W, band], [0, H, 0, H - band, 0, H - band, W, band]]) {
+    const gr = c.createLinearGradient(x0, y0, x1, y1);
+    gr.addColorStop(0, alpha(COL.edge, 0.95)); gr.addColorStop(1, alpha(COL.edge, 0));
+    c.fillStyle = gr; c.fillRect(rx, ry, rw, rh);
+  }
+  return g;
+}
+let ground = null;
+
+// ---------- drawing helpers (world units unless noted)
+function disc(x, y, r, fill) { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = fill; ctx.fill(); }
+function shade(x, y, r) { ctx.beginPath(); ctx.ellipse(x, y, r * 1.05, r * 0.6, 0, 0, TAU); ctx.fillStyle = alpha(COL.night, 0.28); ctx.fill(); }
+function rr(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function bar(x, y, w, h, frac, color) {
+  ctx.fillStyle = alpha(COL.night, 0.78); rr(x - 1, y - 1, w + 2, h + 2, (h + 2) / 2); ctx.fill();
+  if (frac > 0) { ctx.fillStyle = color; rr(x, y, Math.max(h, w * Math.min(1, frac)), h, h / 2); ctx.fill(); }
+}
+function label(text, x, y, size, color, align = 'center') {
+  ctx.font = `700 ${size}px ${FONT_UI}`; ctx.textAlign = align; ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round'; ctx.lineWidth = 3.2; ctx.strokeStyle = alpha(COL.night, 0.72);
+  ctx.strokeText(text, x, y); ctx.fillStyle = color; ctx.fillText(text, x, y);
+}
+function blob(x, y, radii, R, rot, fill) {
+  ctx.beginPath();
+  for (let i = 0; i < radii.length; i++) {
+    const a = rot + i / radii.length * TAU, px = x + Math.cos(a) * radii[i] * R, py = y + Math.sin(a) * radii[i] * R * 0.86;
+    if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+  }
+  ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+}
+
+function drawNode(n) {
+  const spec = NODE[n.type], full = n.left / spec.amount;
+  const wob = S.t - n.shakeT < 0.18 ? Math.sin((S.t - n.shakeT) * 70) * 2 : 0;
+  if (n.type === 'wood') {
+    if (n.left <= 0) {
+      const grown = clamp(1 - (n.regrowAt - S.t) / spec.regrow, 0, 1);
+      disc(n.x, n.y, 6, COL.trunk); disc(n.x, n.y, 3.2, COL.wood);
+      if (grown > 0.45) disc(n.x, n.y - 4, 9 * (grown - 0.45) / 0.55, COL.pineLift);
+      return;
+    }
+    const R = 11 + 7 * full;
+    shade(n.x + 3, n.y + 7, R);
+    disc(n.x + wob, n.y - 4, R, COL.pine);
+    disc(n.x + wob - R * 0.22, n.y - 4 - R * 0.26, R * 0.6, COL.pineLift);
+  } else {
+    if (n.left <= 0) {
+      disc(n.x - 5, n.y + 2, 3.5, COL.rockShade); disc(n.x + 4, n.y + 4, 2.8, COL.rockShade); disc(n.x + 1, n.y - 3, 2.4, COL.rockShade);
+      return;
+    }
+    const R = 10 + 8 * full;
+    shade(n.x + 2, n.y + 6, R);
+    blob(n.x + wob, n.y, n.shape, R, n.tilt, COL.rockShade);
+    blob(n.x + wob - 1.5, n.y - 2.5, n.shape, R * 0.72, n.tilt, COL.rock);
+  }
+}
+
+function drawCastle() {
+  shade(CX + 5, CY + 12, CASTLE_R + 6);
+  disc(CX, CY, CASTLE_R, COL.stoneShade);
+  for (let i = 0; i < 18; i++) { const a = i / 18 * TAU + 0.17; disc(CX + Math.cos(a) * (CASTLE_R - 6), CY + Math.sin(a) * (CASTLE_R - 6), 5.6, COL.stone); }
+  disc(CX, CY, CASTLE_R - 13, COL.dirt);
+  ctx.fillStyle = COL.night; rr(CX - 9, CY + CASTLE_R - 17, 18, 18, 4); ctx.fill();
+  disc(CX, CY - 1, 20, COL.stoneShade); disc(CX, CY - 3, 15, COL.stone);
+  ctx.strokeStyle = COL.night; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(CX, CY - 3); ctx.lineTo(CX, CY - 36); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CX, CY - 36); ctx.lineTo(CX + 17, CY - 30.5 + Math.sin(S.t * 4) * 1.4); ctx.lineTo(CX, CY - 25);
+  ctx.closePath(); ctx.fillStyle = COL.hero; ctx.fill();
+  if (S.t - S.castle.hitT < 0.12) disc(CX, CY, CASTLE_R, alpha(COL.ink, 0.35));
+  const frac = S.castle.hp / CASTLE_HP;
+  bar(CX - 40, CY - CASTLE_R - 18, 80, 7, frac, frac < 0.35 ? COL.foe : COL.ink);
+}
+
+function drawBuilding(p) {
+  const age = S.t - p.popT, grow = age < 0.25 ? 1 + Math.sin(age / 0.25 * Math.PI) * 0.22 : 1;
+  ctx.save(); ctx.translate(p.bx, p.by); ctx.scale(grow, grow);
+  if (p.kind === 'tower') {
+    shade(3, 9, 15);
+    disc(0, 0, 14, COL.stoneShade);
+    for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; disc(Math.cos(a) * 11.5, Math.sin(a) * 11.5, 3.6, COL.stone); }
+    disc(0, 0, 8.5, COL.stone);
+    ctx.font = `700 11px ${FONT_UI}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = COL.night; ctx.fillText(String(p.lvl), 0, 0.5);
+  } else {
+    const body = p.kind === 'camp' ? COL.wood : COL.stoneShade, trim = p.kind === 'camp' ? COL.trunk : COL.rockShade;
+    shade(3, 12, 20);
+    ctx.fillStyle = body; rr(-17, -13, 34, 26, 4); ctx.fill();
+    ctx.fillStyle = trim; ctx.fillRect(-17, -3, 34, 6);
+    if (p.kind === 'camp') { disc(23, 8, 5, COL.trunk); disc(23, 8, 2.6, COL.wood); disc(29, 12, 4, COL.trunk); disc(29, 12, 2, COL.wood); }
+    else { disc(23, 9, 5, COL.rock); disc(28, 13, 3.4, COL.rockShade); }
+    for (let i = 0; i < p.lvl; i++) disc(-7 + i * 7, -21, 2.4, COL.ink);
+  }
+  ctx.restore();
+}
+
+function glyph(kind, x, y) {
+  ctx.strokeStyle = alpha(COL.ink, 0.85); ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  if (kind === 'tower') { ctx.arc(x, y, 7, 0, TAU); ctx.moveTo(x + 2, y); ctx.arc(x, y, 2, 0, TAU); }
+  else if (kind === 'camp') { for (const dy of [-6, 0, 6]) { ctx.moveTo(x - 8, y + dy); ctx.lineTo(x + 8, y + dy); } }
+  else if (kind === 'quarry') { ctx.moveTo(x, y - 8); ctx.lineTo(x + 9, y + 6); ctx.lineTo(x - 9, y + 6); ctx.closePath(); }
+  else if (kind === 'hero') { ctx.moveTo(x, y - 10); ctx.lineTo(x, y + 9); ctx.moveTo(x - 6, y + 3); ctx.lineTo(x + 6, y + 3); }
+  else { ctx.moveTo(x, y - 8); ctx.lineTo(x, y + 8); ctx.moveTo(x - 8, y); ctx.lineTo(x + 8, y); }
+  ctx.stroke();
+}
+
+function chipLine(parts, cx, y) {
+  const size = 14.5, gap = 12;
+  ctx.font = `700 ${size}px ${FONT_UI}`;
+  let total = (parts.length - 1) * gap;
+  for (const q of parts) { q.w = 15 + ctx.measureText(q.text).width; total += q.w; }
+  let x = cx - total / 2;
+  for (const q of parts) {
+    ctx.fillStyle = q.res === 'wood' ? COL.wood : COL.rock; rr(x, y - 5, 10, 10, 2.5); ctx.fill();
+    label(q.text, x + 15, y + 0.5, size, q.ok ? COL.ink : COL.inkSoft, 'left');
+    x += q.w + gap;
+  }
+}
+
+function drawPad(p) {
+  const h = S.hero, cost = nextCost(p), repair = p.kind === 'repair', maxed = !repair && !cost;
+  const on = !h.dead && Math.hypot(h.x - p.x, h.y - p.y) < PAD_R;
+  ctx.globalAlpha = maxed ? 0.4 : 1;
+  ctx.beginPath(); ctx.arc(p.x, p.y, PAD_R, 0, TAU);
+  ctx.fillStyle = alpha(COL.ink, on ? 0.2 : 0.08); ctx.fill();
+  ctx.setLineDash([7, 6]); ctx.lineDashOffset = on ? -S.t * 28 : 0;
+  ctx.lineWidth = 2; ctx.strokeStyle = alpha(COL.ink, 0.8); ctx.stroke(); ctx.setLineDash([]);
+  if (cost) {
+    const paid = p.paid.wood + p.paid.stone;
+    if (paid > 0) {
+      ctx.beginPath(); ctx.arc(p.x, p.y, PAD_R - 5, -Math.PI / 2, -Math.PI / 2 + TAU * paid / (cost.wood + cost.stone));
+      ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.strokeStyle = COL.hero; ctx.stroke();
+    }
+  }
+  glyph(p.kind, p.x, p.y);
+  if (on && p.kind === 'tower') {
+    ctx.beginPath(); ctx.arc(p.bx, p.by, TOWER.range, 0, TAU);
+    ctx.setLineDash([4, 8]); ctx.lineWidth = 1.5; ctx.strokeStyle = alpha(COL.ink, 0.3); ctx.stroke(); ctx.setLineDash([]);
+  }
+  const lvl = levelOf(p);
+  const title = repair ? 'Repară castelul' : maxed ? NAME[p.kind] + ' · nivel maxim' : lvl === 0 ? NAME[p.kind] : NAME[p.kind] + ' nivel ' + (lvl + 1);
+  label(title, p.x, p.y + PAD_R + 14, 13.5, COL.ink);
+  if (repair) chipLine([{ res: 'stone', text: '1 = +' + REPAIR.heal + ' viață', ok: S.stone > 0 }], p.x, p.y + PAD_R + 33);
+  else if (cost) {
+    const parts = [];
+    for (const res of ['wood', 'stone']) if (cost[res] > 0) { const left = cost[res] - p.paid[res]; parts.push({ res, text: String(left), ok: S[res] >= left }); }
+    chipLine(parts, p.x, p.y + PAD_R + 33);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawFoe(f) {
+  shade(f.x + 2, f.y + 5, f.r);
+  ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.a);
+  if (S.t - f.lungeT < 0.12) ctx.translate(4, 0);
+  ctx.beginPath(); ctx.moveTo(f.r * 1.25, 0); ctx.lineTo(-f.r * 0.8, f.r * 0.95); ctx.lineTo(-f.r * 0.4, 0); ctx.lineTo(-f.r * 0.8, -f.r * 0.95); ctx.closePath();
+  ctx.fillStyle = S.t - f.hitT < 0.08 ? COL.ink : f.brute ? COL.foeShade : COL.foe; ctx.fill();
+  if (f.brute) { ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.strokeStyle = COL.foe; ctx.stroke(); }
+  ctx.restore();
+  if (f.hp < f.maxHp) bar(f.x - f.r, f.y - f.r - 9, f.r * 2, 3, f.hp / f.maxHp, COL.foe);
+}
+
+function drawHero() {
+  const h = S.hero, moving = Math.hypot(input.x, input.y) > 0.01;
+  const bob = moving ? Math.abs(Math.sin(h.walk * 13)) * 2 : 0;
+  shade(h.x + 2, h.y + 7, HERO.r);
+  const a = h.face, blade = HERO.r + 10 + 2 * (h.lvl - 1);
+  ctx.strokeStyle = COL.ink; ctx.lineWidth = 3.6; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(h.x + Math.cos(a) * HERO.r * 0.5, h.y - bob + Math.sin(a) * HERO.r * 0.5);
+  ctx.lineTo(h.x + Math.cos(a) * blade, h.y - bob + Math.sin(a) * blade); ctx.stroke();
+  disc(h.x, h.y - bob, HERO.r, S.t - h.hurtT < 0.1 ? COL.ink : COL.hero);
+  ctx.lineWidth = 2.5; ctx.strokeStyle = COL.heroShade; ctx.stroke();
+  for (const s of [-0.55, 0.55]) disc(h.x + Math.cos(a + s) * 7, h.y - bob + Math.sin(a + s) * 7, 2, COL.night);
+  const sa = S.t - h.slashT;
+  if (sa < 0.16) {
+    ctx.globalAlpha = 1 - sa / 0.16;
+    ctx.beginPath(); ctx.arc(h.x, h.y, HERO.reach * 0.8, h.slashA - 1.2 + sa * 5, h.slashA + 1.2);
+    ctx.lineWidth = 6; ctx.strokeStyle = COL.ink; ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  bar(h.x - 16, h.y - HERO.r - 13, 32, 4, h.hp / heroMaxHp(), COL.hero);
+  for (let i = 1; i < h.lvl; i++) disc(h.x - (h.lvl - 2) * 3 + (i - 1) * 6, h.y - HERO.r - 20, 1.9, COL.hero);
+}
+
+function render() {
+  const w = view.w, hgt = view.h, sc = view.scale;
+  if (!w || !hgt) return;
+  if (!ground) ground = makeGround();
+  ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = COL.edge; ctx.fillRect(0, 0, w, hgt);
+  const vw = w / sc, vh = hgt / sc, left = cam.x - vw / 2, top = cam.y - vh / 2;
+
+  ctx.save(); ctx.scale(sc, sc); ctx.translate(-left, -top);
+  ctx.drawImage(ground, 0, 0);
+  for (const p of S.pads) drawPad(p);
+
+  const h = S.hero, items = [{ y: CY + 20, f: drawCastle }];
+  for (const n of S.nodes) items.push({ y: n.y, f: () => drawNode(n) });
+  for (const p of S.pads) if (p.lvl > 0 && p.kind !== 'hero') items.push({ y: p.by, f: () => drawBuilding(p) });
+  for (const f of S.foes) items.push({ y: f.y, f: () => drawFoe(f) });
+  if (!h.dead) items.push({ y: h.y, f: drawHero });
+  items.sort((a, b) => a.y - b.y);
+  for (const it of items) it.f();
+
+  if (h.dead) {
+    ctx.beginPath(); ctx.arc(HOME_X, HOME_Y, 16, -Math.PI / 2, -Math.PI / 2 + TAU * (1 - h.respawnT / HERO.respawn));
+    ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.strokeStyle = COL.hero; ctx.stroke();
+    label(String(Math.ceil(h.respawnT)), HOME_X, HOME_Y + 0.5, 15, COL.hero);
+  }
+  ctx.strokeStyle = COL.ink; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  for (const s of S.shots) { ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - Math.cos(s.a) * 11, s.y - Math.sin(s.a) * 11); ctx.stroke(); }
+  for (const f of S.floats) {
+    const age = S.t - f.t0;
+    if (f.puff) {
+      ctx.globalAlpha = 1 - age / 0.3; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.5 + age / 0.3), 0, TAU);
+      ctx.lineWidth = 3; ctx.strokeStyle = COL.ink; ctx.stroke();
+    } else {
+      ctx.globalAlpha = clamp(1.6 - age / 0.9 * 1.6, 0, 1);
+      label(f.text, f.x, f.y - age * 30, 14, f.tone === 'wood' ? COL.wood : f.tone === 'stone' ? COL.stone : f.tone === 'foe' ? COL.foe : COL.hero);
+    }
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // screen space: where the castle is when it has scrolled out of sight
+  const sx = (CX - left) * sc, sy = (CY - top) * sc, topEdge = view.hudBottom + 30, m = 30;
+  if (sx < 0 || sx > w || sy < view.hudBottom || sy > hgt) {
+    const px = clamp(sx, m, w - m), py = clamp(sy, topEdge, hgt - m), ang = Math.atan2(sy - py, sx - px);
+    const hit = S.t - S.castle.hitT < 1.2, tone = hit ? COL.foe : COL.ink;
+    const pulse = hit ? 1 + Math.sin(S.t * 14) * 0.12 : 1;
+    disc(px, py, 18 * pulse, alpha(COL.night, 0.88));
+    ctx.beginPath(); ctx.arc(px, py, 15 * pulse, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0.001, S.castle.hp / CASTLE_HP));
+    ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = tone; ctx.stroke();
+    ctx.fillStyle = tone; ctx.fillRect(px - 6, py - 3, 12, 8); ctx.fillRect(px - 6, py - 7, 3, 4); ctx.fillRect(px - 1.5, py - 7, 3, 4); ctx.fillRect(px + 3, py - 7, 3, 4);
+    ctx.beginPath(); ctx.moveTo(px + Math.cos(ang) * 29, py + Math.sin(ang) * 29);
+    ctx.lineTo(px + Math.cos(ang + 0.42) * 21, py + Math.sin(ang + 0.42) * 21);
+    ctx.lineTo(px + Math.cos(ang - 0.42) * 21, py + Math.sin(ang - 0.42) * 21); ctx.closePath(); ctx.fill();
+  }
+  if (joy.on) {
+    disc(joy.bx, joy.by, JOY_R, alpha(COL.ink, 0.1));
+    ctx.lineWidth = 2; ctx.strokeStyle = alpha(COL.ink, 0.4); ctx.stroke();
+    const dx = joy.x - joy.bx, dy = joy.y - joy.by, d = Math.hypot(dx, dy) || 1, k = Math.min(1, JOY_R / d);
+    disc(joy.bx + dx * k, joy.by + dy * k, 20, alpha(COL.ink, 0.55));
+  }
+}
+
+// ---------- banner
+const shown = {};
+function put(id, v) { if (shown[id] !== v) { shown[id] = v; $(id).textContent = v; } }
+function syncHud() {
+  put('wood', S.wood); put('stone', S.stone); put('clock', clock(S.t)); put('castleHp', Math.max(0, Math.ceil(S.castle.hp)));
+  const frac = clamp(S.castle.hp / CASTLE_HP, 0, 1), width = Math.round(frac * 100) + '%';
+  if (shown.fill !== width) { shown.fill = width; $('castleFill').style.width = width; }
+  const low = frac < 0.35;
+  if (shown.low !== low) { shown.low = low; $('meter').classList.toggle('low', low); }
+  const alarm = S.mode === 'playing' && S.t - S.castle.hitT < 1;
+  if (shown.alarm !== alarm) { shown.alarm = alarm; $('banner').classList.toggle('alarm', alarm); }
+  const hint = S.mode === 'playing' && !S.hero.moved;
+  if (shown.hint !== hint) { shown.hint = hint; $('hint').hidden = !hint; }
+}
+
+// ---------- run
+function begin() {
+  if (S.mode !== 'ready') newGame();
+  S.mode = 'playing';
+  $('startVeil').hidden = true; $('overVeil').hidden = true;
+}
+$('start').addEventListener('click', begin);
+$('again').addEventListener('click', begin);
+
+let last = performance.now();
+function frame(now) {
+  const dt = clamp((now - last) / 1000, 0, 0.05); last = now;
+  if (S.mode === 'playing') { readInput(); step(dt); }
+  moveCamera(dt); render(); syncHud();
+  requestAnimationFrame(frame);
+}
+
+newGame();
+resize();
+requestAnimationFrame(frame);
+
+// a handle for trying the balance without a thumb on the glass
+window.__straja = {
+  state: () => S, begin, step: dt => { readInput(); step(dt); },
+  steer: (x, y) => { override = x === null ? null : { x, y }; },
+  rules: { PAD_R, HERO, NODE },
+  nextCost,
+};
+})();
+</script>

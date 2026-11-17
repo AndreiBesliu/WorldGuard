@@ -1,8 +1,8 @@
 {
   "name": "world-guard",
   "private": true,
-  "version": "0.0.1",
-  "description": "World Guard — tower defense roguelite pe hexagoane (prototip)",
+  "version": "0.1.0",
+  "description": "World Guard — aperi castelul cu un erou (joc web pentru telefon)",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,9 +10,13 @@
     "test": "vitest run",
     "build": "tsc --noEmit && vite build",
     "check": "npm run typecheck && npm run test && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "smoke": "vite build && node scripts/smoke.cjs",
+    "single": "vite build --config vite.single.config.ts && node scripts/single-file.mjs"
   },
   "devDependencies": {
+    "@fontsource/alfa-slab-one": "^5.3.0",
+    "@fontsource/rubik": "^5.3.0",
     "@types/node": "^24.19.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.2",

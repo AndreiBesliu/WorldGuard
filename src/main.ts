@@ -1,113 +1,122 @@
-// Prototipul 1, pasul 0: harta pe hexagoane și traseul cu capete fixe, lungit prin ocoluri.
-//
-// Mouse peste un hexagon de drum = alegi locul; ocolul înlocuiește o porțiune de 1–3 hexagoane din jurul lui.
-// Tastele 1/2/3 = cu câte hexagoane se lungește drumul. Tab = următoarea variantă de ocol.
-// Click = aplici ocolul. Z = anulezi ultima decizie (prin replay din jurnal). N = hartă nouă.
-// Seed-ul se poate da în URL: ?seed=123
+// Intrarea: leagă pagina, simularea, comenzile și desenul. Trei stări: ready, playing, over.
+import '@fontsource/alfa-slab-one/latin-400.css'
+import '@fontsource/alfa-slab-one/latin-ext-400.css'
+import '@fontsource/rubik/latin-400.css'
+import '@fontsource/rubik/latin-ext-400.css'
+import '@fontsource/rubik/latin-500.css'
+import '@fontsource/rubik/latin-ext-500.css'
+import '@fontsource/rubik/latin-700.css'
+import '@fontsource/rubik/latin-ext-700.css'
+import './ui/ui.css'
+import { parseFlags } from './app/flags'
+import { advance } from './app/loop'
+import { saveIfRecord } from './app/storage'
+import { BALANCE } from './data/balance'
+import { bindInput } from './input/bind'
+import { createRenderer } from './render/canvas'
+import { spawnFoe } from './sim/foes'
+import { heroMaxHp } from './sim/hero'
+import { createGame, DT, type GameState } from './sim/state'
+import { step } from './sim/step'
+import { createCards } from './ui/cards'
+import { createHud } from './ui/hud'
+import { STR } from './ui/strings'
 
-import { draw, fitLayout, pixelToHex, type Layout } from './render/canvas'
-import { applyDecision, fingerprint, newGame, replay, type GameState } from './sim/game'
-import { key } from './sim/hex'
-import { optionsAround, type DetourOption } from './sim/path'
+const STRESS_FOES = 150      // cât de plin e terenul în testul de viteză: număr de măsurat, nu de joc
+const FPS_WINDOW = 0.5       // secunde: fereastra pe care se numără cadrele afișate
 
-const canvas = document.getElementById('joc') as HTMLCanvasElement
-const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+// Textele din pagină vin din STR: data-str = text, data-str-aria = eticheta de accesibilitate.
+// O cheie care lipsește e o greșeală de scris, nu ceva de sărit.
+function text(key: string | undefined): string {
+  const v = key === undefined ? undefined : (STR as unknown as Record<string, unknown>)[key]
+  if (typeof v !== 'string') throw new Error(`textul „${key}” lipsește din STR`)
+  return v
+}
+for (const el of document.querySelectorAll<HTMLElement>('[data-str]')) el.textContent = text(el.dataset.str)
+for (const el of document.querySelectorAll<HTMLElement>('[data-str-aria]')) el.setAttribute('aria-label', text(el.dataset.strAria))
 
-const params = new URLSearchParams(location.search)
-let seed = Number(params.get('seed') ?? '2026') || 2026
-let state: GameState = newGame(seed)
-let extra = 2
-let optionIndex = 0
-let hovered: number | undefined
-let options: DetourOption[] = []
-let message: string | undefined
-let layout: Layout = fitLayout(state.map.radius, innerWidth, innerHeight, 90)
-
-function resize(): void {
-  const dpr = window.devicePixelRatio || 1
-  canvas.width = Math.floor(innerWidth * dpr)
-  canvas.height = Math.floor(innerHeight * dpr)
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  layout = fitLayout(state.map.radius, innerWidth, innerHeight, 90)
-  render()
+declare global {
+  interface Window { __wg?: { state(): GameState; run(seconds: number): void } }
 }
 
-function refreshOptions(): void {
-  options = hovered === undefined ? [] : optionsAround(state.map, state.path, hovered, extra)
-  if (optionIndex >= options.length) optionIndex = 0
+const canvas = document.getElementById('field') as HTMLCanvasElement
+const stage = document.getElementById('stage') as HTMLElement
+const renderer = createRenderer(canvas)
+const hud = createHud(document)
+const flags = parseFlags(location.search)
+
+type Phase = 'ready' | 'playing' | 'over'
+let phase: Phase = 'ready'
+let stress = false
+let fps: { now: number; min: number } | null = null
+let fpsFrames = 0, fpsTime = 0
+let s: GameState = createGame(flags.seed ?? Date.now() >>> 0)
+const input = bindInput(canvas, () => phase === 'playing')
+const still = { x: 0, y: 0 }
+let acc = 0
+let last = performance.now()
+
+function begin(seed: number, isStress: boolean): void {
+  s = createGame(seed)
+  stress = isStress
+  if (stress) s.spawnT = 1e9                    // în testul de viteză nu apar dușmani de la sine: numărul rămâne exact STRESS_FOES
+  fps = null; fpsFrames = 0; fpsTime = 0
+  acc = 0; last = performance.now()
+  input.release()
+  phase = 'playing'
+  cards.hide()
 }
-
-function render(): void {
-  const chosen = options[optionIndex]
-  draw(ctx, state, layout, {
-    start: chosen?.start,
-    span: chosen?.span,
-    preview: chosen?.hexes,
-    lines: [
-      `World Guard — prototip · seed ${seed} · drum ${state.path.length} hexagoane · ${state.jurnal.length} decizii · amprentă ${fingerprint(state)}`,
-      `Bucată: +${extra} (tastele 1/2/3) · variante aici: ${options.length} (Tab) · Click = aplică · Z = anulează · N = hartă nouă`,
-      'I = intrarea inamicilor · B = baza · capetele nu se mută; drumul se lungește prin ocoluri și nu are voie să se atingă singur',
-    ],
-    message,
-  })
-}
-
-canvas.addEventListener('mousemove', (e) => {
-  const h = pixelToHex(e.clientX, e.clientY, layout)
-  const idx = state.path.findIndex((p) => key(p) === key(h))
-  // Hexagonul de sub mouse face parte din porțiunea înlocuită; capetele fixe nu se pot înlocui.
-  const next = idx > 0 && idx < state.path.length - 1 ? idx : undefined
-  if (next !== hovered) {
-    hovered = next
-    optionIndex = 0
-    refreshOptions()
-    render()
-  }
+const cards = createCards(document, {
+  start: () => begin(s.seed, false),            // prima partidă folosește sămânța deja așezată pe teren
+  stress: () => begin(s.seed, true),
+  again: () => begin(Date.now() >>> 0, false),
 })
+cards.showStart()
 
-canvas.addEventListener('click', () => {
-  if (hovered === undefined) return
-  const chosen = options[optionIndex]
-  if (!chosen) {
-    message = `Nu există ocol de +${extra} aici (apă, filon, marginea hărții, sau drumul s-ar atinge singur). Încearcă alt număr sau alt loc.`
-    render()
-    return
-  }
-  const r = applyDecision(state, { tip: 'ocol', start: chosen.start, span: chosen.span, hexuri: chosen.hexes.map(key) })
-  if (r.ok) {
-    state = r.value
-    message = undefined
-  } else {
-    message = `Nu se poate: ${r.reason}`
-  }
-  hovered = undefined
-  refreshOptions()
-  render()
-})
-
-window.addEventListener('keydown', (e) => {
-  if (e.key === '1' || e.key === '2' || e.key === '3') {
-    extra = Number(e.key)
-    optionIndex = 0
-    refreshOptions()
-  } else if (e.key === 'Tab') {
-    e.preventDefault()
-    if (options.length > 0) optionIndex = (optionIndex + 1) % options.length
-  } else if (e.key === 'z' || e.key === 'Z') {
-    state = replay(seed, state.jurnal.slice(0, -1))
-    hovered = undefined
-    refreshOptions()
-  } else if (e.key === 'n' || e.key === 'N') {
-    seed += 1
-    state = newGame(seed)
-    hovered = undefined
-    refreshOptions()
-  } else {
-    return
-  }
-  message = undefined
-  render()
-})
-
-window.addEventListener('resize', resize)
+function resize(): void { renderer.resize(hud.bottom()) }
+const sizes = new ResizeObserver(resize)
+sizes.observe(stage)
+sizes.observe(document.getElementById('banner') as HTMLElement)   // banda crește când apare textul fps sau se schimbă un font
 resize()
+
+if (flags.debug) {
+  window.__wg = {
+    state: () => s,
+    run(seconds) { for (let i = 0, n = Math.round(seconds / DT); i < n; i++) step(s, still) },
+  }
+}
+// După ce pagina a stat ascunsă, primul cadru nu trebuie să sară.
+document.addEventListener('visibilitychange', () => { last = performance.now(); acc = 0 })
+
+function frame(now: number): void {
+  requestAnimationFrame(frame)                  // întâi cadrul următor: o excepție într-un cadru nu oprește bucla
+  const frameDt = Math.min(0.1, Math.max(0, (now - last) / 1000))
+  last = now
+  let camDt = frameDt                           // cât timp „a trecut” pentru cameră
+  if (phase === 'playing') {
+    const r = advance(acc, frameDt)
+    acc = r.acc
+    for (let i = 0; i < r.steps; i++) step(s, input.read())
+    camDt = r.steps * DT                        // camera se mișcă doar cu pașii simulării: eroul nu tremură pe ecrane de 120 Hz
+    if (stress) {
+      while (s.foes.length < STRESS_FOES) spawnFoe(s)   // terenul rămâne plin, castelul și eroul nu cad
+      s.castle.hp = BALANCE.castle.hp
+      s.hero.dead = false; s.hero.hp = heroMaxHp(s)
+      fpsFrames++; fpsTime += frameDt
+      if (fpsTime >= FPS_WINDOW) {
+        const now = Math.round(fpsFrames / fpsTime)
+        fps = { now, min: fps === null ? now : Math.min(fps.min, now) }
+        fpsFrames = 0; fpsTime = 0
+      }
+    }
+  }
+  if (phase === 'playing' && s.mode === 'over') {
+    phase = 'over'
+    input.release()
+    const secs = Math.floor(s.t)
+    cards.showOver({ secs, ...(stress ? { record: secs, isNew: false } : saveIfRecord(secs)), kills: s.kills })   // testul de viteză nu atinge recordul
+  }
+  renderer.frame(s, phase === 'playing' ? input.read() : still, phase === 'playing' ? input.stick : null, camDt)
+  hud.sync(s, { hint: phase === 'playing' && !s.hero.moved, fps })
+}
+requestAnimationFrame(frame)
