@@ -31,7 +31,9 @@ Andrei joacă acum un joc de apărat o planetă și îi place lumea aceea mai mu
 - Tema se construiește înaintea fazei 2.
 - Numele din cod sunt alese să se potrivească și variantei „Colonie” (tabelul din „Numele din cod”).
 - Fontul titlului și al cifrelor devine Exo 2.
-- Cum se verifică faptul că regulile n-au fost atinse (secțiunea „Cum se verifică”).
+- Cum se verifică faptul că regulile n-au fost atinse (secțiunea „Cum se verifică”), inclusiv că testul „aceeași partidă” e temporar.
+- Inelul-scut se desenează peste nave, ca să rămână vizibil când planeta e atacată.
+- Câmpurile loviturii primesc nume fără sabie, iar câmpul `walk` dispare din stare.
 
 ## Scopuri
 
@@ -97,6 +99,15 @@ Macheta e desenată la mărimile din joc: planeta are raza castelului, nava pe a
 
 Rămân cum sunt: banda de sus (cu numele noi), cartonașele, joystickul, textele plutitoare, cercul și numărătoarea de la reapariția navei, norișorii de la doborâre, barele de viață ale navei și ale dușmanilor.
 
+Ordinea straturilor se schimbă într-un singur loc. Navele care atacă se opresc cu centrul la 65 sau 70 de unități de centrul planetei, adică exact pe inel, care e la 64. De aceea:
+
+1. Cerul.
+2. Cercurile de investit.
+3. Planeta, cu aura ei. Nu mai intră în sortarea după înălțime: văzută de sus, în spațiu, nu acoperă nimic.
+4. Resursele, clădirile, navele dușmane și nava ta, sortate ca azi.
+5. Inelul-scut, peste nave. Rămâne mereu vizibil, iar navele care atacă par lipite de scut.
+6. Razele și textele plutitoare, ca azi.
+
 Mișcările care apar doar în desen (continentele, norii, satelitul, rotirea asteroizilor, drona, flăcările, țeava turelei) se calculează din timpul partidei și din stare. Nu scriu nimic în stare și nu au memorie proprie.
 
 ### Culorile, pe roluri
@@ -161,10 +172,25 @@ Numele noi descriu rolul, nu aspectul, ca să se potrivească și cu „Colonie�
 | `tower` | `turret` | `PadKind`, `BALANCE`, `towerDamage` devine `turretDamage` |
 | `camp` | `collector` | `PadKind`, `BALANCE`, tabelul de costuri |
 | `quarry` | `mine` | `PadKind`, `BALANCE`, tabelul de costuri |
+| `swingT`, `swingEvery` | `strikeT`, `strikeEvery` | starea navei, `BALANCE.hero`: cât mai e până la următoarea lovitură |
+| `slashT`, `slashA` | `waveT`, `waveA` | starea navei: când și încotro a pornit ultima undă, pentru desen |
+| `walk` | dispare | starea navei: hrănea doar legănatul de mers, care nu mai există |
 
-Rămân neschimbate, fiindcă descriu deja un rol: `hero`, `foe`, `grunt`, `brute`, `shot`, `node`, `pad`, `repair`, `fx`. Pe ecran, `hero` e „Navă”.
+Rămân neschimbate, fiindcă descriu deja un rol: `hero`, `foe`, `grunt`, `brute`, `shot`, `node`, `pad`, `repair`, `fx`, `moved`. Pe ecran, `hero` e „Navă”. În comentarii, „erou”, „dușman” și „brută” pot rămâne, ca nume ale acelor roluri.
 
-Comentariile și numele testelor, care sunt în română, trec și ele pe cuvintele noi: nucleu sau planetă în loc de castel, turelă, colector, mină, cristale, metal, navă.
+Scoaterea lui `walk` e singura schimbare din stare care nu e o redenumire. Nu schimbă comportamentul: nimic din reguli nu îl citește.
+
+Comentariile și numele testelor, care sunt în română, trec și ele pe cuvintele noi: nucleu sau planetă în loc de castel, turelă, colector, mină, cristale, metal, rază, cer, undă.
+
+### Cuvintele temei vechi
+
+Lista de mai jos e cea pe care o caută verificarea „niciun nume vechi”, fără deosebire între litere mari și mici, inclusiv în nume compuse.
+
+- În engleză: `wood`, `stone`, `castle`, `tower`, `camp`, `quarry`, `swing`, `slash`, `blade`, `walk`, și numele de culori `ground`, `grass`, `dirt`, `rock`, `pine`, `trunk`.
+- În română: castel, turn (cu formele lui), lemn, piatră, copac, stâncă, tăietor, carieră, iarbă, teren, zid, sabie, steag, puiet.
+- „Săgeată” rămâne permis doar pentru formă și pentru indicatorul spre planetă. Proiectilele sunt „raze”. Asta se verifică citind, nu căutând.
+
+Cuvinte care doar conțin unul din listă nu se pun la socoteală (de pildă `background`).
 
 Variabilele de culoare din CSS primesc nume pe roluri, fără cuvinte ale temei vechi (azi se numesc `--pine`, `--trunk`, `--dirt` și altele asemenea).
 
@@ -186,8 +212,8 @@ Nu se construiește un al doilea aspect și nici un comutator. Împărțirea exi
 
 ## Cum se verifică
 
-- **Aceeași partidă, înainte și după.** Înainte de orice redenumire, un test nou joacă o partidă cu comenzi scrise dinainte și ține minte cifrele ei la câteva momente: timpul, viața nucleului, stocul, poziția, viața și nivelul navei, nivelul fiecărui cerc, câte nave au fost doborâte, câte sunt pe hartă și suma vieților lor. Partida trebuie să treacă prin tot: strâns din ambele resurse, plătit pe fiecare fel de cerc, turele care trag, nava care lovește și e doborâtă, o navă grea. Cifrele se măsoară pe codul de azi și se scriu în test. După redenumire, testul trebuie să dea aceleași cifre; în el se schimbă doar numele.
-- **Niciun nume vechi.** O căutare a cuvintelor temei vechi, în engleză și în română, prin `src/`, `scripts/` și `index.html` nu mai găsește nimic.
+- **Aceeași partidă, înainte și după.** Înainte de orice redenumire, un test nou joacă o partidă cu comenzi scrise dinainte și ține minte cifrele ei la câteva momente: timpul, viața nucleului, stocul, poziția, viața și nivelul navei, nivelul fiecărui cerc, câte nave au fost doborâte, câte sunt pe hartă și suma vieților lor. Partida trebuie să treacă prin tot: strâns din ambele resurse, plătit pe fiecare fel de cerc, turele care trag, nava care lovește și e doborâtă, o navă grea. Cifrele se măsoară pe codul de azi și se scriu în test. După redenumire, testul trebuie să dea aceleași cifre; în el se schimbă doar numele. Testul e schelă: la sfârșitul lucrării se șterge, iar ultimele lui cifre se trec în `DEVLOG.md`. Păstrat, ar trebui remăsurat la fiecare schimbare voită de reguli sau de cifre, începând cu faza 2.
+- **Niciun nume vechi.** O căutare a listei din „Cuvintele temei vechi” prin `src/`, `scripts/` și `index.html` nu mai găsește nimic. Se face o dată, la sfârșit, și rezultatul se trece în `DEVLOG.md`; nu devine test permanent.
 - **`npm run check` și `npm run smoke` trec.** Proba din browser așteaptă „Planeta a căzut”. Capturile ei se refac și se compară din ochi cu macheta.
 - **Viteza desenului.** Cu 150 de nave pe hartă, timpul mediu de desenare al unui cadru se măsoară în browserul de test înainte și după, pe aceeași mașină. Dacă după e cu peste un sfert mai mare decât înainte, se simplifică formele desenate de multe ori. Pragul de un sfert e propunerea lui Claude.
 - **Pe telefon.** Andrei joacă o partidă și rulează „Test de viteză”. Cifrele lui de pe A54 pentru aspectul de azi lipsesc încă, deci se notează măcar cele noi.
