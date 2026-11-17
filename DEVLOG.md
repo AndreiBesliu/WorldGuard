@@ -81,3 +81,10 @@ e o decizie în jurnal” (la un joc cu joystick ar însemna direcția la fiecar
 de margine (prima bucată imediat), refacere 4/s după 3 s, cădere și reapariție după 5 s lângă castel;
 `step` readuce resursele epuizate la plin. Cifrele noi (zonă moartă 0,01, blocarea privirii 0,25 s după
 lovitură, marginea 20, norișorul de 26) stau în `BALANCE.hero`. Măsurat: 8 teste în `hero.test.ts`.
+
+**Task 3 — cercurile (`src/sim/pads.ts`):** plata începe după 0,35 s de stat în cerc (centrul eroului la cel mult
+`PAD_R`), o unitate la 0,035 s, lemn și piatră alternând; la terminarea nivelului `paid` se golește, urmează
+pauza de 0,7 s (deci ~1,05 s până la plata următoare), iar efectul `level` apare la clădire (la erou, la cerc).
+Tabăra și cariera produc singure (`prodT` pornește de la intervalul nivelului 1 la prima construire); reparatul
+schimbă o piatră pe 5 viață și se oprește la plin. Eroul doborât nu plătește. Nicio cifră nouă în `BALANCE`.
+Măsurat: 11 teste în `pads.test.ts`.
