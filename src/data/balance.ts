@@ -61,6 +61,7 @@ export const BALANCE = {
     grunt: { r: 10, speed: 46, dmg: 3 },     // dușmanul obișnuit: raza px, viteza px/s, lovitura
     brute: { r: 15, speed: 30, dmg: 9, hpTimes: 4, every: 7, after: 120 }, // bruta: raza, viteza, lovitura, de câte ori mai multă viață, la a câta apariție, după câte secunde
   },
+  stick: { r: 48, dead: 0.14, full: 0.7 },   // joystick: raza în pixeli de ecran; sub 14% din cursă eroul stă; la 70% din cursă are viteza maximă
   fx: { textLife: 0.9, puffLife: 0.3, puffPad: 6 }, // cât trăiesc textele plutitoare și norișorii, secunde; cât adaugă norișorul unui dușman la raza lui, px
 } as const
 

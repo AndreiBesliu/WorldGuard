@@ -104,3 +104,5 @@ Corectură Task 5: „94 s” din plan era o singură rulare norocoasă. Măsura
 60,5–72,2 s pe semințele 1–8 (fără erou 54–58 s). Cauza, verificată: în prototip un dușman ajuns singur la zid putea rămâne la ~1,4e-14 de distanța de
 oprire și nu lovea niciodată (12 din 40 de încercări); la noi comparația cu `EPS` îl face să lovească mereu, cum cere specificația. Jocul nou e deci
 puțin mai aspru (fără apărare, castelul cade în ~56 s, nu în ~64 s), iar limitele testului „fără niciun gest” au fost corectate pe baza măsurătorii.
+
+**Task 6 — bucla și comenzile (`src/app/loop.ts`, `src/input/`):** `advance` scoate pași de 1/60 s din acumulator (cel mult 5 pe cadru, restul se aruncă; cu `EPS` la comparație), 600 de pași la 10 s pe 30/60/90/120/144 fps. Joystickul: rază 48 px, zonă moartă 14%, viteză maximă la 70% din cursă, baza urmează degetul; al doilea deget e ignorat; tastele WASD/săgeți normalizate pe diagonală. Cifre noi: `BALANCE.stick` (`r`, `dead`, `full`). `bind.ts` (singurul cu DOM) nu are test unitar; îl acoperă smoke-testul din browser. Măsurat: 7 teste în `loop.test.ts` și `joystick.test.ts`.
