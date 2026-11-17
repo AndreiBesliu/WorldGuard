@@ -70,13 +70,15 @@ export function updateHero(s: GameState, input: Input): void {
     }
     return
   }
-  const mag = Math.hypot(input.x, input.y)
+  const raw = Math.hypot(input.x, input.y)
+  const cap = raw > 1 ? 1 / raw : 1                // comanda are cel mult lungimea 1, oricine ar chema pasul
+  const ix = input.x * cap, iy = input.y * cap, mag = Math.min(1, raw)
   if (mag > BALANCE.hero.deadzone) {
-    h.x += input.x * BALANCE.hero.speed * DT
-    h.y += input.y * BALANCE.hero.speed * DT
+    h.x += ix * BALANCE.hero.speed * DT
+    h.y += iy * BALANCE.hero.speed * DT
     h.moved = true
     h.walk += DT * mag
-    if (s.t - h.slashT > BALANCE.hero.faceLock) h.face = Math.atan2(input.y, input.x)
+    if (s.t - h.slashT > BALANCE.hero.faceLock) h.face = Math.atan2(iy, ix)
   }
   collide(s)
   if (s.t - h.hurtT - BALANCE.hero.regenWait > EPS && h.hp < heroMaxHp(s)) {

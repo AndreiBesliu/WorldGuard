@@ -64,7 +64,9 @@ function separate(foes: Foe[]): void {
     const a = foes[i]!
     for (let j = i + 1; j < foes.length; j++) {
       const b = foes[j]!
-      const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = a.r + b.r
+      const dx = b.x - a.x, dy = b.y - a.y, min = a.r + b.r
+      if (dx > min || dx < -min || dy > min || dy < -min) continue   // perechile depărtate sar peste hypot, ca în prototip
+      const d = Math.hypot(dx, dy)
       if (d >= min) continue
       const nx = d <= EPS ? 1 : dx / d, ny = d <= EPS ? 0 : dy / d
       const half = (min - d) / 2

@@ -12,6 +12,12 @@ describe('erou', () => {
     stepFor(s, 1, { x: 0, y: -0.5 })
     expect(s.hero.y).toBeCloseTo(1117.5, 6)
   })
+  it('o comandă mai lungă decât 1 nu îl face mai rapid: 165 pe secundă, nu mai mult', () => {
+    const s = quietGame(); heroAt(s, 700, 1200)
+    stepFor(s, 1, { x: 3, y: 4 })
+    expect(Math.hypot(s.hero.x - 700, s.hero.y - 1200)).toBeLessThanOrEqual(165 + 1e-6)
+    expect(Math.hypot(s.hero.x - 700, s.hero.y - 1200)).toBeGreaterThan(165 - 1e-6)
+  })
   it('rămâne în hartă și în afara castelului', () => {
     const s = quietGame(); heroAt(s, 1090, 1200)
     stepFor(s, 1, { x: 1, y: 0 }); expect(s.hero.x).toBe(1080)
