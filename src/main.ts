@@ -72,7 +72,9 @@ const cards = createCards(document, {
 cards.showStart()
 
 function resize(): void { renderer.resize(hud.bottom()) }
-new ResizeObserver(resize).observe(stage)
+const sizes = new ResizeObserver(resize)
+sizes.observe(stage)
+sizes.observe(document.getElementById('banner') as HTMLElement)   // banda crește când apare textul fps sau se schimbă un font
 resize()
 
 if (flags.debug) {
