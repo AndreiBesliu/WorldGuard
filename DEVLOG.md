@@ -120,6 +120,17 @@ Proba din browser, verificarea 7: limita de timp corectată la 0:50–2:10, fiin
 - build-ul: `dist` are JS 28,9 kB (28 922 octeți) și CSS 6,7 kB (6 739 octeți), plus fonturile ca fișiere; `dist-single/world-guard.html` are 400 182 octeți (cam 391 kB, sub limita de 2 MB; fonturile ca `data:` ocupă aproape tot);
 - `world-guard.html` încadrat într-o pagină minimă și deschis din `file://` în Chromium (Playwright, 390 × 780): nicio eroare în consolă, o singură cerere (fișierul însuși), cartonașul arată „World Guard”, iar după „Începe” canvasul e desenat.
 
+**Valul de reparații după revizuirea întregii ramuri:**
+- `separate()` (`src/sim/foes.ts`) a recăpătat pre-verificarea cu dreptunghiul din prototip: perechile depărtate sar peste `hypot`. Rezultatele simulării nu s-au schimbat (toate testele existente verzi, fără nicio editare). Măsurat cu un test Vitest temporar (șters), scenariul din `run.test.ts` (150 de dușmani, sămânța 1, 600 de pași, cinci serii): înainte 0,59 / 0,54 / 0,47 / 0,39 / 0,39 ms pe pas, după 0,16 / 0,14 / 0,08 / 0,08 / 0,08 ms.
+- Comanda de mers e limitată la lungimea 1 în simulare (`updateHero`): `{ x: 3, y: 4 }` o secundă dă 165 de unități, nu 825; test nou în `hero.test.ts`.
+- Camera primește `pași × DT`, nu timpul cadrului afișat, cât timp se joacă: pe ecran de 120 Hz eroul nu mai tremură (poziția lui pe ecran nu se schimbă la cadrele fără pas și nu merge niciodată înapoi). Test nou în `camera.test.ts`, la 60 / 90 / 120 / 144 Hz; cu timpul cadrului, același test pică (4,71 față de 5,09 px între două cadre). Prețul acceptat: mișcarea se actualizează de 60 de ori pe secundă și pe ecran de 120 Hz.
+- Testul de viteză e un instrument de măsură: eroul rămâne mereu viu (cel doborât e readus pe loc), dușmanii noi nu mai apar de la sine (numărul rămâne exact 150), banda arată și cea mai mică valoare („TEST · 58 fps · min 41”), iar `README.md` spune că din test se iese reîncărcând pagina. Proba din browser (verificarea 9) cere acum și „min”.
+- Cartonașele: `overflow-y: auto` pe `.veil` și `margin: auto` pe card, deci pe 915 × 356 cartonașul de start (471 px) se derulează cu degetul până la „Test de viteză” (verificat în Chromium cu atingeri reale: derulare, apăsare pe ambele butoane). `touch-action: pan-y` pe `html`, `body` și `.veil` oprește ciupitul de zoom pe toată pagina, iar `overscroll-behavior: none` e acum și pe `html`. Ciupitul în sine nu a putut fi simulat; s-a verificat valoarea calculată.
+- Bucla de cadre își programează cadrul următor primul, deci o excepție într-un cadru nu o mai oprește (eroarea ajunge tot în consolă).
+- Desenatul sare peste noduri, clădiri, dușmani, cercuri, săgeți și efecte din afara ecranului (margine 160 px de lume), iar `alpha()` ține minte rezultatele. Capturile din `smoke-out/` arată la fel ca înainte.
+- Cifre care oglindesc reguli: arcul loviturii desenat vine din `BALANCE.hero.arc` (era 1,2 față de 1,25), pragul de viață scăzută e `LOW_FRAC` în `layout.ts` (era scris în două locuri), iar `viewScale` folosește `WORLD.w` și `VIEW_H` (880, mutat în `layout.ts`).
+- `scripts/smoke.cjs`: mesajul fără Playwright spune că trebuie să meargă `require('playwright')`. `CLAUDE.md`: secțiunea „Arhitectura” descrie acum tot ce e în `src/` și `scripts/`.
+
 **Rămâne:**
 - [ ] eticheta `hex-td-v0.0.1` pe commit-ul `ec73b9e` (o poate pune doar Andrei; comanda e în `CLAUDE.md`);
 - [ ] pornirea GitHub Pages din setările repo-ului, cu sursa „GitHub Actions” (doar Andrei);

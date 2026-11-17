@@ -26,14 +26,27 @@ npm run single     # dist-single/world-guard.html: tot jocul într-un singur fi�
 ```
 
 ## Arhitectura
-- `src/sim/` — **nucleul de joc, determinist, fără DOM.** Starea (`state.ts`), pasul de 1/60 s (`step.ts`),
-  ajutoare de test (`testkit.ts`), aleatorul (`rng.ts`). Tot ce contează pentru reguli stă aici.
-- `src/data/` — cifrele (`balance.ts`) și așezarea lumii (`layout.ts`).
-  **Un număr de gameplay scris în afara lui `src/data/` e o greșeală.**
-- `src/render/` — desenarea pe Canvas 2D. Citește starea, nu o modifică. (Urmează.)
-- `src/input/` — joystick și taste. (Urmează.)
-- `src/ui/` — texte (în română, într-un singur modul `strings.ts`) și ecrane. (Urmează.)
-- `src/main.ts` — legătura dintre ele. Deocamdată un ciot.
+- `src/sim/` — **nucleul de joc, determinist, fără DOM.** Tot ce contează pentru reguli stă aici.
+  `state.ts` (starea, `DT`, `EPS`, tipurile), `step.ts` (un pas de 1/60 s, în ordine: ceas, erou, cercuri, luptă, dușmani),
+  `hero.ts` (mers, coliziuni, reapariție, strâns), `pads.ts` (cercurile de investit: plată, nivele, producție, reparat),
+  `combat.ts` (lovitura eroului, tragerea turnurilor, săgeți), `foes.ts` (apariții, mers, atac, despărțire),
+  `rng.ts` (aleatorul cu fluxuri numite), `result.ts` (verificări cu motiv), `testkit.ts` (ajutoare de test),
+  plus testele de lângă fiecare (`*.test.ts`, între ele `discipline.test.ts` și `run.test.ts`, care măsoară partida întreagă).
+- `src/data/` — cifrele (`balance.ts`) și așezarea lumii (`layout.ts`: hartă, castel, grupuri de resurse, cercuri,
+  vederea de referință, pragul de viață scăzută). **Un număr de gameplay scris în afara lui `src/data/` e o greșeală.**
+- `src/app/` — lipiciul fără desen și fără reguli: `loop.ts` (acumulatorul: pași fixi din timpul cadrului, cel mult 5 pe cadru),
+  `flags.ts` (`?seed=` și `?debug=1` din adresă), `storage.ts` (recordul în `localStorage`; orice eroare = fără record).
+- `src/render/` — desenarea pe Canvas 2D. Citește starea, nu o modifică. `canvas.ts` (mărimea, ordinea straturilor),
+  `camera.ts` (scara ecranului și urmărirea eroului), `ground.ts` (terenul, pictat o dată), `world.ts` (tot ce e în coordonate de lume;
+  sare peste ce e în afara ecranului), `overlay.ts` (indicatorul spre castel și joystickul, în coordonate de ecran),
+  `palette.ts` (culorile citite o dată din variabilele CSS).
+- `src/input/` — comenzile: `joystick.ts` (logica joystickului, fără DOM, testată), `bind.ts` (singurul cu DOM: pointer și taste).
+- `src/ui/` — textele (în română, într-un singur modul `strings.ts`), banda de sus (`hud.ts`), cartonașele de start și de final
+  (`cards.ts`), formatul ceasului (`format.ts`) și stilurile (`ui.css`).
+- `src/main.ts` — legătura dintre ele: trei stări (start, joc, final), bucla de cadre, testul de viteză.
+- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 9 verificări, capturi în `smoke-out/`) și `single-file.mjs`
+  (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`).
+- `.github/workflows/` — `ci.yml` (`npm run check` la fiecare pull request) și `deploy.yml` (publică pe GitHub Pages la push pe `main`).
 
 ## Reguli dure în `src/sim/`
 Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
