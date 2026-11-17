@@ -11,7 +11,8 @@
     "build": "tsc --noEmit && vite build",
     "check": "npm run typecheck && npm run test && vite build",
     "preview": "vite preview",
-    "smoke": "vite build && node scripts/smoke.cjs"
+    "smoke": "vite build && node scripts/smoke.cjs",
+    "single": "vite build --config vite.single.config.ts && node scripts/single-file.mjs"
   },
   "devDependencies": {
     "@fontsource/alfa-slab-one": "^5.3.0",

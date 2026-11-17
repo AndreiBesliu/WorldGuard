@@ -21,6 +21,8 @@ npm run dev        # Vite, http://localhost:5180
 npm run check      # typecheck + teste + build — ASTA e poarta înainte de commit
 npm test           # Vitest
 npm run build
+npm run smoke      # proba în browser (Playwright instalat pe mașină); nu face parte din `check`
+npm run single     # dist-single/world-guard.html: tot jocul într-un singur fișier (pentru încercat pe telefon)
 ```
 
 ## Arhitectura
@@ -50,13 +52,17 @@ Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
 - **Verificare proporțională.** Teste pe logica de joc (reguli, determinism, replay). Fără infrastructură
   de verificare înaintea unui joc jucabil — lecția de la Kinstead: întâi aflăm dacă e distractiv.
 - **Designul e al owner-ului (Andrei).** Ce propui tu se marchează „propunere” până decide el.
-  Deciziile luate stau în GDD §14; nu le redeschide fără el.
+  Deciziile luate stau în `docs/GDD.md`, secțiunea „Cine a hotărât ce”; nu le redeschide fără el.
 - Măsoară înainte să afirmi: o cifră care ajunge într-o decizie se măsoară, nu se estimează.
 - Când va exista backend: regula comună a proiectelor lui Andrei — instanță de **test** și **live**,
   publicarea pe live doar de owner, cu confirmare și jurnal.
 
 ## Stare
-- **v0.1.0 (17.11.2026):** jocul nou ia locul celui vechi. Sunt gata tipurile și starea de pornire
-  (`createGame`), cifrele de echilibru, așezarea lumii și un `step` care doar numără timpul.
-- **Următorul:** eroul, cercurile de investit, dușmanii, lupta, desenatul și interfața — task-urile 2–9
-  din planul fazei 1.
+- **Faza 1, în cod (17.11.2026):** jocul e jucabil: erou cu joystick, strâns resurse, cercuri de investit,
+  dușmani, luptă, turnuri, desenat pe Canvas 2D, cartonașe de start și de final cu record local, „Test de viteză”.
+  `npm run check` (77 de teste) și `npm run smoke` (9 verificări) trec. CI rulează `check` la fiecare pull request;
+  `deploy.yml` publică pe GitHub Pages la push pe `main`; `npm run single` dă varianta într-un singur fișier.
+- **Nefăcut încă:** eticheta `hex-td-v0.0.1`, pornirea GitHub Pages din setările repo-ului și verificarea pe telefonul
+  lui Andrei (Samsung Galaxy A54) — toate ale lui Andrei.
+- **Urmează:** planul 2 (pauză, instalare pe telefon, joc fără internet, reluarea unei partide întrerupte) și planul 3
+  (plasa pentru dificultate și reechilibrarea).
