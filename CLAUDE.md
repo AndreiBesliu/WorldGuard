@@ -3,13 +3,17 @@
 Faptele stabile și regulile proiectului. Se încarcă la fiecare sesiune.
 
 ## Ce e
-**World Guard** (nume de lucru; jucătorii sunt **Guardians**) — un tower defense roguelite pe hexagoane,
-în care modelezi pământul unor planete vii, iar ele țin minte ce le-ai făcut. Țintă: joc comercial
-pe Steam; acum, **prototip în browser**.
+**World Guard** — un joc de apărat castelul, văzut de sus, pentru telefon. Un erou condus cu joystick
+strânge lemn și piatră și le investește: turnuri, tăietori, carieră, nivelul eroului, repararea castelului.
+Dușmanii vin continuu și tot mai des; scorul e cât reziști. Pentru Andrei, deocamdată; nimic nu se
+construiește acum pentru o publicare.
 
-- Designul complet: [`docs/GDD.md`](docs/GDD.md), inclusiv registrul deciziilor (§14).
-- Tabla de design (FigJam): https://www.figma.com/board/OKHd5kH7tHWGhDcRH7GQP5
+- Designul complet: [`docs/GDD.md`](docs/GDD.md) (în conflict cu prototipul, câștigă documentul).
+- Prototipul de aruncat, referință pentru aspect și comportament: [`docs/prototip.html`](docs/prototip.html).
+- Planul fazei 1: [`docs/superpowers/plans/2026-11-17-world-guard-faza-1.md`](docs/superpowers/plans/2026-11-17-world-guard-faza-1.md).
 - Istoria lucrului: [`DEVLOG.md`](DEVLOG.md).
+- Jocul vechi (tower defense pe hexagoane) e la commit-ul `ec73b9e`. Andrei poate pune eticheta:
+  `git tag hex-td-v0.0.1 ec73b9e && git push origin hex-td-v0.0.1`.
 
 ## Comenzi
 ```bash
@@ -20,29 +24,25 @@ npm run build
 ```
 
 ## Arhitectura
-- `src/sim/` — **nucleul de joc, determinist, fără DOM.** Hartă, traseu, decizii, (mai târziu) valuri,
-  turnuri, reacții. Tot ce contează pentru reguli stă aici.
-- `src/data/` — cifrele și regulile de conținut (teren, ocoluri, mai târziu turnuri, inamici).
-  **Un număr de gameplay scris direct în cod e o greșeală**: îl muți în `src/data/`.
-- `src/render/` — desenarea pe Canvas 2D. Citește starea, nu o modifică.
-- `src/main.ts` — input și legătura dintre ele.
+- `src/sim/` — **nucleul de joc, determinist, fără DOM.** Starea (`state.ts`), pasul de 1/60 s (`step.ts`),
+  ajutoare de test (`testkit.ts`), aleatorul (`rng.ts`). Tot ce contează pentru reguli stă aici.
+- `src/data/` — cifrele (`balance.ts`) și așezarea lumii (`layout.ts`).
+  **Un număr de gameplay scris în afara lui `src/data/` e o greșeală.**
+- `src/render/` — desenarea pe Canvas 2D. Citește starea, nu o modifică. (Urmează.)
+- `src/input/` — joystick și taste. (Urmează.)
+- `src/ui/` — texte (în română, într-un singur modul `strings.ts`) și ecrane. (Urmează.)
+- `src/main.ts` — legătura dintre ele. Deocamdată un ciot.
 
 ## Reguli dure în `src/sim/`
 Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
 - **Fără `Math.random()`, `Date.now()`, `new Date()`, `performance.now()`.** Aleatorul vine din
   `createRng(seed, 'nume-flux')` (`rng.ts`), câte un flux numit pe sistem — altfel o tragere în plus
-  într-un loc mută tot ce urmează în altul, iar replay-urile nu se mai reproduc.
-- **Orice acțiune a jucătorului e o `Decision` în jurnal** și trece prin `applyDecision`. Starea se
-  reconstruiește identic din `(seed, jurnal)` — pe asta stau meta-progresia, verificarea partidelor pe
-  server și datele de playtest. Nicio schimbare de stare pe lângă jurnal.
-- **O verificare întoarce motivul, nu doar „nu”** (`Result` din `result.ts`). Din asta iese panoul „De ce nu?”.
-- **Terenul e separat de traseu.** Traseul și turnurile se reiau la fiecare partidă; terenul unei
-  regiuni persistă între partide (vezi GDD §9.1). Nu amesteca cele două.
-
-## Mecanica de traseu (implementată)
-Capete fixe (intrare `I`, bază `B`). O bucată înlocuiește o porțiune de 1–3 hexagoane cu un ocol mai lung
-cu +1..+3. Drumul nu are voie să se atingă singur (două hexagoane de drum neconsecutive nu pot fi vecine).
-Măsurat: pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoane — de aici `portiuneMaxima: 3`.
+  într-un loc mută tot ce urmează în altul.
+- **Pas fix de 1/60 s** (`DT`), indiferent de ecran. Aceeași sămânță și aceleași comenzi dau aceeași stare.
+- **Starea trece prin JSON.** `GameState` e date simple: fără funcții, fără referințe între obiecte.
+  `JSON.parse(JSON.stringify(s))` trebuie să continue identic — pe asta stă reluarea unei partide întrerupte.
+- **O verificare întoarce motivul, nu doar „nu”** (`Result` din `result.ts`).
+- Fără DOM și fără rețea în simulare.
 
 ## Cum se lucrează
 - După fiecare felie: `npm run check` verde → intrare în `DEVLOG.md` → commit. Stagează explicit
@@ -56,6 +56,7 @@ Măsurat: pe drum drept, un ocol de +k cere o porțiune de cel puțin k hexagoan
   publicarea pe live doar de owner, cu confirmare și jurnal.
 
 ## Stare
-- **v0.0.1 (04.10.2026):** schelet + harta pe hexagoane + traseul cu ocoluri + jurnalul deciziilor.
-  33 de teste.
-- **Următorul:** prototipul 1 din GDD §10, felie cu felie (vezi DEVLOG).
+- **v0.1.0 (17.11.2026):** jocul nou ia locul celui vechi. Sunt gata tipurile și starea de pornire
+  (`createGame`), cifrele de echilibru, așezarea lumii și un `step` care doar numără timpul.
+- **Următorul:** eroul, cercurile de investit, dușmanii, lupta, desenatul și interfața — task-urile 2–9
+  din planul fazei 1.

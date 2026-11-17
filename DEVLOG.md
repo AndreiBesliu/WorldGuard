@@ -52,3 +52,26 @@ Designul s-a făcut într-o sesiune cloud, cu tabla FigJam
 - [ ] terraformarea: canal, deal, arde;
 - [ ] draftul 1 din 3 între valuri, apoi bossul;
 - [ ] HUD minim, plus previzualizarea valului.
+
+---
+
+## 17.11.2026 — Jocul nou ia locul celui vechi; starea de pornire (faza 1, task 1)
+
+**Cerut de owner:** un joc de apărat castelul pentru telefon, în care un erou strânge resurse și le
+investește; el ia locul tower defense-ului pe hexagoane din repo. Designul: `docs/GDD.md` (aprobat 17.11.2026).
+
+**Jocul vechi:** rămâne la commit-ul `ec73b9e` (părintele ramurii asta). Eticheta `hex-td-v0.0.1` nu s-a
+putut pune din sesiune; Andrei o poate pune singur: `git tag hex-td-v0.0.1 ec73b9e && git push origin hex-td-v0.0.1`.
+
+**Păstrat:** scheletul (TypeScript, Vite, Vitest, poarta `npm run check`), `src/sim/rng.ts`,
+`src/sim/rng.test.ts`, `src/sim/result.ts`, `src/sim/discipline.test.ts`, regulile de lucru.
+**Scos:** harta pe hexagoane, drumul, jurnalul de decizii, desenatul și testele lor; regula „orice acțiune
+e o decizie în jurnal” (la un joc cu joystick ar însemna direcția la fiecare pas). Rămâne determinismul.
+
+**Făcut:**
+- `docs/GDD.md` înlocuit; `docs/prototip.html` și planul fazei 1 adăugate;
+- `src/data/balance.ts` (cifrele și curbele) și `src/data/layout.ts` (lume, castel, grupuri de resurse, cercuri);
+- `src/sim/state.ts` (tipurile și `createGame`), `step.ts` (doar ceasul), `testkit.ts`;
+- `src/main.ts` ciot, ca build-ul să aibă intrare până la Task 7.
+
+**Rămâne:** task-urile 2–9 din planul fazei 1 (erou, cercuri, dușmani, luptă, desen, interfață).

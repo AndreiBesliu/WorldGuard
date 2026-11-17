@@ -1,8 +1,8 @@
 {
   "name": "world-guard",
   "private": true,
-  "version": "0.0.1",
-  "description": "World Guard — tower defense roguelite pe hexagoane (prototip)",
+  "version": "0.1.0",
+  "description": "World Guard — aperi castelul cu un erou (joc web pentru telefon)",
   "type": "module",
   "scripts": {
     "dev": "vite",
