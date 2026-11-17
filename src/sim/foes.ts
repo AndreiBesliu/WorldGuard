@@ -42,13 +42,13 @@ function act(s: GameState, f: Foe): void {
   const chaseHero = !hero.dead && heroD < BALANCE.foe.chase     // eroul doborât nu e urmărit
   const tx = chaseHero ? hero.x : CASTLE.x
   const ty = chaseHero ? hero.y : CASTLE.y
-  const stop = chaseHero ? f.r + BALANCE.hero.r + 2 : CASTLE.r + f.r + 1
+  const stop = chaseHero ? f.r + BALANCE.hero.r + BALANCE.foe.stopHero : CASTLE.r + f.r + BALANCE.foe.stopCastle
   const dx = tx - f.x, dy = ty - f.y, d = Math.hypot(dx, dy)
   if (d > EPS) f.a = Math.atan2(dy, dx)
   if (d > stop + EPS) {
-    const step = Math.min(f.speed * DT, d - stop)
-    f.x += (dx / d) * step
-    f.y += (dy / d) * step
+    const move = Math.min(f.speed * DT, d - stop)
+    f.x += (dx / d) * move
+    f.y += (dy / d) * move
     return
   }
   f.atkT -= DT

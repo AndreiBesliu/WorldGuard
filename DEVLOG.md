@@ -94,3 +94,9 @@ mers spre castel sau spre erou (sub 90 px), atac 1 s în castel / 0,8 s în erou
 scoaterea celor doborâți (`kills`, norișor) și sfârșitul partidei când castelul cade; `step` curăță și `fx` bătrâne. Cifră nouă:
 `BALANCE.fx.puffPad` (6). Două teste din plan au fost corectate: marginea se verifică în clipa apariției (după 0,1 s dușmanul a
 mers deja ~4 px), iar pragul de despărțire e 15, nu 19 (o trecere pe pas lasă o mică suprapunere într-o mulțime înghesuită, măsurat 18–19 din 20).
+
+**Task 5 — lupta (`src/sim/combat.ts`):** lovitura eroului la 0,45 s (toți dușmanii din rază și din arcul de 1,25 rad în jurul celui mai
+apropiat, impuls 140 / 60 pe bruta), turnurile trag la 0,8 s în cel mai apropiat din 190 px, săgețile zboară cu 420 px/s spre poziția de acum
+a țintei și lovesc la un pas + 6 px; `updateCombat` stă între `updatePads` și `updateFoes`. Cifre noi în `BALANCE`: `tower.arrive` (6),
+`foe.stopCastle` (1), `foe.stopHero` (2) — ultimele două erau literale în `foes.ts`. Măsurat: partida fără niciun gest cade la
+71,3 / 62,0 / 65,1 / 60,5 / 64,9 s (semințile 1–5; prototipul a avut 94 s); un pas cu 150 de dușmani sub 1 ms.

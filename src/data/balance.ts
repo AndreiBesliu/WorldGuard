@@ -40,6 +40,7 @@ export const BALANCE = {
     maxLevel: 5,                             // nivelul maxim al turnului
     shotSpeed: 420,                          // viteza proiectilului, px/s
     r: 14,                                   // raza turnului, px
+    arrive: 6,                               // la cât de aproape de țintă (peste un pas) săgeata a ajuns, px
   },
   camp: { every: [1.6, 1.0, 0.7], maxLevel: 3, r: 18 },     // secunde între două bucăți de lemn, pe nivel; nivel maxim; raza px
   quarry: { every: [2.4, 1.5, 1.0], maxLevel: 3, r: 18 },   // la fel, pentru piatră
@@ -54,6 +55,8 @@ export const BALANCE = {
     chase: 90,                               // la ce distanță de erou un dușman îl urmărește, px
     hitCastleEvery: 1,                       // secunde între loviturile în castel
     hitHeroEvery: 0.8,                       // secunde între loviturile în erou
+    stopCastle: 1,                           // cât de departe de zid se oprește un dușman, px
+    stopHero: 2,                             // cât de departe de erou se oprește un dușman, px
     firstHit: 0.4,                           // secunde până la prima lovitură după ce a ajuns
     grunt: { r: 10, speed: 46, dmg: 3 },     // dușmanul obișnuit: raza px, viteza px/s, lovitura
     brute: { r: 15, speed: 30, dmg: 9, hpTimes: 4, every: 7, after: 120 }, // bruta: raza, viteza, lovitura, de câte ori mai multă viață, la a câta apariție, după câte secunde

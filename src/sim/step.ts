@@ -1,8 +1,9 @@
-// Un pas de simulare, de 1/60 s. Deocamdată ceasul, eroul, cercurile, dușmanii și resursele; restul vine în task-urile următoare.
+// Un pas de simulare, de 1/60 s. Ceasul, eroul, cercurile, lupta, dușmanii și resursele.
 import { BALANCE } from '../data/balance'
 import { DT, EPS, type GameState, type Input } from './state'
 import { updateHero } from './hero'
 import { updatePads } from './pads'
+import { updateCombat } from './combat'
 import { updateFoes } from './foes'
 
 export function step(s: GameState, input: Input): void {
@@ -11,6 +12,7 @@ export function step(s: GameState, input: Input): void {
   s.t = s.tick * DT
   updateHero(s, input)
   updatePads(s)
+  updateCombat(s)
   updateFoes(s)
   s.fx = s.fx.filter((f) => s.t - f.t0 <= (f.kind === 'puff' ? BALANCE.fx.puffLife : BALANCE.fx.textLife))   // efectele bătrâne dispar
   if (s.castle.hp <= EPS) { s.castle.hp = 0; s.mode = 'over' }                                          // castelul a căzut
