@@ -991,7 +991,7 @@ Pagina se deschide cu `?seed=7&debug=1`. Verificări noi, în ordine:
 4. cartonașul de start se vede, cu titlul „World Guard”;
 5. după „Începe”, o tragere cu degetul de la (200, 600) la (140, 600), ținută 500 ms, mută eroul cu peste 40 de unități la stânga (la dreapta e castelul), iar indiciul dispare;
 6. după ridicarea degetului, eroul stă: `x` nu se mai schimbă în 300 ms;
-7. `__wg.run(200)` duce partida la sfârșit: cartonașul de final arată „Castelul a căzut” și un timp între 1:00 și 2:10;
+7. `__wg.run(200)` duce partida la sfârșit: cartonașul de final arată „Castelul a căzut” și un timp între 0:50 și 2:10 (fără apărare castelul cade în 54–72 s, după cât de aproape de el a rămas eroul);
 8. „Încă o partidă” pornește o partidă nouă, cu ceasul sub 0:02;
 9. după reîncărcare și „Test de viteză”, starea are 150 de dușmani și banda arată „fps”.
 

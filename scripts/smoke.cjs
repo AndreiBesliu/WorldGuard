@@ -144,7 +144,7 @@ async function main() {
     const overTime = await page.locator('#overTime').innerText().catch(() => '')
     const [om, os] = overTime.split(':').map(Number)
     const overSecs = om * 60 + os
-    check(7, 'cartonașul de final arată „Castelul a căzut” și un timp între 1:00 și 2:10', overTitle === 'Castelul a căzut' && overSecs >= 60 && overSecs <= 130, `titlu „${overTitle}”, timp ${overTime}`)
+    check(7, 'cartonașul de final arată „Castelul a căzut” și un timp între 0:50 și 2:10', overTitle === 'Castelul a căzut' && overSecs >= 50 && overSecs <= 130, `titlu „${overTitle}”, timp ${overTime}`)
     failFast(7)
 
     // 8. încă o partidă
