@@ -2,15 +2,54 @@
 <html lang="ro">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>World Guard</title>
-    <style>
-      html, body { margin: 0; height: 100%; background: #12161c; color: #e8e6e3; font-family: system-ui, sans-serif; }
-      canvas { display: block; width: 100vw; height: 100vh; }
-    </style>
   </head>
   <body>
-    <canvas id="joc"></canvas>
+    <div class="stage" id="stage">
+      <canvas id="field" data-str-aria="fieldLabel"></canvas>
+
+      <div class="hud" id="hud">
+        <div class="banner" id="banner">
+          <div class="stock"><i class="chip chip-wood"></i><b id="wood"></b><span data-str="wood"></span></div>
+          <div class="stock"><i class="chip chip-stone"></i><b id="stone"></b><span data-str="stone"></span></div>
+          <div class="time"><span class="fps" id="fps"></span><div class="clock" id="clock"></div></div>
+          <div class="castle">
+            <span data-str="castle"></span>
+            <div class="meter" id="meter"><i id="castleFill"></i></div>
+            <b id="castleHp"></b>
+          </div>
+        </div>
+      </div>
+
+      <p class="hint" id="hint" hidden><span data-str="hint"></span></p>
+
+      <div class="veil" id="startVeil" hidden>
+        <div class="card">
+          <h1 data-str="title"></h1>
+          <ul class="rules">
+            <li><i class="chip chip-ink"></i><span data-str="ruleMove"></span></li>
+            <li><i class="chip chip-wood"></i><span data-str="ruleGather"></span></li>
+            <li><i class="chip chip-hero"></i><span data-str="ruleInvest"></span></li>
+            <li><i class="chip chip-foe"></i><span data-str="ruleFight"></span></li>
+          </ul>
+          <button class="go" id="start" type="button" data-str="start"></button>
+          <button class="go quiet" id="stress" type="button" data-str="stress"></button>
+        </div>
+      </div>
+
+      <div class="veil" id="overVeil" hidden>
+        <div class="card">
+          <h1 data-str="overTitle"></h1>
+          <div class="result"><span data-str="overSurvived"></span><b id="overTime"></b></div>
+          <dl class="facts">
+            <div><dt id="recordLabel" data-str="record"></dt><dd id="overRecord"></dd></div>
+            <div><dt data-str="overKills"></dt><dd id="overKills"></dd></div>
+          </dl>
+          <button class="go" id="again" type="button" data-str="again"></button>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
