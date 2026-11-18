@@ -265,3 +265,24 @@ Proba din browser, verificarea 7: limita de timp corectată la 0:50–2:10, fiin
 - Pentru planul 3: orice câmp nou în stare urcă `SAVE_VERSION`. Testul amprentei din `save.test.ts` („forma stării s-a schimbat: urcă SAVE_VERSION și adu amprenta la zi”) o cere singur.
 - Măsurat: `npm run check` pe un checkout fără `dist/`: 143 de teste trec; `SMOKE OK (20 verificări)`; `SMOKE INFO`: 9,59 ms pe cadru; `build-sw: 24 fișiere în cache (626866 octeți)`; `dist-single/world-guard.html`: 415 361 octeți, fără `sw.js`.
 - [ ] de adăugat la proba lui Andrei pe telefon: pauza apăsată cu cealaltă mână cât conduce nava; o versiune nouă apare abia după ce jocul e închis de tot (o reîncărcare în aceeași filă o păstrează pe cea veche); cum arată banda cu butonul de pauză.
+
+## 18.11.2026 — Faza 3
+
+**Explorarea, înainte de plan** (jucători de aruncat, în afara repo-ului; tabelul întreg e în `docs/superpowers/plans/2026-11-18-world-guard-faza-3.md`): Nimic 66 s, Amestec 368 s, Doar navă 240 s, Fără navă 329 s, Fără economie 289 s (medianele pe 20 de semințe, cu apărarea la 120 de centrul planetei; acolo cercul de reparat nu era ocolit).
+
+**Task 1 — Jucătorii automați.**
+- `src/bots/`, în afara jocului livrat (nimic din `main.ts` nu-l importă; `dist/` nu are niciun nume de purtare). `policy.ts`: cele cinci purtări (`POLICIES`, cu `label` în română), `bought`, `nextPad` (categoriile pe rând, cea fără nimic de cumpărat e sărită), `chooseGoal` (luptă cu nava dușmană cea mai apropiată de centru dacă e la mai puțin de `GUARD = 120`; altfel plătește dacă stocul acoperă ce a rămas, altfel strânge resursa care lipsește mai mult; cu nimic de cumpărat, acasă). `nav.ts`: `createNav` (drept spre țintă; după 24 de pași fără apropiere de 1 px, 30 de pași de ocolire, cu partea schimbată la fiecare blocaj; o țintă mutată cu peste 40 px șterge memoria) și `offForeignPad` (de pe orice cerc care nu e ținta de plată, inclusiv cel de reparat, iese dinspre centru). `bot.ts`: `createBot`, un `Nav` pe jucător. `run.ts`: `playOne`, `median`, `measure`, `measureAll`, `SEEDS` = 1…20, `RUN_CAP` = 900 s.
+- Jucătorii doar citesc starea (testat cu `JSON.stringify` înainte și după) și niciunul nu repară planeta (viața ei nu crește niciodată, pe toate cele cinci purtări).
+- Disciplina: `src/sim/discipline.test.ts` citește acum și fișierele din `src/bots/` (aceeași `violations`, titlurile spun folderul). Nu există un `src/bots/discipline.test.ts`: importat dintr-un fișier de test, `violations` i-ar fi înregistrat testele a doua oară.
+- Măsurat, cu un script de aruncat (`measureAll()`, raza 120, 20 de semințe):
+
+| Jucător | Mediana | Min | Max |
+| --- | --- | --- | --- |
+| Nimic | 65,6 s | 58,6 | 81,6 |
+| Amestec | 382,1 s | 341,0 | 415,8 |
+| Doar navă | 249,9 s | 225,0 | 284,5 |
+| Fără navă | 330,6 s | 302,9 | 389,0 |
+| Fără economie | 329,0 s | 282,1 | 375,9 |
+
+  „Doar navă” e la 65,4% din „Amestec”, „Fără navă” la 86,5%. Cele 100 de partide durează împreună 14,5 s. „Amestec”, sămânța 1: prima turelă la 1,42 s, 6 cumpărături la secunda 120. Mersul (harta adevărată, fără nave dușmane) ajunge la cercuri și grupuri în 18–51% din marginea de timp a testului, iar ocolind planeta în 55%. „Doar navă” se încheie cu nava la nivelul 2 pe semințele 1–3, ca în explorare.
+- `npx vitest run src/bots src/sim/discipline.test.ts`: 67 de teste, 6,4 s. `npm run check`: 199 de teste trec (143 înainte).

@@ -1,5 +1,6 @@
-// Nucleul `src/sim` trebuie să fie determinist: fără ceasul mașinii și fără aleator global.
+// Nucleul `src/sim` și jucătorii automați din `src/bots` trebuie să fie deterministe: fără ceasul mașinii și fără aleator global.
 // Testul citește sursele și refuză tiparele interzise. Proba lui negativă e ultimul caz de mai jos.
+// Ambele foldere stau aici, într-un singur fișier de test: un test care ar importa `violations` din acest fișier i-ar înregistra testele a doua oară.
 
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -19,18 +20,22 @@ export function violations(source: string): string[] {
   return FORBIDDEN.filter(([re]) => re.test(code)).map(([, why]) => why)
 }
 
-describe('disciplina nucleului src/sim', () => {
-  const dir = dirname(fileURLToPath(import.meta.url))
-  const files = readdirSync(dir).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+describe('disciplina nucleului src/sim și a jucătorilor din src/bots', () => {
+  const sim = dirname(fileURLToPath(import.meta.url))
+  const folders = [['src/sim', sim], ['src/bots', join(sim, '..', 'bots')]] as const
 
-  it('găsește fișierele nucleului', () => {
-    expect(files.length).toBeGreaterThan(3)
-  })
+  for (const [name, dir] of folders) {
+    const files = readdirSync(dir).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
 
-  for (const f of files) {
-    it(`${f} nu folosește ceasul sau aleatorul global`, () => {
-      expect(violations(readFileSync(join(dir, f), 'utf8'))).toEqual([])
+    it(`găsește fișierele din ${name}`, () => {
+      expect(files.length).toBeGreaterThan(3)
     })
+
+    for (const f of files) {
+      it(`${name}/${f} nu folosește ceasul sau aleatorul global`, () => {
+        expect(violations(readFileSync(join(dir, f), 'utf8'))).toEqual([])
+      })
+    }
   }
 
   it('proba negativă: verificarea chiar prinde un tipar interzis', () => {
