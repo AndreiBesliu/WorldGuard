@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Pictograma: planeta din joc cu inelul-scut și satelitul, pe cer. Culorile sunt cele din :root, src/ui/ui.css.
+       Tot desenul stă în cercul din mijloc de rază 202 (sub 80% din latură), ca să încapă în varianta „maskable”.
+       PNG-urile se fac din el cu `npm run icons`. -->
+  <defs>
+    <radialGradient id="aura" cx="256" cy="256" r="148" gradientUnits="userSpaceOnUse">
+      <stop offset="0.78" stop-color="#78cdff" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#78cdff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shade" x1="184" y1="184" x2="352" y2="352" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#060a1f" stop-opacity="0"/>
+      <stop offset="1" stop-color="#060a1f" stop-opacity="0.6"/>
+    </linearGradient>
+    <clipPath id="disc"><circle cx="256" cy="256" r="120"/></clipPath>
+  </defs>
+
+  <rect width="512" height="512" fill="#0c1236"/>
+  <circle cx="256" cy="256" r="148" fill="url(#aura)"/>
+
+  <g clip-path="url(#disc)">
+    <rect x="136" y="136" width="240" height="240" fill="#2f7fd8"/>
+    <path fill="#4fc98a" d="M170 220 C185 185 235 180 250 205 C265 228 240 250 255 275 C268 300 225 320 200 300 C175 282 158 255 170 220 Z"/>
+    <path fill="#39b077" d="M196 232 C206 214 230 214 236 230 C242 246 228 262 214 262 C200 262 188 248 196 232 Z"/>
+    <path fill="#4fc98a" d="M285 175 C310 160 350 172 362 200 C372 225 345 240 320 232 C300 226 270 195 285 175 Z"/>
+    <path fill="#4fc98a" d="M290 300 C310 285 345 290 355 315 C362 335 335 362 305 355 C285 350 275 318 290 300 Z"/>
+    <ellipse cx="256" cy="140" rx="46" ry="14" fill="#f1f4ff" fill-opacity="0.85"/>
+    <rect x="136" y="136" width="240" height="240" fill="url(#shade)"/>
+  </g>
+  <path d="M141.4 237.9 A116 116 0 0 1 291.8 145.7" fill="none" stroke="#f1f4ff" stroke-opacity="0.5" stroke-width="8" stroke-linecap="round"/>
+
+  <circle cx="256" cy="256" r="156" fill="none" stroke="#8fe9ff" stroke-width="16"/>
+  <circle cx="401.5" cy="133.9" r="12" fill="#dfe6f7"/>
+</svg>

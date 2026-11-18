@@ -72,4 +72,9 @@ describe('dușmanii', () => {
     stepFor(a, 30); stepFor(b, 30)
     expect(b).toEqual(a)
   })
+  it('împinsul se stinge de tot: după 3 s e exact zero, nu un rest și nu un zero negativ', () => {
+    const s = quietGame(); heroAt(s, 100, 100); const f = addFoe(s, 550, 300, { kx: -140, ky: 90 })
+    stepFor(s, 3)
+    expect(Object.is(f.kx, 0) && Object.is(f.ky, 0)).toBe(true)
+  })
 })

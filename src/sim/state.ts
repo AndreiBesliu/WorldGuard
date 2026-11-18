@@ -12,7 +12,7 @@ export type Res = 'crystal' | 'metal'
 export type BuildKind = 'turret' | 'collector' | 'mine' | 'hero'
 export type PadKind = BuildKind | 'repair'
 export interface Input { x: number; y: number }                    // lungime ≤ 1
-export interface ResNode { type: Res; x: number; y: number; left: number; regrowAt: number; shakeT: number; tilt: number; shape: number[] }
+export interface ResNode { type: Res; x: number; y: number; left: number; regrowAt: number; shakeT: number; shape: number[] }
 export interface Pad { kind: PadKind; x: number; y: number; bx: number; by: number; lvl: number; paid: Record<Res, number>; dwell: number; payT: number; flip: boolean; cool: number; prodT: number; popT: number }
 export interface Hero { x: number; y: number; face: number; hp: number; lvl: number; dead: boolean; respawnT: number; strikeT: number; gatherT: number; waveT: number; waveA: number; hurtT: number; moved: boolean }
 export interface Foe { id: number; x: number; y: number; r: number; hp: number; maxHp: number; speed: number; dmg: number; brute: boolean; atkT: number; kx: number; ky: number; a: number; hitT: number; lungeT: number }
@@ -44,7 +44,7 @@ function layNodes(): ResNode[] {
       if (nodes.some((n) => Math.hypot(n.x - x, n.y - y) < NODE_GAP)) continue
       const shape: number[] = []
       if (c.type === 'metal') for (let i = 0; i < 7; i++) shape.push(0.78 + rng.next() * 0.3)
-      nodes.push({ type: c.type, x, y, left: BALANCE.node[c.type].amount, regrowAt: 0, shakeT: NEVER, tilt: 0, shape })
+      nodes.push({ type: c.type, x, y, left: BALANCE.node[c.type].amount, regrowAt: 0, shakeT: NEVER, shape })
       placed++
     }
   }

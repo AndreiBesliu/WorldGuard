@@ -12,6 +12,7 @@ import { drawWorld } from './world'
 export function createRenderer(canvas: HTMLCanvasElement): {
   resize(hudBottom: number): void
   frame(s: GameState, input: Input, stick: Stick | null, frameDt: number): void
+  refresh(): void
 } {
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('canvas 2D indisponibil')
@@ -19,8 +20,12 @@ export function createRenderer(canvas: HTMLCanvasElement): {
   const cam: Cam = { x: HOME.x, y: HOME.y + 50 }
   const skin = ORBIT
   let sky: HTMLCanvasElement | null = null
+  // Cerul pictat se aruncă și se pictează din nou la cadrul următor: telefonul poate pierde ce era pe canvas cât pagina a stat ascunsă.
+  const refresh = (): void => { sky = null }
+  canvas.addEventListener('contextrestored', refresh)
 
   return {
+    refresh,
     resize(hudBottom) {
       const r = canvas.getBoundingClientRect()
       view.w = r.width; view.h = r.height

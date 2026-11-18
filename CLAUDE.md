@@ -21,11 +21,13 @@ deocamdată; nimic nu se construiește acum pentru o publicare. În cod, roluril
 ## Comenzi
 ```bash
 npm run dev        # Vite, http://localhost:5180
-npm run check      # typecheck + teste + build — ASTA e poarta înainte de commit
+npm run check      # typecheck + teste + bundle — ASTA e poarta înainte de commit
 npm test           # Vitest
+npm run bundle     # vite build + scripts/build-sw.mjs (scrie dist/sw.js); `build` = tsc + bundle
 npm run build
 npm run smoke      # proba în browser (Playwright instalat pe mașină); nu face parte din `check`
 npm run single     # dist-single/world-guard.html: tot jocul într-un singur fișier (pentru încercat pe telefon)
+npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se schimbă desenul; PNG-urile se comit)
 ```
 
 ## Arhitectura
@@ -38,7 +40,13 @@ npm run single     # dist-single/world-guard.html: tot jocul într-un singur fi�
 - `src/data/` — cifrele (`balance.ts`) și așezarea lumii (`layout.ts`: hartă, nucleu, grupuri de resurse, cercuri,
   vederea de referință, pragul de viață scăzută). **Un număr de gameplay scris în afara lui `src/data/` e o greșeală.**
 - `src/app/` — lipiciul fără desen și fără reguli: `loop.ts` (acumulatorul: pași fixi din timpul cadrului, cel mult 5 pe cadru),
-  `flags.ts` (`?seed=` și `?debug=1` din adresă), `storage.ts` (recordul în `localStorage`; orice eroare = fără record).
+  `flags.ts` (`?seed=` și `?debug=1` din adresă), `storage.ts` (recordul în `localStorage`, cheia `wg.v1.record`, și partida salvată:
+  `saveGame`, `loadGame`, `clearGame`, cheia `wg.v1.save`; orice eroare = fără record și fără reluare), `save.ts` (salvarea ca text,
+  cu versiune, verificată la citire), `session.ts` (fazele `ready | playing | paused | over`, când se salvează și când se șterge partida,
+  întreținerea testului de viteză), `wake.ts` (ecranul aprins cât se joacă), `sw.ts` (înregistrează `./sw.js`; un refuz e înghițit).
+- `public/` — `manifest.webmanifest` (instalarea; `theme_color` e `--edge`) și `icons/` (`icon.svg`, sursa, și PNG-urile 192, 512 și
+  `maskable` 512, făcute din el de `scripts/make-icons.cjs`). `src/env.d.ts` declară `__WG_SW__` (pus de `vite.config.ts` la `true`,
+  de `vite.single.config.ts` la `false`: pagina într-un singur fișier nu are service worker).
 - `src/render/` — desenarea pe Canvas 2D. Citește starea, nu o modifică. `canvas.ts` (mărimea, ordinea straturilor; singurul care numește
   aspectul și pictează cerul o dată), `camera.ts` (scara ecranului și urmărirea navei), `world.ts` (tot ce e în coordonate de lume și ar fi la fel
   în orice aspect: straturile, săritul peste ce nu se vede, cercurile, etichetele, barele, textele plutitoare),
@@ -52,13 +60,19 @@ npm run single     # dist-single/world-guard.html: tot jocul într-un singur fi�
   se calculează din timpul partidei și din stare; nu scriu nimic în stare.
 - `src/input/` — comenzile: `joystick.ts` (logica joystickului, fără DOM, testată), `bind.ts` (singurul cu DOM: pointer și taste).
 - `src/ui/` — textele (în română, într-un singur modul `strings.ts`, fixate de `strings.test.ts`), banda de sus (`hud.ts`),
-  cartonașele de start și de final (`cards.ts`), formatul ceasului (`format.ts`) și stilurile (`ui.css`; variabilele de culoare au nume pe roluri,
+  cartonașele de start (cu „Continuă partida”), de pauză și de final (`cards.ts`), apăsarea butoanelor (`tap.ts`: la atingere, la ridicarea
+  degetului deasupra butonului, și pentru al doilea deget; cu mausul și tastatura, la `click`; o singură pornire pe gest), formatul ceasului (`format.ts`) și stilurile (`ui.css`; variabilele de culoare au nume pe roluri,
   fontul titlului e Exo 2).
-- `src/main.ts` — legătura dintre ele: trei stări (start, joc, final), bucla de cadre, testul de viteză.
-- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 9 verificări, capturi în `smoke-out/`, plus un rând `SMOKE INFO` cu timpul de
-  desen pe cadru cu cele 150 de nave dușmane ale testului de viteză așezate în jurul planetei, ca să fie în vedere, din `window.__wg.drawMs`) și `single-file.mjs`
-  (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`).
-- `.github/workflows/` — `ci.yml` (`npm run check` la fiecare pull request) și `deploy.yml` (publică pe GitHub Pages la push pe `main`).
+- `src/main.ts` — legătura dintre ele: nu ține stări, le ia din sesiune; pauza (buton, Escape, pagina ascunsă), bucla de cadre,
+  ecranul aprins, înregistrarea service worker-ului (doar în build, cu `__WG_SW__`). Cu `?debug=1`, `window.__wg` are `state()`,
+  `phase()`, `run(secunde)` și `drawMs(cadre)`.
+- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 20 de verificări, capturi în `smoke-out/`, plus un rând `SMOKE INFO` cu timpul de
+  desen pe cadru cu cele 150 de nave dușmane ale testului de viteză așezate în jurul planetei, ca să fie în vedere, din `window.__wg.drawMs`;
+  merge doar pe Linux și macOS), `single-file.mjs` (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`),
+  `sw-template.js` și `build-sw.mjs` (service worker-ul scris de mână; după `vite build`, `build-sw.mjs` pune în el lista fișierelor din
+  `dist` și o versiune din SHA-256-ul lor și scrie `dist/sw.js`; o versiune nouă se activează la următoarea pornire, niciodată în timpul
+  unei partide) și `make-icons.cjs` (`npm run icons`).
+- `.github/workflows/` — `ci.yml` (`npm run check` la fiecare pull request, cu `permissions: contents: read`) și `deploy.yml` (publică pe GitHub Pages la push pe `main`).
 
 ## Reguli dure în `src/sim/`
 Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
@@ -95,6 +109,8 @@ Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
   pe telefonul lui (Samsung Galaxy A54): „se simte ok până aici”.
 - **Tema, încercată pe telefon:** Andrei a încercat tema de spațiu pe telefonul lui pe 18.11.2026: „pe telefon, totul arată super bine”.
   Cifrele de la „Test de viteză” cu tema nouă nu le-a spus încă.
-- **Nefăcut încă:** eticheta `hex-td-v0.0.1` — a lui Andrei.
-- **Urmează:** planul 2 (pauză, instalare pe telefon, joc fără internet, reluarea unei partide întrerupte) și planul 3
-  (plasa pentru dificultate și reechilibrarea).
+- **Faza 2, în cod (18.11.2026):** pauza (buton, Escape, automată la ieșirea din pagină), salvarea partidei în telefon și „Continuă partida”,
+  ecranul aprins cât se joacă, instalarea pe ecranul de pornire (manifest, pictograme) și jocul fără internet (service worker generat la build).
+  `npm run check` (143 de teste) și `npm run smoke` (20 de verificări) trec, după valul de reparații al recenziei finale. Pe telefonul lui Andrei nu a fost încercată încă.
+- **Nefăcut încă:** eticheta `hex-td-v0.0.1` — a lui Andrei; proba fazei 2 pe telefonul lui (instalarea, jocul fără internet, pauza și reluarea).
+- **Urmează:** planul 3 (plasa pentru dificultate și reechilibrarea).

@@ -10,7 +10,7 @@
 
 **Spec:** `docs/GDD.md`, secțiunile „Ce e nou față de prototip” (punctele 1, 2, 3, 6, 7), „Scopuri pentru v1” (2, 3, 8) și „Când e gata v1”.
 
-**De la ce pornește.** Faza 1 e pe `main` (commit `c2bfc36`) și publicată pe GitHub Pages. Andrei a încercat-o pe Samsung Galaxy A54 și a spus că se simte în regulă. Planul pornește de la tema de spațiu: numele din cod (`core`, `crystal`, `metal`, `turret`, `collector`, `mine`) și aspectul „Orbită” de pe ramura `ccr-a5a7e643-gpwbh0`. Planul presupune că desenatul rămâne pe Canvas 2D. Dacă „Test de viteză” arată sub 60 de cadre pe secundă, mutarea pe PixiJS primește planul ei și trece înaintea Task-ului 4, singurul care atinge desenatul.
+**De la ce pornește.** `main` e la commit-ul `140c5e9`: faza 1 și tema de spațiu, amândouă publicate pe GitHub Pages și încercate de Andrei pe Samsung Galaxy A54 („se simte ok până aici”, apoi, la temă, „pe telefon, totul arată super bine”). Numele din cod sunt cele ale temei (`core`, `crystal`, `metal`, `turret`, `collector`, `mine`), iar aspectul e „Orbită”, în spatele interfeței `Skin`. `npm run check` are 99 de teste, iar `npm run smoke` are 9 verificări și un rând informativ `SMOKE INFO` cu timpul de desen. Cifrele de la „Test de viteză” de pe telefon nu sunt încă notate. Planul presupune că desenatul rămâne pe Canvas 2D. Dacă „Test de viteză” arată sub 60 de cadre pe secundă, mutarea pe PixiJS primește planul ei și trece înaintea Task-ului 4, singurul care atinge desenatul.
 
 ## Global Constraints
 
@@ -25,7 +25,7 @@
 - Interfața e în română. Toate textele stau în `src/ui/strings.ts`.
 - Stilul codului, ca în `src/sim/rng.ts`: fără `;`, ghilimele simple, 2 spații, identificatori în engleză, comentarii în română.
 - Înainte de fiecare commit: `npm run check` verde. Fiecare task adaugă rânduri la intrarea sesiunii din `DEVLOG.md`. Fișierele se stagează explicit, niciodată `git add -A`.
-- Commit-urile merg pe ramura `ccr-a5a7e643-gpwbh0` și se încheie cu cele două rânduri de atribuire ale sesiunii. Fiecare task se încheie cu `git push`.
+- Commit-urile merg pe ramura `ccr-a5a7e643-gpwbh0` și se încheie cu cele două rânduri de atribuire ale sesiunii. Împinsul pe GitHub îl face cel care conduce execuția.
 - Nu intră aici: plasa pentru dificultate, reechilibrarea, sunetul, iPhone-ul, butonul „înapoi” tratat ca pauză (salvarea la ieșirea din pagină îl acoperă).
 
 ## Review Focus
@@ -42,7 +42,7 @@
 
 **Files:**
 - Create: `src/app/save.ts`
-- Modify: `src/data/balance.ts`, `src/sim/foes.ts`
+- Modify: `src/data/balance.ts`, `src/sim/foes.ts`, `src/sim/state.ts`, `src/sim/testkit.ts`
 - Test: `src/app/save.test.ts`, `src/sim/foes.test.ts`
 
 **Interfaces:**
@@ -56,6 +56,8 @@ export function packSave(s: GameState): string                              // J
 export function unpackSave(text: string | null | undefined): Result<GameState>
 // src/data/balance.ts
 // BALANCE.foe.pushFloor = 0.01   — sub atât (unități pe secundă) împinsul se consideră stins
+// src/sim/state.ts
+// ResNode pierde câmpul `tilt`: nu mai are niciun cititor de la tema de spațiu și ar intra degeaba în forma salvării
 ```
 
 - [ ] **Step 1: Scrie testele care pică**
@@ -126,6 +128,8 @@ Expected: FAIL, `save.ts` nu există; testul cu împinsul pică fiindcă restul 
 
 După amortizare, `kx` și `ky` cu valoare absolută sub `BALANCE.foe.pushFloor` devin `0`. Niciun test existent nu se schimbă.
 
+Tot aici, înainte ca forma salvării să fie fixată: câmpul `tilt` dispare din `ResNode` (`src/sim/state.ts`, `addNode` din `src/sim/testkit.ts` și orice test care îl scrie). E mereu 0 și nimic nu îl citește, deci nu se schimbă niciun comportament.
+
 - [ ] **Step 4: Scrie `src/app/save.ts`**
 
 `unpackSave` respinge, în ordinea asta:
@@ -147,12 +151,11 @@ Dacă testul „continuă identic” sau cel cu zero negativ pică din cauza unu
 Run: `npm run check`
 Expected: PASS
 
-- [ ] **Step 6: Commit și push**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/app/save.ts src/app/save.test.ts src/sim/foes.ts src/sim/foes.test.ts src/data/balance.ts DEVLOG.md
+git add src/app/save.ts src/app/save.test.ts src/sim/foes.ts src/sim/foes.test.ts src/sim/state.ts src/sim/testkit.ts src/data/balance.ts DEVLOG.md
 git commit -m "Starea, gata de salvat: salvare cu versiune și verificare la citire"
-git push
 ```
 
 ---
@@ -228,12 +231,11 @@ Toate trei prind orice eroare de stocare, ca `readRecord`. Testele vechi de reco
 Run: `npm run check`
 Expected: PASS
 
-- [ ] **Step 5: Commit și push**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/app/storage.ts src/app/storage.test.ts DEVLOG.md
 git commit -m "Partida se păstrează în stocarea telefonului"
-git push
 ```
 
 ---
@@ -394,12 +396,11 @@ Niciunul nu atinge `window` sau `document`. `main.ts` nu se schimbă în task-ul
 Run: `npm run check`
 Expected: PASS
 
-- [ ] **Step 5: Commit și push**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/app/session.ts src/app/session.test.ts src/app/wake.ts src/app/wake.test.ts DEVLOG.md
 git commit -m "Sesiunea (start, joc, pauză, final) și ecranul aprins"
-git push
 ```
 
 ---
@@ -408,6 +409,7 @@ git push
 
 **Files:**
 - Modify: `index.html`, `src/ui/ui.css`, `src/ui/strings.ts`, `src/ui/cards.ts`, `src/main.ts`, `src/render/canvas.ts`, `scripts/smoke.cjs`
+- Test: `src/ui/strings.test.ts`
 
 **Interfaces:**
 - Consumes: `createSession`, `Phase`, `OverInfo` (Task 3); `createWake` (Task 3); `saveGame`, `loadGame`, `clearGame`, `saveIfRecord` (Task 2).
@@ -431,7 +433,7 @@ export function createCards(doc: Document, on: {
 
 - [ ] **Step 1: Scrie verificările noi în `scripts/smoke.cjs`**
 
-Se adaugă după verificarea 9, în stilul celor existente. Pagina ascunsă se simulează punând `document.visibilityState` pe `'hidden'` cu `Object.defineProperty` și trimițând `visibilitychange`; la revenire, la fel cu `'visible'`.
+Se adaugă după verificarea 9 și după blocul care tipărește `SMOKE INFO`, în stilul celor existente; acel bloc lasă pagina în testul de viteză, deci verificarea 10 pornește de la o pagină reîncărcată. Pagina ascunsă se simulează punând `document.visibilityState` pe `'hidden'` cu `Object.defineProperty` și trimițând `visibilitychange`; la revenire, la fel cu `'visible'`.
 
 10. După „Începe”, butonul `#pause` se vede. Apăsat, apare cartonașul de pauză cu „Continuă” și „Partidă nouă”, `__wg.phase()` e `'paused'`, iar ceasul arată același text și după 700 ms.
 11. „Continuă” ascunde cartonașul, iar după 1,2 s ceasul a înaintat.
@@ -451,7 +453,16 @@ Expected: verificarea 10 pică, butonul `#pause` nu există.
 - [ ] **Step 3: Pagina și textele**
 
 - `index.html`: în bandă, un buton `#pause` cu `data-str-aria="pause"`, desenat din CSS (două bare). Banda nu primește atingeri, deci butonul le cere explicit. Un cartonaș `#pauseVeil` cu titlu, timpul de până acum și butoanele `#resume` și `#fresh`. Pe cartonașul de start, deasupra lui `#start`, un buton `#continue`, ascuns când nu e nimic de reluat.
-- `src/ui/strings.ts`, cu tip: `pause: 'Pauză'`, `pauseTitle: 'Pauză'`, `pauseSoFar: 'Ai rezistat până acum'`, `resume: 'Continuă'`, `fresh: 'Partidă nouă'`, `continueSaved: (time) => \`Continuă partida · ${time}\``.
+- `src/ui/strings.ts`, cu tip: `pause: 'Pauză'`, `pauseTitle: 'Pauză'`, `pauseSoFar: 'Ai rezistat până acum'`, `resume: 'Continuă'`, `fresh: 'Partidă nouă'`, `continueSaved: (time) => \`Continuă partida · ${time}\``. În `src/ui/strings.test.ts` se adaugă întâi testul lor:
+
+```ts
+  it('textele pauzei și ale reluării', () => {
+    expect([STR.pause, STR.pauseTitle, STR.pauseSoFar]).toEqual(['Pauză', 'Pauză', 'Ai rezistat până acum'])
+    expect([STR.resume, STR.fresh]).toEqual(['Continuă', 'Partidă nouă'])
+    expect(STR.continueSaved('2:47')).toBe('Continuă partida · 2:47')
+  })
+```
+
 - `src/ui/cards.ts`: `showStart(saved)` arată `#continue` cu timpul salvat și pune pe `#start` textul „Partidă nouă”; fără salvare, `#continue` e ascuns și `#start` spune „Începe”. Butonul `#pause` se vede doar când nu e niciun cartonaș.
 
 - [ ] **Step 4: Leagă sesiunea în `src/main.ts`**
@@ -476,12 +487,11 @@ Expected: verificarea 10 pică, butonul `#pause` nu există.
 Run: `npm run check && npm run smoke`
 Expected: `SMOKE OK (16 verificări)`. Uită-te la capturile noi (cartonașul de pauză, cartonașul de start cu „Continuă partida”): textele au diacritice întregi și nimic nu iese din ecran la 390 de pixeli lățime.
 
-- [ ] **Step 7: Commit și push**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add index.html src/ui/ui.css src/ui/strings.ts src/ui/cards.ts src/main.ts src/render/canvas.ts scripts/smoke.cjs DEVLOG.md
+git add index.html src/ui/ui.css src/ui/strings.ts src/ui/strings.test.ts src/ui/cards.ts src/main.ts src/render/canvas.ts scripts/smoke.cjs DEVLOG.md
 git commit -m "Pauză cu buton și automată, reluarea partidei, ecran aprins"
-git push
 ```
 
 ---
@@ -580,7 +590,7 @@ const CACHE = 'wg-__VERSION__'
 const FILES = __FILES__
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)))
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES.map((u) => new Request(u, { cache: 'reload' })))))
 })
 self.addEventListener('activate', (e) => {
   e.waitUntil(
@@ -593,7 +603,7 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== self.location.origin) return
   e.respondWith((async () => {
     const c = await caches.open(CACHE)
-    const hit = await c.match(e.request, { ignoreSearch: true })
+    const hit = await c.match(e.request, { ignoreSearch: true, ignoreVary: true })
     if (hit) return hit
     if (e.request.mode === 'navigate') { const page = await c.match('./'); if (page) return page }
     return fetch(e.request)
@@ -603,7 +613,7 @@ self.addEventListener('fetch', (e) => {
 
 `scripts/build-sw.mjs` rulează după `vite build`: adună toate fișierele din `dist` în afară de `sw.js`, ca adrese relative (`'./'` pentru `index.html`, apoi `'./assets/…'`, `'./icons/…'`, `'./manifest.webmanifest'`), calculează versiunea din primele 12 caractere ale unui SHA-256 peste numele și conținutul lor, și scrie `dist/sw.js` din șablon. Tipărește câte fișiere a pus și versiunea.
 
-`src/app/sw.ts` cheamă `register('./sw.js')` și înghite refuzul. `src/main.ts` îl cheamă cu `__WG_SW__ && import.meta.env.PROD`. `vite.config.ts` definește `__WG_SW__` ca `true`, iar `vite.single.config.ts` ca `false`: pagina privată nu are service worker.
+`src/app/sw.ts` cheamă `register('./sw.js')` și înghite refuzul. `src/main.ts` îl cheamă cu `if (__WG_SW__) registerServiceWorker(navigator, import.meta.env.PROD)`. `vite.config.ts` definește `__WG_SW__` ca `true`, iar `vite.single.config.ts` ca `false`: pagina privată nu are service worker.
 
 `scripts/single-file.mjs` scoate din fragment legăturile spre manifest și spre pictogramă, care nu au rost în pagina privată; verificarea lui de referințe rămase trebuie să treacă în continuare.
 
@@ -626,12 +636,11 @@ Expected: toate trec. `dist/sw.js` există și nu mai conține `__VERSION__` sau
 
 `README.md`: cum se instalează pe telefon din Chrome, că merge fără internet după prima deschidere, că o versiune nouă apare la următoarea pornire, și comanda `npm run icons`. `CLAUDE.md`: fișierele noi la „Arhitectura”, comenzile noi, „Stare” la zi. `DEVLOG.md`: intrarea sesiunii se încheie cu ce s-a măsurat (mărimea unei salvări, numărul de fișiere din cache și mărimea lor) și cu ce rămâne, ca linii de bifat.
 
-- [ ] **Step 8: Commit și push**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add public scripts/make-icons.cjs scripts/sw-template.js scripts/build-sw.mjs scripts/single-file.mjs src/app/sw.ts src/app/sw.test.ts src/app/pwa.test.ts src/env.d.ts index.html src/main.ts vite.config.ts vite.single.config.ts package.json .github/workflows/ci.yml scripts/smoke.cjs README.md CLAUDE.md DEVLOG.md
 git commit -m "Instalare pe telefon și joc fără internet"
-git push
 ```
 
 ---

@@ -1,8 +1,13 @@
 // Proba în browser: pornește `vite preview` pe build-ul existent și deschide pagina în Chromium (Playwright).
 // Verifică: (1) nicio eroare în consolă sau excepție, (2) nicio cerere în afara localhost, (3) canvasul e desenat,
 // apoi jocul: (4) cartonașul de start, (5) tragerea cu degetul, (6) eroul stă, (7) cartonașul de final,
-// (8) „Încă o partidă”, (9) testul de viteză.
+// (8) „Încă o partidă”, (9) testul de viteză, apoi pauza și reluarea: (10) butonul și cartonașul de pauză, (11) „Continuă”,
+// (12) pauza la pagina ascunsă, (13) „Continuă partida” după reîncărcare, (14) „Partidă nouă” din pauză,
+// (15) finalul șterge salvarea, (16) testul de viteză nu salvează, apoi instalarea și jocul fără internet: (17) manifestul și pictogramele,
+// (18) service worker-ul și cache-ul, (19) pornirea fără rețea, apoi (20) pauza și „Continuă” atinse cu al doilea deget, cât primul ține joystickul.
+// Fiecare rulare pornește un browser cu un context nou, deci fără cache sau service worker rămase de la o rulare anterioară.
 // Nu face parte din `npm run check`: are nevoie de un Playwright instalat pe mașină.
+// Merge doar pe Linux și macOS: oprește serverul prin grupul lui de procese (`process.kill(-pid)`), pe care Windows nu îl are.
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -19,6 +24,7 @@ const PORT = 4180
 const URL_ = `http://localhost:${PORT}/`
 const PAGE = `${URL_}?seed=7&debug=1`
 const root = path.resolve(__dirname, '..')
+const dist = path.join(root, 'dist')
 const outDir = path.join(root, 'smoke-out')
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -94,7 +100,8 @@ async function main() {
     await load()
     await page.waitForTimeout(700)
     await shot('01-cer.png')
-    const colors = await page.evaluate(() => {
+    // Câte culori are proba de 64 × 64 din mijlocul canvasului.
+    const canvasColors = () => page.evaluate(() => {
       const c = document.getElementById('field')
       const ctx = c.getContext('2d')
       const d = ctx.getImageData(Math.floor(c.width / 2) - 32, Math.floor(c.height / 2) - 32, 64, 64).data
@@ -102,6 +109,7 @@ async function main() {
       for (let i = 0; i < d.length; i += 4) seen.add((d[i] << 16) | (d[i + 1] << 8) | d[i + 2])
       return seen.size
     })
+    const colors = await canvasColors()
     check(3, 'canvasul e desenat (cel puțin 20 de culori în proba din mijloc)', colors >= 20, `culori: ${colors}`)
 
     // 4. cartonașul de start
@@ -184,6 +192,190 @@ async function main() {
     for (let i = 0; i < 5; i++) draws.push(await page.evaluate(() => window.__wg.drawMs(200)))
     draws.sort((a, b) => a - b)
     console.log(`SMOKE INFO: desen cu 150 de nave în jurul planetei: ${draws[2].toFixed(2)} ms pe cadru`)
+
+    // Pauza și reluarea. Blocul de mai sus lasă pagina în testul de viteză, deci se pornește dintr-o pagină reîncărcată.
+    const clockNow = () => page.locator('#clock').innerText()
+    const secsOf = (t) => { const [m, s] = t.split(':').map(Number); return m * 60 + s }
+    const saveRaw = () => page.evaluate(() => localStorage.getItem('wg.v1.save'))
+    const visible = (sel) => page.locator(sel).isVisible()
+    // Pagina ascunsă și apoi din nou la vedere, cum ar face telefonul când jucătorul iese din aplicație.
+    const setVisibility = (state) => page.evaluate((v) => {
+      Object.defineProperty(document, 'visibilityState', { value: v, configurable: true })
+      Object.defineProperty(document, 'hidden', { value: v === 'hidden', configurable: true })
+      document.dispatchEvent(new Event('visibilitychange'))
+    }, state)
+
+    // 10. butonul de pauză și cartonașul de pauză
+    await load()
+    await page.click('#start')
+    await page.waitForTimeout(1000)
+    const pauseShown = await visible('#pause')
+    if (pauseShown) await page.click('#pause')
+    await page.waitForTimeout(200)
+    await shot('06-pauza.png')
+    const pauseCard = (await visible('#pauseVeil')) && (await page.locator('#resume').innerText().catch(() => '')) === 'Continuă' && (await page.locator('#fresh').innerText().catch(() => '')) === 'Partidă nouă'
+    const phase10 = await page.evaluate(() => window.__wg.phase?.())
+    const c10a = await clockNow()
+    await page.waitForTimeout(700)
+    const c10b = await clockNow()
+    check(10, 'butonul de pauză se vede în joc; apăsat, arată cartonașul de pauză, faza „paused”, iar ceasul stă', pauseShown && pauseCard && phase10 === 'paused' && c10a === c10b, `buton ${pauseShown}, cartonaș ${pauseCard}, fază ${phase10}, ceas ${c10a} → ${c10b}`)
+    failFast(10)
+
+    // 11. „Continuă” reia partida
+    await page.click('#resume')
+    await page.waitForTimeout(1200)
+    const c11 = await clockNow()
+    const veil11 = await visible('#pauseVeil')
+    check(11, '„Continuă” ascunde cartonașul de pauză, iar ceasul înaintează', !veil11 && secsOf(c11) > secsOf(c10b), `cartonaș ${veil11}, ceas ${c10b} → ${c11}`)
+    failFast(11)
+
+    // 12. pagina ascunsă în timpul jocului pune pauză și salvează
+    await page.evaluate(() => { window.__wg.state().crystal = 37; window.__wg.state().metal = 12 })   // stoc ușor de recunoscut după reluare
+    await setVisibility('hidden')
+    await page.waitForTimeout(100)
+    await setVisibility('visible')
+    await page.waitForTimeout(300)
+    const veil12 = await visible('#pauseVeil')
+    const saved12 = await saveRaw()
+    check(12, 'pagina ascunsă în joc: la revenire, cartonașul de pauză e pe ecran și partida e salvată', veil12 && saved12 !== null, `cartonaș ${veil12}, salvare ${saved12 === null ? 'lipsă' : `${saved12.length} caractere`}`)
+    failFast(12)
+
+    // 13. după reîncărcare, „Continuă partida” reia partida salvată
+    const before = JSON.parse(saved12).state
+    const savedClock = `${Math.floor(Math.floor(before.t) / 60)}:${String(Math.floor(before.t) % 60).padStart(2, '0')}`
+    await load()
+    await shot('07-reluare.png')
+    const contText = await page.locator('#continue').innerText().catch(() => '')
+    const contShown = await visible('#continue')
+    const startText = await page.locator('#start').innerText().catch(() => '')
+    // Apăsat și citit în același pas, înaintea oricărui cadru: starea e exact cea reluată.
+    const after = await page.evaluate(() => {
+      document.getElementById('continue').click()
+      const s = window.__wg.state()
+      return { t: s.t, crystal: s.crystal, metal: s.metal, phase: window.__wg.phase() }
+    })
+    await page.waitForTimeout(300)
+    const c13 = await clockNow()
+    check(13, '„Continuă partida · m:ss” pe cartonașul de start, „Partidă nouă” pe buton; reluarea pornește de la timpul și stocul salvat',
+      contShown && contText === `Continuă partida · ${savedClock}` && startText === 'Partidă nouă' && after.phase === 'playing' &&
+      after.t === before.t && after.crystal === 37 && after.metal === 12 && secsOf(c13) >= secsOf(savedClock) && secsOf(c13) <= secsOf(savedClock) + 1,
+      `„${contText}” (${contShown}), start „${startText}”, salvat t ${before.t.toFixed(2)}, reluat t ${after.t.toFixed(2)}, cristale ${after.crystal}, metal ${after.metal}, fază ${after.phase}, ceas ${c13}`)
+    failFast(13)
+
+    // 14. „Partidă nouă” din pauză
+    await page.click('#pause')
+    await page.waitForTimeout(200)
+    await page.click('#fresh')
+    await page.waitForTimeout(400)
+    const c14 = await clockNow()
+    const saved14 = await saveRaw()
+    check(14, '„Partidă nouă” din pauză pornește o partidă cu ceasul sub 0:02 și șterge salvarea', !(await visible('#pauseVeil')) && secsOf(c14) < 2 && saved14 === null, `ceas ${c14}, salvare ${saved14 === null ? 'lipsă' : 'există'}`)
+    failFast(14)
+
+    // 15. sfârșitul partidei șterge salvarea
+    await page.click('#pause')
+    await page.waitForTimeout(200)
+    const saved15a = await saveRaw()
+    await page.click('#resume')
+    await page.evaluate(() => window.__wg.run(200))
+    await page.waitForSelector('#overVeil:not([hidden])', { timeout: 3000 }).catch(() => {})
+    const over15 = await visible('#overVeil')
+    const saved15 = await saveRaw()
+    await load()
+    const cont15 = await visible('#continue')
+    const start15 = await page.locator('#start').innerText().catch(() => '')
+    check(15, 'după final salvarea dispare, iar la reîncărcare cartonașul de start are doar „Începe”', saved15a !== null && over15 && saved15 === null && !cont15 && start15 === 'Începe', `salvare la pauză ${saved15a !== null}, final ${over15}, salvare după final ${saved15 === null ? 'lipsă' : 'există'}, „Continuă partida” ${cont15}, start „${start15}”`)
+    failFast(15)
+
+    // 16. testul de viteză pus pe pauză nu salvează
+    await page.click('#stress')
+    await page.waitForTimeout(500)
+    await page.click('#pause')
+    await page.waitForTimeout(200)
+    const phase16 = await page.evaluate(() => window.__wg.phase())
+    const saved16 = await saveRaw()
+    check(16, 'testul de viteză pus pe pauză nu lasă nicio salvare', phase16 === 'paused' && saved16 === null, `fază ${phase16}, salvare ${saved16 === null ? 'lipsă' : 'există'}`)
+
+    // 17. manifestul și pictogramele lui, cerute din pagină, cum le cere telefonul la instalare
+    const m17 = await page.evaluate(async () => {
+      const href = document.querySelector('link[rel="manifest"]')?.href
+      if (!href) return { name: null, icons: [] }
+      const m = await (await fetch(href)).json()
+      const icons = []
+      for (const i of m.icons ?? []) {
+        const r = await fetch(new URL(i.src, href))
+        icons.push(`${i.src} ${r.status} ${r.headers.get('content-type')}`)
+      }
+      return { name: m.name, icons }
+    })
+    check(17, 'manifestul se încarcă, iar cele trei pictograme răspund cu image/png', m17.name === 'World Guard' && m17.icons.length === 3 && m17.icons.every((t) => / 200 image\/png$/.test(t)), `nume ${m17.name}, pictograme: ${m17.icons.join('; ') || 'niciuna'}`)
+
+    // 18. service worker-ul e activ, controlează pagina, iar cache-ul are fiecare fișier din `dist` (fără `sw.js`)
+    const listFiles = (dir) => fs.readdirSync(dir).flatMap((n) => { const p = path.join(dir, n); return fs.statSync(p).isDirectory() ? listFiles(p) : [path.relative(dist, p).split(path.sep).join('/')] })
+    const expected = listFiles(dist).filter((f) => f !== 'sw.js').map((f) => (f === 'index.html' ? '/' : `/${f}`)).sort()
+    const sw18 = await page.evaluate(async () => {
+      const reg = await navigator.serviceWorker.ready
+      for (let i = 0; i < 50 && !navigator.serviceWorker.controller; i++) await new Promise((r) => setTimeout(r, 100))
+      const names = (await caches.keys()).filter((k) => k.startsWith('wg-'))
+      const paths = names.length === 1 ? (await (await caches.open(names[0])).keys()).map((r) => new URL(r.url).pathname).sort() : []
+      return { state: reg.active?.state ?? null, controlled: navigator.serviceWorker.controller !== null, names, paths }
+    })
+    const missing = expected.filter((p) => !sw18.paths.includes(p))
+    const extra = sw18.paths.filter((p) => !expected.includes(p))
+    check(18, 'service worker-ul e activ și controlează pagina, iar cache-ul wg-… are fiecare fișier din dist în afară de sw.js',
+      sw18.state === 'activated' && sw18.controlled && sw18.names.length === 1 && missing.length === 0 && extra.length === 0,
+      `stare ${sw18.state}, controlează ${sw18.controlled}, cache-uri ${sw18.names.join(', ') || 'niciunul'}, ${sw18.paths.length} din ${expected.length} fișiere, lipsă: ${missing.join(', ') || 'nimic'}, în plus: ${extra.join(', ') || 'nimic'}`)
+
+    // 19. fără rețea: reîncărcarea arată cartonașul de start, iar după „Începe” canvasul e desenat, tot din cache
+    const answered = []
+    const onResponse = (r) => answered.push(r)
+    await context.setOffline(true)
+    try {
+      page.on('response', onResponse)
+      await load()
+      const start19 = await visible('#startVeil')
+      if (start19) await page.click('#start')
+      await page.waitForTimeout(700)
+      await shot('08-fara-retea.png')
+      const colors19 = await canvasColors()
+      const phase19 = await page.evaluate(() => window.__wg?.phase() ?? null)   // fără JavaScript încărcat, __wg lipsește
+      const fromNet = answered.filter((r) => !r.fromServiceWorker()).map((r) => r.url())
+      check(19, 'fără rețea, după reîncărcare se vede cartonașul de start, iar după „Începe” canvasul e desenat (tot din service worker)',
+        start19 && phase19 === 'playing' && colors19 >= 20 && answered.length > 0 && fromNet.length === 0,
+        `cartonaș ${start19}, fază ${phase19}, culori ${colors19}, răspunsuri ${answered.length}, din rețea: ${fromNet.join(', ') || 'niciunul'}`)
+    } finally {
+      page.off('response', onResponse)
+      await context.setOffline(false)
+    }
+
+    // 20. al doilea deget: cât primul ține joystickul pe canvas, al doilea atinge pauza, apoi „Continuă” (browserul nu dă `click` pentru el)
+    await page.evaluate(() => { if (window.__wg.phase() !== 'playing') document.getElementById('start').click() })
+    await page.waitForTimeout(200)
+    const fingers = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts })
+    const middle = async (sel) => { const b = await page.locator(sel).boundingBox(); return b ? { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2) } : { x: 0, y: 0 } }
+    const stick = { x: 140, y: 600, id: 1 }
+    await fingers('touchStart', [{ ...stick, x: 200 }])
+    await fingers('touchMove', [stick])
+    const x20a = await heroX()
+    await sleep(300)
+    const x20b = await heroX()
+    const p20 = await middle('#pause')
+    await fingers('touchStart', [stick, { ...p20, id: 2 }])
+    await sleep(60)
+    await fingers('touchEnd', [{ ...p20, id: 2 }])   // se ridică doar al doilea deget
+    await page.waitForTimeout(300)
+    const phase20a = await page.evaluate(() => window.__wg.phase())
+    const card20 = await visible('#pauseVeil')
+    const r20 = await middle('#resume')
+    await fingers('touchStart', [stick, { ...r20, id: 3 }])
+    await sleep(60)
+    await fingers('touchEnd', [{ ...r20, id: 3 }])
+    await page.waitForTimeout(300)
+    const phase20b = await page.evaluate(() => window.__wg.phase())
+    await fingers('touchEnd', [])
+    check(20, 'cât un deget ține joystickul, al doilea atinge pauza (faza „paused”, cartonașul pe ecran), apoi „Continuă” (faza „playing”)',
+      x20a - x20b > 5 && phase20a === 'paused' && card20 && phase20b === 'playing',
+      `nava ${x20a.toFixed(1)} → ${x20b.toFixed(1)}, după pauză: fază ${phase20a}, cartonaș ${card20}; după „Continuă”: fază ${phase20b}`)
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))
