@@ -5,7 +5,7 @@ import { CLUSTERS, HOME, PAD_R } from '../data/layout'
 import { createGame, type GameState } from '../sim/state'
 import { step } from '../sim/step'
 import { heroAt, padOf } from '../sim/testkit'
-import { createNav, offForeignPad, type Nav } from './nav'
+import { createNav, offForeignPad, slipOff, type Nav } from './nav'
 
 function calm(): GameState {
   const s = createGame(1)
@@ -77,6 +77,19 @@ describe('mersul', () => {
     expect(input.y).toBeCloseTo((ty - s.hero.y) / d, 12)
   })
 
+  it('după ce distanța până la aceeași țintă a crescut brusc, următorii 30 de pași sunt drept spre țintă', () => {
+    const s = calm(), nav = createNav(), tx = 700, ty = 1150
+    heroAt(s, tx, ty - 40)
+    for (let i = 0; i < 5; i++) step(s, nav.toward(s, tx, ty, 6))   // aproape de țintă: memoria ține o distanță mică
+    heroAt(s, tx, ty - 300)   // ca la reapariție: aceeași țintă, nava departe
+    for (let i = 0; i < 30; i++) {
+      const input = nav.toward(s, tx, ty, 20), d = Math.hypot(tx - s.hero.x, ty - s.hero.y)
+      expect(input.x).toBeCloseTo((tx - s.hero.x) / d, 12)
+      expect(input.y).toBeCloseTo((ty - s.hero.y) / d, 12)
+      step(s, input)
+    }
+  })
+
   it('pe drum liber, direcția e vectorul unitate spre țintă', () => {
     const s = calm(), nav = createNav()
     const input = nav.toward(s, HOME.x - 30, HOME.y + 40, 6)
@@ -105,6 +118,15 @@ describe('ieșitul de pe cercurile străine', () => {
   it('pe ținta lui: null', () => {
     const s = calm(), p = padOf(s, 'hero'); heroAt(s, p.x - 6, p.y + 8)
     expect(offForeignPad(s, p)).toBeNull()
+  })
+  it('în mers, pe un cerc străin care a început să numere: iese pe diagonală, în partea în care voia', () => {
+    const s = calm(), p = padOf(s, 'hero'); heroAt(s, p.x + 10, p.y)
+    expect(slipOff(s, null, { x: -1, y: 0 })).toBeNull()   // încă nu numără
+    p.dwell = 0.05
+    const out = slipOff(s, null, { x: -0.6, y: 0.8 })!     // voia înapoi prin centru și în jos
+    expect(out.x).toBeCloseTo(Math.SQRT1_2, 12)
+    expect(out.y).toBeCloseTo(Math.SQRT1_2, 12)
+    expect(slipOff(s, p, { x: -1, y: 0 })).toBeNull()      // pe ținta lui rămâne
   })
   it('în afara oricărui cerc: null', () => {
     const s = calm()

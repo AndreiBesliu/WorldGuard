@@ -272,17 +272,18 @@ Proba din browser, verificarea 7: limita de timp corectată la 0:50–2:10, fiin
 
 **Task 1 — Jucătorii automați.**
 - `src/bots/`, în afara jocului livrat (nimic din `main.ts` nu-l importă; `dist/` nu are niciun nume de purtare). `policy.ts`: cele cinci purtări (`POLICIES`, cu `label` în română), `bought`, `nextPad` (categoriile pe rând, cea fără nimic de cumpărat e sărită), `chooseGoal` (luptă cu nava dușmană cea mai apropiată de centru dacă e la mai puțin de `GUARD = 120`; altfel plătește dacă stocul acoperă ce a rămas, altfel strânge resursa care lipsește mai mult; cu nimic de cumpărat, acasă). `nav.ts`: `createNav` (drept spre țintă; după 24 de pași fără apropiere de 1 px, 30 de pași de ocolire, cu partea schimbată la fiecare blocaj; o țintă mutată cu peste 40 px șterge memoria) și `offForeignPad` (de pe orice cerc care nu e ținta de plată, inclusiv cel de reparat, iese dinspre centru). `bot.ts`: `createBot`, un `Nav` pe jucător. `run.ts`: `playOne`, `median`, `measure`, `measureAll`, `SEEDS` = 1…20, `RUN_CAP` = 900 s.
-- Jucătorii doar citesc starea (testat cu `JSON.stringify` înainte și după) și niciunul nu repară planeta (viața ei nu crește niciodată, pe toate cele cinci purtări).
+- Jucătorii doar citesc starea (testat cu `JSON.stringify` înainte și după). Niciunul nu plătește la un cerc care nu e `nextPad` în acel pas și niciunul nu repară planeta: testat pas cu pas pe toate cele 20 de semințe și toate cele cinci purtări, într-un singur parcurs al celor 100 de partide (care verifică și ce a cumpărat fiecare la sfârșit).
+- Reparația de după recenzie: prima variantă ieșea de pe un cerc străin doar când ar fi stat pe loc, dar simularea plătește după 0,35 s petrecute în cerc, și în mers. Recenzia a găsit plăți parțiale la cercuri străine și pași în care viața planetei creștea (de pildă „Amestec”, sămânța 1, la 94 s, în turela (425, 669); „Doar navă”, sămânța 8, la 130,8 s, la reparat). Acum (`slipOff` din `nav.ts`), din primul pas numărat (`dwell > 0`) pe un cerc străin nava iese pe o diagonală: jumătate dinspre centru, jumătate de-a lungul marginii, în partea în care voia să meargă; măsurat pe cele 100 de partide, cel mai lung șir de pași numărați pe un cerc străin are 4 pași (0,067 s), iar plata ar porni abia după 21. Tot atunci: memoria mersului se șterge când distanța până la țintă sare cu mai mult de un pas al navei (reapariția acasă), iar când nava se depărtează de țintă (o navă dușmană care fuge), apropierea se măsoară de acolo; înainte, amândouă porneau ocoliri fără motiv.
 - Disciplina: `src/sim/discipline.test.ts` citește acum și fișierele din `src/bots/` (aceeași `violations`, titlurile spun folderul). Nu există un `src/bots/discipline.test.ts`: importat dintr-un fișier de test, `violations` i-ar fi înregistrat testele a doua oară.
-- Măsurat, cu un script de aruncat (`measureAll()`, raza 120, 20 de semințe):
+- Măsurat după reparație, cu un script de aruncat (`measureAll()`, raza 120, 20 de semințe):
 
 | Jucător | Mediana | Min | Max |
 | --- | --- | --- | --- |
 | Nimic | 65,6 s | 58,6 | 81,6 |
-| Amestec | 382,1 s | 341,0 | 415,8 |
-| Doar navă | 249,9 s | 225,0 | 284,5 |
-| Fără navă | 330,6 s | 302,9 | 389,0 |
-| Fără economie | 329,0 s | 282,1 | 375,9 |
+| Amestec | 372,2 s | 347,2 | 428,3 |
+| Doar navă | 249,6 s | 230,9 | 282,9 |
+| Fără navă | 331,8 s | 306,5 | 388,1 |
+| Fără economie | 307,7 s | 272,6 | 365,1 |
 
-  „Doar navă” e la 65,4% din „Amestec”, „Fără navă” la 86,5%. Cele 100 de partide durează împreună 14,5 s. „Amestec”, sămânța 1: prima turelă la 1,42 s, 6 cumpărături la secunda 120. Mersul (harta adevărată, fără nave dușmane) ajunge la cercuri și grupuri în 18–51% din marginea de timp a testului, iar ocolind planeta în 55%. „Doar navă” se încheie cu nava la nivelul 2 pe semințele 1–3, ca în explorare.
-- `npx vitest run src/bots src/sim/discipline.test.ts`: 67 de teste, 6,4 s. `npm run check`: 199 de teste trec (143 înainte).
+  „Doar navă” e la 67,0% din „Amestec”, „Fără navă” la 89,1%. Cele 100 de partide durează împreună 12,4–13,3 s (două rulări). „Amestec”, sămânța 1: prima turelă la 1,42 s, 6 cumpărături la secunda 120. Mersul (harta adevărată, fără nave dușmane) ajunge la cercuri și grupuri în 18–51% din marginea de timp a testului, iar ocolind planeta în 55%. „Doar navă” se încheie cu nava la nivelul 2 pe semințele 1–3, ca în explorare.
+- `npx vitest run src/bots src/sim/discipline.test.ts`: 70 de teste, 24,1 s; `src/bots` singur: 54 de teste, 23,0 s (aproape tot timpul e parcursul celor 100 de partide din `bot.test.ts`: 21,8 s sub Vitest, cu verificările pe fiecare pas, față de 12,4–13,3 s pentru aceleași partide în scriptul construit cu Vite). `npm run check`: 202 de teste trec (143 înainte).
