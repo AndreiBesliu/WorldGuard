@@ -160,3 +160,9 @@ Proba din browser, verificarea 7: limita de timp corectată la 0:50–2:10, fiin
 - `input` s-a întors în calea de desen (`renderer.frame(s, input, stick, frameDt)`, `drawWorld(ctx, s, input, v, skin)`): flacăra navei apare doar când comanda e peste `BALANCE.hero.deadzone`.
 - Culorile din `:root` (`src/ui/ui.css`) au nume pe roluri (`--sky`, `--crystal`, `--hull`, …); `src/render/palette.ts` le citește pe toate până la `--night`.
 - **Măsurat:** 91 de teste trec (81 + 5 + 2 + 3); `npm run smoke`: `SMOKE OK (9 verificări)`. Timpul de desen cu 150 de dușmani: 6,41 / 6,22 / 6,46 ms pe cadru în trei rulări, mediana 6,41 ms, față de 5,70 ms înainte (+12 %, sub pragul de un sfert), aceeași mașină.
+
+**Task 4, pagina: texte, jetoane, font** (fără schimbare de reguli):
+- Valorile din `src/ui/strings.ts` au trecut pe tema de spațiu (Turelă, Colector, Mină, Navă, „Repară planeta”, „Planeta a căzut”, „Nave doborâte”, „Zona de joc”, regulile de pe cartonașul de start); `src/ui/strings.test.ts` (4 teste) le fixează și refuză cuvintele temei vechi.
+- Fontul titlului: `@fontsource/alfa-slab-one` ieșit, `@fontsource/exo-2` (dev, ^5.3.0) intrat, la grosimea 800 (`latin` și `latin-ext`); `--font-display` e „Exo 2”, „Rubik”, system-ui. Jetonul de cristal e romb, cel de metal hexagon (`clip-path`), ca pe canvas.
+- `scripts/smoke.cjs`: verificarea 4 cere acum și cele două fețe „Exo 2” încărcate, și cifre de lățime egală (`1111` și `0000` în `#clock`: 49,609375 / 49,609375 px); verificarea 7 așteaptă „Planeta a căzut”; captura `01-teren.png` e acum `01-cer.png`.
+- **Măsurat:** 95 de teste trec; `npm run smoke`: `SMOKE OK (9 verificări)`, desen cu 150 de dușmani 6,25 ms pe cadru. `dist-single/world-guard.html`: 409938 octeți.

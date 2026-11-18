@@ -2,7 +2,7 @@
   "name": "world-guard",
   "private": true,
   "version": "0.1.0",
-  "description": "World Guard — aperi castelul cu un erou (joc web pentru telefon)",
+  "description": "World Guard — aperi planeta cu o navă (joc web pentru telefon)",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,7 +15,7 @@
     "single": "vite build --config vite.single.config.ts && node scripts/single-file.mjs"
   },
   "devDependencies": {
-    "@fontsource/alfa-slab-one": "^5.3.0",
+    "@fontsource/exo-2": "^5.3.0",
     "@fontsource/rubik": "^5.3.0",
     "@types/node": "^24.19.1",
     "typescript": "^7.0.2",

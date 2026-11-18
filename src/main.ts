@@ -1,6 +1,6 @@
 // Intrarea: leagă pagina, simularea, comenzile și desenul. Trei stări: ready, playing, over.
-import '@fontsource/alfa-slab-one/latin-400.css'
-import '@fontsource/alfa-slab-one/latin-ext-400.css'
+import '@fontsource/exo-2/latin-800.css'
+import '@fontsource/exo-2/latin-ext-800.css'
 import '@fontsource/rubik/latin-400.css'
 import '@fontsource/rubik/latin-ext-400.css'
 import '@fontsource/rubik/latin-500.css'

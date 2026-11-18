@@ -1,4 +1,4 @@
-/* Un singur teren pe tot ecranul. Banda de sus ține stocul, ceasul și viața castelului; cartonașele stau în mijloc.
+/* Un singur câmp de joc pe tot ecranul. Banda de sus ține stocul, ceasul și viața planetei; cartonașele stau în mijloc.
    Zonele sigure ale telefonului (env(safe-area-inset-*)) le adaugă banda și cartonașele singure. */
 :root {
   --sky: #0c1236; --sky-deep: #090c26; --edge: #05071a;
@@ -16,7 +16,7 @@
   --ink: #f1f4ff; --ink-soft: #9fa9c9; --night: #060a1f;
   --panel: rgba(6, 10, 31, .86); --veil: rgba(6, 10, 31, .55);
   --track: rgba(241, 244, 255, .16); --line: rgba(241, 244, 255, .14);
-  --font-display: "Alfa Slab One", Rockwell, Georgia, serif;
+  --font-display: "Exo 2", "Rubik", system-ui, sans-serif;
   --font-ui: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: dark;
 }
@@ -49,7 +49,7 @@ body {
 .banner.alarm { border-color: var(--foe); }
 .stock { display: flex; align-items: baseline; gap: 6px; }
 .stock b, .clock, .core b {
-  font-family: var(--font-display); font-weight: 400; font-size: 20px; line-height: 1;
+  font-family: var(--font-display); font-weight: 800; font-size: 20px; line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 .stock b { min-width: 2.2ch; }
@@ -57,8 +57,8 @@ body {
   font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-soft);
 }
 .chip { width: 11px; height: 11px; border-radius: 3px; align-self: center; flex: none; }
-.chip-crystal { background: var(--crystal); }
-.chip-metal { background: var(--metal); }
+.chip-crystal { background: var(--crystal); border-radius: 0; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }   /* romb, ca cristalul de pe canvas */
+.chip-metal { background: var(--metal); border-radius: 0; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }   /* hexagon, ca metalul de pe canvas */
 .chip-ink { background: var(--ink); }
 .chip-hero { background: var(--hero); }
 .chip-foe { background: var(--foe); }
@@ -93,18 +93,18 @@ body {
   padding: 22px 22px 22px;
   display: flex; flex-direction: column; gap: 16px;
 }
-.card h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1.08; text-wrap: balance; }
+.card h1 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1.08; text-wrap: balance; }
 .rules { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 14.5px; line-height: 1.4; }
 .rules li { display: grid; grid-template-columns: 11px 1fr; gap: 11px; align-items: start; }
 .rules .chip { margin-top: 5px; }
 .result { display: flex; flex-direction: column; gap: 2px; }
 .result span, .facts dt { font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-soft); }
-.result b { font-family: var(--font-display); font-weight: 400; font-size: 52px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--hero); }
+.result b { font-family: var(--font-display); font-weight: 800; font-size: 52px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--hero); }
 .facts { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .facts div { display: flex; flex-direction: column; gap: 3px; }
-.facts dd { margin: 0; font-family: var(--font-display); font-size: 20px; line-height: 1; font-variant-numeric: tabular-nums; }
+.facts dd { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 20px; line-height: 1; font-variant-numeric: tabular-nums; }
 .go {
-  font-family: var(--font-display); font-weight: 400; font-size: 18px; color: var(--night);
+  font-family: var(--font-display); font-weight: 800; font-size: 18px; color: var(--night);
   background: var(--hero); border: 0; border-radius: 12px; padding: 14px 18px; cursor: pointer;
 }
 .go.quiet {
