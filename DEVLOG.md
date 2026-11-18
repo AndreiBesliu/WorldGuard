@@ -227,3 +227,8 @@ Proba din browser, verificarea 7: limita de timp corectată la 0:50–2:10, fiin
 - `BALANCE.foe.pushFloor = 0.01`: împinsul dușmanilor, după amortizare, sub această valoare devine exact `0` (fără rest, fără zero negativ). Niciun test existent nu s-a schimbat.
 - `ResNode` pierde `tilt` (mereu 0, fără cititor); `addNode` din `testkit.ts` și `createGame` nu îl mai scriu.
 - Măsurat: salvarea cu 150 de dușmani are 24 473 de caractere (pragul testului: 100 000). Testul „continuă identic” (30, 90, 150, 240 s) și cel fără zero negativ trec fără alte reparații în simulare. 107 teste trec.
+
+**Task 2 — Partida în stocarea telefonului.**
+- `src/app/storage.ts`: `SAVE_KEY = 'wg.v1.save'`, `saveGame`, `loadGame`, `clearGame`; toate prind orice eroare de stocare. `loadGame` șterge o salvare respinsă de `unpackSave` (stricată, altă versiune, altă formă). `Store` capătă `removeItem`.
+- `saveIfRecord`: un `secs` care nu e finit nu atinge nimic și întoarce recordul vechi cu `isNew: false`. Cheia recordului și comportamentul pentru numere obișnuite sunt neschimbate.
+- `main.ts` nu e atins; legarea în pagină e Task 4.

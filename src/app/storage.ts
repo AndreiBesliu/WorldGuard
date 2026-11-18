@@ -1,7 +1,12 @@
-// Recordul (secunde) în localStorage. Orice lipsă sau eroare de stocare înseamnă „fără record”, nu o oprire a jocului.
-export const RECORD_KEY = 'wg.v1.record'
+// Recordul (secunde) și partida întreruptă în localStorage. Orice lipsă sau eroare de stocare înseamnă „fără record”
+// și „fără reluare”, nu o oprire a jocului.
+import { packSave, unpackSave } from './save'
+import type { GameState } from '../sim/state'
 
-type Store = Pick<Storage, 'getItem' | 'setItem'>
+export const RECORD_KEY = 'wg.v1.record'
+export const SAVE_KEY = 'wg.v1.save'
+
+type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
 /** Stocarea paginii; doar atingerea ei poate arunca (cookie-uri blocate), de aceea stă într-un try. */
 function pageStore(): Store | null {
@@ -23,7 +28,31 @@ export function readRecord(store?: Store | null): number {
 export function saveIfRecord(secs: number, store?: Store | null): { record: number; isNew: boolean } {
   const s = store === undefined ? pageStore() : store
   const old = readRecord(s)
+  if (!Number.isFinite(secs)) return { record: old, isNew: false }
   if (secs <= old) return { record: old, isNew: false }
   try { s?.setItem(RECORD_KEY, String(secs)) } catch { /* stocare plină sau blocată: jocul merge mai departe */ }
   return { record: secs, isNew: true }
+}
+
+/** Păstrează partida pentru reluare; o stocare plină sau blocată nu oprește jocul. */
+export function saveGame(g: GameState, store?: Store | null): void {
+  try { (store === undefined ? pageStore() : store)?.setItem(SAVE_KEY, packSave(g)) } catch { /* fără reluare, dar jocul merge */ }
+}
+
+/** Partida salvată, dacă există și e bună; una respinsă (stricată, altă versiune) se șterge. */
+export function loadGame(store?: Store | null): GameState | null {
+  try {
+    const s = store === undefined ? pageStore() : store
+    const raw = s?.getItem(SAVE_KEY)
+    if (raw === null || raw === undefined) return null
+    const r = unpackSave(raw)
+    if (r.ok) return r.value
+    clearGame(s)
+    return null
+  } catch { return null }
+}
+
+/** Scoate partida salvată (recordul rămâne). */
+export function clearGame(store?: Store | null): void {
+  try { (store === undefined ? pageStore() : store)?.removeItem(SAVE_KEY) } catch { /* nimic de scos sau stocare blocată */ }
 }
