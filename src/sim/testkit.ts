@@ -23,7 +23,7 @@ export function heroAt(s: GameState, x: number, y: number): void {
 }
 
 export function addNode(s: GameState, type: Res, x: number, y: number): ResNode {
-  const node: ResNode = { type, x, y, left: BALANCE.node[type].amount, regrowAt: 0, shakeT: NEVER, tilt: 0, shape: [] }
+  const node: ResNode = { type, x, y, left: BALANCE.node[type].amount, regrowAt: 0, shakeT: NEVER, shape: [] }
   s.nodes.push(node)
   return node
 }

@@ -219,3 +219,11 @@ Proba din browser, verificarea 7: limita de timp corectată la 0:50–2:10, fiin
 - Cifrele de la „Test de viteză” cu tema nouă nu le-a spus; rămân de aflat înaintea fazei 2, care presupune că desenatul rămâne pe Canvas 2D.
 - Cele două întrebări de aspect (jetoanele de 11 px din bandă, inelul sub atac fără oprire) n-au primit răspuns separat; „totul arată super bine” le acoperă deocamdată.
 - În `docs/GDD.md`, „Înainte de construcție”: cele două lucruri care erau ale lui Andrei (accesul de scriere și GitHub Pages) sunt amândouă bifate.
+
+## 18.11.2026 — Faza 2
+
+**Task 1 — Starea, gata de salvat.**
+- `src/app/save.ts`: `packSave` scrie `{ v: SAVE_VERSION, state }`, `unpackSave` întoarce `Result` cu motivul (`lipsă`, `stricată`, `altă versiune`, `partidă terminată`, `altă formă`). Nu atinge stocarea.
+- `BALANCE.foe.pushFloor = 0.01`: împinsul dușmanilor, după amortizare, sub această valoare devine exact `0` (fără rest, fără zero negativ). Niciun test existent nu s-a schimbat.
+- `ResNode` pierde `tilt` (mereu 0, fără cititor); `addNode` din `testkit.ts` și `createGame` nu îl mai scriu.
+- Măsurat: salvarea cu 150 de dușmani are 24 473 de caractere (pragul testului: 100 000). Testul „continuă identic” (30, 90, 150, 240 s) și cel fără zero negativ trec fără alte reparații în simulare. 107 teste trec.

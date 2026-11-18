@@ -85,6 +85,8 @@ export function updateFoes(s: GameState): void {
     act(s, f)
     f.x += f.kx * DT; f.y += f.ky * DT
     f.kx *= damp; f.ky *= damp
+    if (Math.abs(f.kx) < BALANCE.foe.pushFloor) f.kx = 0       // împinsul mic se stinge de tot (fără rest, fără zero negativ)
+    if (Math.abs(f.ky) < BALANCE.foe.pushFloor) f.ky = 0
   }
   separate(live)
   for (const f of live) {                                       // cine a ajuns în nucleu e scos pe normală

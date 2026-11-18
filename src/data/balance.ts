@@ -57,6 +57,7 @@ export const BALANCE = {
     hitHeroEvery: 0.8,                       // secunde între loviturile în erou
     stopCore: 1,                             // cât de departe de nucleu se oprește un dușman, px
     stopHero: 2,                             // cât de departe de erou se oprește un dușman, px
+    pushFloor: 0.01,                         // sub atât (unități pe secundă) împinsul se consideră stins
     firstHit: 0.4,                           // secunde până la prima lovitură după ce a ajuns
     grunt: { r: 10, speed: 46, dmg: 3 },     // dușmanul obișnuit: raza px, viteza px/s, lovitura
     brute: { r: 15, speed: 30, dmg: 9, hpTimes: 4, every: 7, after: 120 }, // bruta: raza, viteza, lovitura, de câte ori mai multă viață, la a câta apariție, după câte secunde
