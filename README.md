@@ -1,8 +1,8 @@
 # World Guard
 
-Aperi castelul cu un erou: un joc web pentru telefon, văzut de sus. Strângi lemn și piatră și decizi
-unde le investești — turnuri, tăietori, carieră, nivelul eroului sau repararea castelului — în timp ce
-dușmanii vin tot mai des. Scorul e cât reziști.
+Aperi o planetă cu o navă: un joc web pentru telefon, văzut de sus, cu tema de spațiu. Strângi cristale
+și metal și decizi unde le investești — turele, colector, mină, nivelul navei sau repararea planetei — în
+timp ce navele dușmane vin tot mai des. Scorul e cât reziști.
 **Stare:** faza 1 e gata în cod: jocul se joacă pe telefon și pe calculator, cu record local. Încă nu a fost
 încercat pe telefonul lui Andrei; urmează pauza, instalarea și reluarea (planul 2).
 
@@ -14,15 +14,16 @@ npm run smoke    # proba în browser (Playwright, 9 verificări); nu face parte 
 npm run single   # dist-single/world-guard.html: tot jocul într-un singur fișier, fără nicio referință în afară
 ```
 
-**Cum se joacă (conform designului):** eroul se mișcă cu un joystick care apare unde atingi ecranul
-(pe calculator: WASD sau săgețile). Strânge singur lemn și piatră de lângă copaci și stânci, lovește singur
-dușmanii din apropiere și plătește stând pe cercurile punctate de pe jos. Partida se termină când cade castelul; scorul e timpul rezistat, iar recordul rămâne în telefon.
+**Cum se joacă (conform designului):** nava se mișcă cu un joystick care apare unde atingi ecranul
+(pe calculator: WASD sau săgețile). Strânge singură cristale și metal de lângă cristale și asteroizi, lovește singură
+navele dușmane din apropiere și plătește stând pe cercurile punctate de pe hartă. Partida se termină când cade planeta; scorul e timpul rezistat, iar recordul rămâne în telefon.
 
-**Test de viteză:** butonul de pe cartonașul de start pornește o partidă cu 150 de dușmani mereu pe teren și
-castelul și eroul mereu pe picioare (fără dușmani noi în afara celor 150), și arată în bandă câte cadre pe secundă desenează telefonul, plus cea mai mică valoare de la pornire (`min`). Nu atinge recordul. Din test se iese doar reîncărcând pagina.
+**Test de viteză:** butonul de pe cartonașul de start pornește o partidă cu 150 de nave dușmane mereu pe hartă și
+planeta și nava mereu întregi (fără nave noi în afara celor 150), și arată în bandă câte cadre pe secundă desenează telefonul, plus cea mai mică valoare de la pornire (`min`). Nu atinge recordul. Din test se iese doar reîncărcând pagina.
 
 **Semne în adresă:** `?seed=7` fixează sămânța (aceeași partidă la fiecare pornire); `?debug=1` pune în fereastră
-`window.__wg` (starea jocului și `run(secunde)`), folosit de proba din browser.
+`window.__wg` (starea jocului, `run(secunde)` și `drawMs(cadre)`, timpul mediu de desen pe cadru în ms), folosit de proba din browser;
+`npm run smoke` tipărește din el un rând `SMOKE INFO` cu timpul de desen la 150 de nave dușmane.
 
 Designul: [`docs/GDD.md`](docs/GDD.md). Regulile proiectului: [`CLAUDE.md`](CLAUDE.md).
 Jocul vechi (tower defense pe hexagoane) a rămas la commit-ul `ec73b9e`.

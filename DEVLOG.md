@@ -166,3 +166,24 @@ Proba din browser, verificarea 7: limita de timp corectată la 0:50–2:10, fiin
 - Fontul titlului: `@fontsource/alfa-slab-one` ieșit, `@fontsource/exo-2` (dev, ^5.3.0) intrat, la grosimea 800 (`latin` și `latin-ext`); `--font-display` e „Exo 2”, „Rubik”, system-ui. Jetonul de cristal e romb, cel de metal hexagon (`clip-path`), ca pe canvas.
 - `scripts/smoke.cjs`: verificarea 4 cere acum și cele două fețe „Exo 2” încărcate, și cifre de lățime egală (`1111` și `0000` în `#clock`: 49,609375 / 49,609375 px); verificarea 7 așteaptă „Planeta a căzut”; captura `01-teren.png` e acum `01-cer.png`.
 - **Măsurat:** 95 de teste trec; `npm run smoke`: `SMOKE OK (9 verificări)`, desen cu 150 de dușmani 6,25 ms pe cadru. `dist-single/world-guard.html`: 409938 octeți.
+
+**Task 5, încheierea** (fără schimbare de reguli):
+- **Timpul de desen, înainte și după** (aceeași mașină, `uname -r` = `6.18.44-fc-v595`, Chromium fără ecran, 150 de dușmani, `npm run smoke`, trei rulări):
+  înainte 5,70 / 5,76 / 5,61 ms (mijloc 5,70); după 6,30 / 6,06 / 6,24 ms (mijloc 6,24). Raport 6,24 / 5,70 = 1,09 (+9 %), sub pragul de 1,25, deci
+  nicio formă nu s-a simplificat. Măsurătorile intermediare: 6,41 ms (Task 3), 6,25 ms (Task 4).
+- **Căutarea numelor vechi** (`src`, `scripts`, `index.html`, fără deosebire între litere mari și mici):
+  - cuvintele englezești (`wood|stone|castle|tower|quarry|swing|slash|blade|grass|\bcamp|\bwalk|\bground|\bdirt|\brock|\bpine|\btrunk`): nicio linie;
+  - cuvintele românești (`castel|\bturn|lemn|piatr|pietr|copac|stânc|tăietor|carier|iarb|\bteren|\bzid|\bsabi|steag|\bpuie`): o singură linie,
+    `src/ui/strings.test.ts:26`, lista de cuvinte pe care testul „niciun text nu mai pomenește tema veche” le refuză în `STR` (cuvintele sunt datele
+    testului, nu un nume din joc); lăsată ca atare, fiindcă fără ele testul nu mai are ce căuta;
+  - `săge`: o singură linie, `src/render/orbit/things.ts:189`, comentariul „țintă, romb, hexagon, săgeată de navă sau plus” (o formă, nu un proiectil).
+- **Schela ștearsă.** Ultimul rând din `MARKS` din `src/sim/golden.test.ts` (momentul 12000, la 200 s):
+  `[12000, 400, 388, 571, 73, 549.389203, 849.332385, 80, 2, 0, 2, 2, 2, 2, 1, 1, 0, 0, 9, 640.235833, 12752.549271, 1, 82, 82, 395]`.
+  Rulat o ultimă dată după toată lucrarea: `npx vitest run src/sim/golden.test.ts`, 2 teste trecute, adică aceleași zece rânduri ca măsurate pe codul
+  dinaintea redenumirii. Fișierul s-a șters; rămân 93 de teste. `drawMs` și rândul `SMOKE INFO` rămân.
+- **Documente aduse la zi:** `docs/GDD.md` (cuvinte, nu cifre; cele cinci hotărâri ale lui Andrei din spec, ca 9–13; misiunile speciale la „Ce ar putea veni după v1”),
+  `CLAUDE.md`, `README.md`, planul fazei 2 (numele din Task 2, iconița ca planeta cu inelul ei).
+
+**Rămâne (tema de spațiu):**
+- [ ] verificarea pe telefonul lui Andrei (Samsung Galaxy A54): arată ca varianta „Orbită”, deosebește dintr-o privire nava, navele dușmane, cristalele și asteroizii, și câte cadre pe secundă dă „Test de viteză” (cifrele de pe A54 pentru aspectul vechi lipsesc, deci se notează măcar cele noi);
+- [ ] misiunile speciale, cu aspectul „Colonie”: proiect separat, după v1, cu designul lui.

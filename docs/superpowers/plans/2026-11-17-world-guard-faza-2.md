@@ -77,10 +77,10 @@ const script = (steps: number): Input[] => {
   }
   return out
 }
-const busy = (secs: number): GameState => {          // o partidă plină: turnuri care trag, erou care umblă, castel care nu cade
+const busy = (secs: number): GameState => {          // o partidă plină: turele care trag, erou care umblă, nucleu care nu cade
   const s = createGame(11)
-  for (const p of s.pads) if (p.kind === 'tower') p.lvl = 2
-  s.castle.hp = 1e9
+  for (const p of s.pads) if (p.kind === 'turret') p.lvl = 2
+  s.core.hp = 1e9
   for (const i of script(secs * 60)) step(s, i)
   return s
 }
@@ -279,13 +279,13 @@ Regulile sesiunii:
 
 | Apel | Din ce stare | Ce face |
 |---|---|---|
-| `createSession` | | `ready`, cu `createGame(seed)` pe teren |
+| `createSession` | | `ready`, cu `createGame(seed)` pe hartă |
 | `start(seed, false)` | oricare | partidă nouă, `playing`; cheamă `clearGame()` |
 | `start(seed, true)` | oricare | test de viteză, `playing`, `spawnT = 1e9`; nu atinge salvarea |
 | `resume(saved)` | oricare | `s = saved`, `stress = false`, `playing` |
 | `pause()` | `playing` | `paused`; în afara testului cheamă `saveGame(s)`; o eroare din `saveGame` nu împiedică pauza |
 | `unpause()` | `paused` | `playing` |
-| `advance(steps, input)` | `playing` | rulează pașii; în test, după fiecare pas, completează terenul la `STRESS_FOES` dușmani și aduce castelul și eroul la viață maximă; dacă `s.mode === 'over'`, chiar și cu zero pași, trece în `over` |
+| `advance(steps, input)` | `playing` | rulează pașii; în test, după fiecare pas, completează harta la `STRESS_FOES` dușmani și aduce nucleul și eroul la viață maximă; dacă `s.mode === 'over'`, chiar și cu zero pași, trece în `over` |
 
 La trecerea în `over`: în afara testului cheamă `clearGame()` și `saveIfRecord(Math.floor(s.t))`; în test întoarce `{ record: secs, isNew: false }` fără să atingă nimic. În orice altă stare decât `playing`, `advance` nu face nimic și întoarce `null`.
 
@@ -330,16 +330,16 @@ it('dacă salvarea aruncă, pauza tot are loc', () => {
   const x = createSession(d, 5); x.start(7, false)
   expect(x.pause()).toBe(true); expect(x.phase).toBe('paused')
 })
-it('testul de viteză: teren plin, nimeni nu cade, nimic nu se salvează', () => {
+it('testul de viteză: harta plină, nimeni nu cade, nimic nu se salvează', () => {
   const { d, calls } = deps(); const x = createSession(d, 5); x.start(7, true)
   x.advance(600, still)
-  expect([x.s.foes.length, x.s.castle.hp, x.s.hero.dead, x.s.mode]).toEqual([STRESS_FOES, BALANCE.castle.hp, false, 'playing'])
+  expect([x.s.foes.length, x.s.core.hp, x.s.hero.dead, x.s.mode]).toEqual([STRESS_FOES, BALANCE.core.hp, false, 'playing'])
   x.pause()
   expect(calls).toEqual([])
 })
-it('la căderea castelului: final, salvarea ștearsă, recordul întrebat o dată', () => {
+it('la căderea planetei: final, salvarea ștearsă, recordul întrebat o dată', () => {
   const { d, calls } = deps(); const x = createSession(d, 5); x.start(7, false)
-  x.s.castle.hp = 0; x.s.mode = 'over'; x.s.tick = 4321; x.s.t = 4321 / 60; x.s.kills = 9
+  x.s.core.hp = 0; x.s.mode = 'over'; x.s.tick = 4321; x.s.t = 4321 / 60; x.s.kills = 9
   expect(x.advance(0, still)).toEqual({ secs: 72, record: 72, isNew: true, kills: 9 })
   expect([x.phase, calls]).toEqual(['over', ['clear', 'clear', 'record 72']])
   expect(x.advance(5, still)).toBeNull()
@@ -424,7 +424,7 @@ export function createCards(doc: Document, on: {
   hide(): void                       // joc în curs: niciun cartonaș, butonul de pauză la vedere
 }
 // src/render/canvas.ts — createRenderer capătă:
-//   refresh(): void                 // aruncă terenul pictat; următorul cadru îl pictează din nou
+//   refresh(): void                 // aruncă cerul pictat; următorul cadru îl pictează din nou
 // src/main.ts — window.__wg capătă:
 //   phase(): Phase
 ```
@@ -436,7 +436,7 @@ Se adaugă după verificarea 9, în stilul celor existente. Pagina ascunsă se s
 10. După „Începe”, butonul `#pause` se vede. Apăsat, apare cartonașul de pauză cu „Continuă” și „Partidă nouă”, `__wg.phase()` e `'paused'`, iar ceasul arată același text și după 700 ms.
 11. „Continuă” ascunde cartonașul, iar după 1,2 s ceasul a înaintat.
 12. Pagina ascunsă în timpul jocului: la revenire cartonașul de pauză e pe ecran și `localStorage['wg.v1.save']` există.
-13. După `page.reload()`, cartonașul de start arată „Continuă partida · m:ss” cu timpul salvat, iar butonul de start spune „Partidă nouă”. După „Continuă partida”, ceasul pornește de la timpul salvat și lemnul e cel de dinainte.
+13. După `page.reload()`, cartonașul de start arată „Continuă partida · m:ss” cu timpul salvat, iar butonul de start spune „Partidă nouă”. După „Continuă partida”, ceasul pornește de la timpul salvat și cristalele sunt cele de dinainte.
 14. „Partidă nouă” din pauză pornește o partidă cu ceasul sub 0:02, iar `localStorage['wg.v1.save']` nu mai există.
 15. Pauză, „Continuă”, apoi `__wg.run(200)`: apare cartonașul de final și salvarea nu mai există. După reîncărcare, cartonașul de start nu are „Continuă partida”, iar butonul spune „Începe”.
 16. Testul de viteză, pus pe pauză, nu lasă nicio salvare.
@@ -469,7 +469,7 @@ Expected: verificarea 10 pică, butonul `#pause` nu există.
 
 - [ ] **Step 5: `refresh()` în `src/render/canvas.ts`**
 
-`refresh()` pune terenul pictat pe `null`. Se cheamă și singur la evenimentul `contextrestored` al canvasului.
+`refresh()` pune cerul pictat (`sky`) pe `null`. Se cheamă și singur la evenimentul `contextrestored` al canvasului.
 
 - [ ] **Step 6: Rulează poarta și proba în browser**
 
@@ -565,7 +565,7 @@ Expected: FAIL, fișierele nu există.
 
 - [ ] **Step 3: Manifestul, pictogramele, pagina**
 
-- `public/icons/icon.svg`: castelul din joc văzut de sus (zidul rotund cu creneluri, turnul din mijloc, steagul auriu) pe culoarea terenului. `scripts/make-icons.cjs` îl desenează cu Playwright la 192 și 512 de pixeli și scrie cele trei PNG-uri. Varianta `maskable` ține desenul în cercul din mijloc, de 80% din latură, cu fundal plin până la margini. PNG-urile se comit; scriptul se rulează doar când se schimbă desenul.
+- `public/icons/icon.svg`: planeta din joc cu inelul ei-scut (discul cu ocean și continente, inelul subțire în jur, un satelit mic) pe culoarea cerului (`--sky`), în culorile temei de spațiu. `scripts/make-icons.cjs` îl desenează cu Playwright la 192 și 512 de pixeli și scrie cele trei PNG-uri. Varianta `maskable` ține desenul în cercul din mijloc, de 80% din latură, cu fundal plin până la margini. PNG-urile se comit; scriptul se rulează doar când se schimbă desenul.
 - `public/manifest.webmanifest`: câmpurile din test; `theme_color` e valoarea lui `--edge` din `src/ui/ui.css`.
 - `index.html`: `<link rel="manifest" href="./manifest.webmanifest">`, `<meta name="theme-color">` cu aceeași culoare, `<link rel="icon" href="./icons/icon-192.png">`.
 
