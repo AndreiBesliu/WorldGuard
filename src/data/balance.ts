@@ -11,7 +11,7 @@ export const BALANCE = {
     hp: 60,                                  // viață la nivelul 1
     hpPerLevel: 20,                          // viață în plus la fiecare nivel
     dmg: 10,                                 // puterea loviturii (undei) la nivelul 1
-    dmgPerLevel: 6,                          // putere în plus a loviturii (undei) la fiecare nivel
+    dmgPerLevel: 10,                         // putere în plus a loviturii (undei) la fiecare nivel
     reach: 58,                               // bătaia undei, px
     strikeEvery: 0.45,                       // secunde între două unde
     arc: 1.25,                               // deschiderea arcului undei, radiani
@@ -90,5 +90,5 @@ export function spawnEvery(t: number): number {
 
 /** Viața unui dușman obișnuit care apare la momentul t. */
 export function foeHp(t: number): number {
-  return 14 * (1 + t / 80)
+  return 14 * (1 + t / 45)
 }

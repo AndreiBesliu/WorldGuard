@@ -184,7 +184,7 @@ Sunt cifrele cu care s-a încheiat prototipul. Sunt punct de plecare, nu țintă
 | Lucru | Valoare |
 | --- | --- |
 | Planetă | 400 viață |
-| Navă (eroul) | raza 13; viteză 165/s; 60 viață, +20 pe nivel; lovitură 10, +6 pe nivel; raza loviturii 58; o lovitură la 0,45 s; împinge 140 (60 pe cei grei); reface 4 viață/s după 3 s fără lovituri; reapare după 5 s; nivel maxim 5 |
+| Navă (eroul) | raza 13; viteză 165/s; 60 viață, +20 pe nivel; lovitură 10, +10 pe nivel; raza loviturii 58; o lovitură la 0,45 s; împinge 140 (60 pe cei grei); reface 4 viață/s după 3 s fără lovituri; reapare după 5 s; nivel maxim 5 |
 | Start | 20 cristale, 0 metal |
 | Cristal | 8 cristale; o bucată la 0,3 s; crește la loc la 18 s după ce se golește |
 | Asteroid | 6 metal; o bucată la 0,42 s; crește la loc la 24 s |
@@ -197,7 +197,7 @@ Sunt cifrele cu care s-a încheiat prototipul. Sunt punct de plecare, nu țintă
 | Plată | o bucată la 0,035 s |
 | Primul dușman | la 10 s |
 | Ritmul dușmanilor | unul la fiecare max(0,6; 5 / (1 + t / 90)) secunde |
-| Viața dușmanului | 14 × (1 + t / 80) |
+| Viața dușmanului | 14 × (1 + t / 45) |
 | Dușman obișnuit (navă invadatoare) | raza 10; viteză 46/s; 3 viață pe lovitură; lovește planeta o dată pe secundă, nava ta la 0,8 s |
 | Dușman greu (navă grea) | fiecare al 7-lea, după 120 s; viață × 4; raza 15; viteză 30/s; 9 viață pe lovitură |
 

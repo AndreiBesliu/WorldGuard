@@ -47,6 +47,18 @@ describe('verdictele', () => {
     expect(v.find((x) => x.name === 'doar-nava')!.value).toBe('200 s (67%)')
     expect(v.find((x) => x.name === 'fara-nava')!.value).toBe('270 s (90%)')
   })
+  it('rotunjirea de afișare nu intră în comparație: „Nimic” la 59,6 s se scrie „60 s” și e în afara limitei', () => {
+    const v = verdicts(rows({ nimic: 59.6 })).find((x) => x.name === 'nimic')!
+    expect([v.value, v.ok]).toEqual(['60 s', false])
+  })
+  it('rotunjirea de afișare nu intră în comparație: „Nimic” la 130,4 s e în afara limitei', () => {
+    const v = verdicts(rows({ nimic: 130.4 })).find((x) => x.name === 'nimic')!
+    expect([v.value, v.ok]).toEqual(['130 s', false])
+  })
+  it('rotunjirea de afișare nu intră în comparație: „Doar navă” la 75,4% se scrie „75%” și e în afara limitei', () => {
+    const v = verdicts(rows({ amestec: 300, 'doar-nava': 226.2 })).find((x) => x.name === 'doar-nava')!
+    expect([v.value, v.ok]).toEqual(['226 s (75%)', false])
+  })
   it('fără rândul „Amestec” aruncă o eroare cu mesaj', () => {
     expect(() => verdicts(rows({}, 'amestec'))).toThrow(/Amestec/)
   })

@@ -47,7 +47,7 @@ describe('cercurile', () => {
   })
   it('nivelul eroului dă viață și undă mai tare', () => {
     const s = quietGame(); s.crystal = 25; s.metal = 10; s.hero.hp = 12; on(s, padOf(s, 'hero'))
-    stepFor(s, 2); expect([s.hero.lvl, s.hero.hp, heroDamage(s)]).toEqual([2, 80, 16])
+    stepFor(s, 2); expect([s.hero.lvl, s.hero.hp, heroDamage(s)]).toEqual([2, 80, 20])
   })
   it('colectorul și mina produc singure', () => {
     const s = quietGame(); heroAt(s, 700, 1200)

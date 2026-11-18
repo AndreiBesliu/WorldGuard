@@ -321,3 +321,51 @@ Fără economie  301 s         275 s  352 s  —                  fără limită
 
 - Cifrele de azi (raza 120) coincid cu cele de la Task 1: „Amestec” e ÎN AFARA limitei (372 s față de 360), restul în limită. Raza 80 mută problema la „Fără navă”, raza 160 o lasă la „Amestec”, deci cifrele jocului trebuie schimbate în taskul următor, nu raza jucătorilor.
 - Nimic din `src/bots/` nu ajunge în joc: după `npm run bundle`, `grep -l "fara-economie" dist/assets/*.js` nu găsește nimic. `npm run check`: 214 teste trec.
+
+**Task 3 — Reechilibrarea și plasa.**
+- Plasa: `src/bots/net.test.ts` joacă o dată cele 100 de partide (`measureAll()`, raza 120) și are câte un test pe fiecare limită din design (mesajul arată valoarea și limita), unul că `verdicts` întoarce exact cinci verdicte, câte unul pe jucător, și unul că fiecare partidă s-a încheiat înainte de 900 s. Cu cifrele de dinainte pica doar „Amestec” („Amestec: 372 s, limita 240–360 s”); fișierul durează 17–22 s.
+- `src/data/balance.test.ts`: costurile turelei, colectorului, minei (nivelurile 1 … maxim) și navei (2 … maxim) sunt întregi, cel puțin 0, cu suma peste 0; `spawnEvery(t)` e pozitiv și nu crește, `foeHp(t)` e pozitiv și nu scade, pentru t de la 0 la 600, pas 30. `src/bots/limits.test.ts`: trei cazuri care fixează că rotunjirea de afișare nu intră în comparație („Nimic” la 59,6 s se scrie „60 s” și pică; „Nimic” la 130,4 s pică; „Doar navă” la 75,4% se scrie „75%” și pică).
+- **Propunere, până o vede Andrei** — două cifre schimbate în `src/data/balance.ts`:
+  - `hero.dmgPerLevel` (lovitura navei în plus pe nivel): 6 → 10. Motivul: e singura pârghie a navei care a mișcat „Fără navă” față de „Amestec” fără să ridice „Doar navă” (viața pe nivel, vindecarea și reapariția n-au mișcat nimic, măsurat; ieftinirea nivelurilor ridica „Doar navă”).
+  - `foeHp(t)` (viața dușmanului): 14 × (1 + t / 80) → 14 × (1 + t / 45). Motivul: așază „Amestec” în bandă. Pornirea (14) rămâne; crește doar termenul în timp: un dușman are 17,1 viață la 10 s (era 15,75), 28 la 45 s (era la 80 s), 107 la 300 s (era 66,5). „Nimic” nu s-a mișcat (65,6 s).
+- Jurnalul încercărilor, pe scurt (mediane în secunde: Nimic / Amestec / Doar navă / Fără navă / Fără economie; procentele din „Amestec”): 48 de încercări, în valuri de câte patru, peste limita de 40 din brief (alegerea, încercarea 24, era deja făcută; celelalte au căutat mai multă margine și n-au găsit). Viața pe nivel 30, vindecarea 6 și reapariția 8 n-au mișcat „Amestec” deloc. Nivelurile navei mai ieftine ridică „Amestec” (412 s), dar și „Doar navă”; un nivel 3 care cere sub 25 de metal o duce pe „Doar navă” la nivelul 3 și peste 75%. Presiunea (viața dușmanilor, ritmul, nava grea) coboară „Amestec” mai repede decât „Doar navă”, care stă la nivelul 2 și se încheie mereu la 205–235 s; de aceea ținta de 70% cere „Amestec” de cel puțin 316 s, iar fereastra cu toate țintele e îngustă (316–330 s). Turele mai tari (pârghia 3) n-au dat o margine mai bună. Aleasă: lovitura +10 pe nivel și viața 14 × (1 + t / 45): 65,6 / 326,6 / 221,3 / 246,1 / 261,6; 67,7% / 75,4%.
+- Tabelul de dinainte și cel de după (`npm run balance`, raza 120):
+
+```
+Înainte
+Nimic          66 s         59 s   82 s   60–130 s           în limită
+Amestec        372 s        347 s  428 s  240–360 s          ÎN AFARA LIMITEI
+Doar navă      250 s (67%)  231 s  283 s  ≤ 75% din Amestec  în limită
+Fără navă      332 s (89%)  307 s  388 s  ≤ 90% din Amestec  în limită
+Fără economie  308 s        273 s  365 s  —                  fără limită
+
+După
+Nimic          66 s         59 s   82 s   60–130 s           în limită
+Amestec        327 s        278 s  371 s  240–360 s          în limită
+Doar navă      221 s (68%)  203 s  256 s  ≤ 75% din Amestec  în limită
+Fără navă      246 s (75%)  235 s  278 s  ≤ 90% din Amestec  în limită
+Fără economie  262 s        229 s  286 s  —                  fără limită
+```
+
+- După, `npm run balance -- --raze` (35,6 s), razele 80 și 160 (informație, nu țintă):
+
+```
+Raza de apărare 80
+Nimic          66 s         59 s   82 s   60–130 s           în limită
+Amestec        299 s        212 s  321 s  240–360 s          în limită
+Doar navă      216 s (72%)  189 s  281 s  ≤ 75% din Amestec  în limită
+Fără navă      249 s (83%)  231 s  271 s  ≤ 90% din Amestec  în limită
+Fără economie  252 s        205 s  294 s  —                  fără limită
+
+Raza de apărare 160
+Nimic          66 s         59 s   82 s   60–130 s           în limită
+Amestec        314 s        211 s  364 s  240–360 s          în limită
+Doar navă      234 s (75%)  213 s  266 s  ≤ 75% din Amestec  în limită
+Fără navă      250 s (80%)  231 s  275 s  ≤ 90% din Amestec  în limită
+Fără economie  263 s        235 s  298 s  —                  fără limită
+```
+
+  La raza 160, „Doar navă” e la 74,5% (măsurat cu mediana nerotunjită: 234,3 / 314,4), adică la o jumătate de punct de limita din design: o rază de apărare mai largă ar pica plasa.
+- Țintele (raza 120): toate ies. Nimic 65,6 s (ținta 62–125); Amestec 326,6 s (270–330, la 3,4 s de margine); Doar navă 67,7% (cel mult 70); Fără navă 75,4% (cel mult 85); Fără economie 261,6 s, sub „Amestec”.
+- Testele aduse la zi (doar valoarea așteptată): `balance.test.ts` (`foeHp(45)` = 28), `src/sim/foes.test.ts` (viața primului dușman, 14 × (1 + 10 / 45)), `src/sim/pads.test.ts` (lovitura la nivelul 2: 20). Din `src/sim/run.test.ts` a ieșit testul „fără niciun gest, nucleul cade după aproximativ un minut”: limita lui e acum în plasă, pe 20 de semințe. `docs/GDD.md`, „Cifrele de pornire”: rândurile „Navă” (+10 pe nivel) și „Viața dușmanului”.
+- `npm run check`: 224 de teste trec; `npm test` durează 20 s (Vitest: 19,8 s). `npm run smoke`: „SMOKE OK (20 verificări)”.
