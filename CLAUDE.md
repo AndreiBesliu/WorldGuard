@@ -93,7 +93,8 @@ Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
   planetei (rândul `SMOKE INFO`): vezi `DEVLOG.md`. Designul temei a fost aprobat de Andrei pe 18.11.2026.
 - **Publicat:** Andrei a pornit GitHub Pages pe 17.11.2026; faza 1 e la https://andreibesliu.github.io/WorldGuard/ și a încercat-o
   pe telefonul lui (Samsung Galaxy A54): „se simte ok până aici”.
-- **Nefăcut încă:** eticheta `hex-td-v0.0.1` și proba temei de spațiu pe telefonul lui Andrei: că arată ca varianta „Orbită” și că
-  deosebește dintr-o privire nava lui, navele dușmane, cristalele și asteroizii — ale lui Andrei.
+- **Tema, încercată pe telefon:** Andrei a încercat tema de spațiu pe telefonul lui pe 18.11.2026: „pe telefon, totul arată super bine”.
+  Cifrele de la „Test de viteză” cu tema nouă nu le-a spus încă.
+- **Nefăcut încă:** eticheta `hex-td-v0.0.1` — a lui Andrei.
 - **Urmează:** planul 2 (pauză, instalare pe telefon, joc fără internet, reluarea unei partide întrerupte) și planul 3
   (plasa pentru dificultate și reechilibrarea).

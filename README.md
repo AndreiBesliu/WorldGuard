@@ -5,7 +5,7 @@ Aperi o planetă cu o navă: un joc web pentru telefon, văzut de sus, cu tema d
 timp ce navele dușmane vin tot mai des. Scorul e cât reziști.
 **Stare:** faza 1 e publicată pe GitHub Pages (pornit pe 17.11.2026, https://andreibesliu.github.io/WorldGuard/), iar
 Andrei a încercat-o pe telefonul lui, un Samsung Galaxy A54 („se simte ok până aici”). Tema de spațiu e în cod
-(18.11.2026); proba ei pe telefon n-a fost făcută încă. Urmează pauza, instalarea și reluarea (planul 2).
+(18.11.2026), iar Andrei a încercat-o pe telefon în aceeași zi: „pe telefon, totul arată super bine”. Urmează pauza, instalarea și reluarea (planul 2).
 
 ```bash
 npm install

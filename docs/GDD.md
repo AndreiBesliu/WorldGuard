@@ -32,6 +32,7 @@ Hotărârile 1–8 sunt în cuvintele lor de dinainte de tema de spațiu: „ero
 11. Aspectul jocului este varianta 1, „Orbită”, din pagina cu machete (`docs/machete-tema-spatiu.html`).
 12. Varianta 3, „Colonie”, e păstrată pentru misiuni speciale.
 13. Se schimbă și numele din cod, nu doar ce se vede (abordarea 2 din spec).
+14. A încercat tema de spațiu pe telefon, pe 2026-11-18, și a spus: „pe telefon, totul arată super bine”.
 
 **Propus de Claude și acceptat de Andrei când i-a fost arătat întregul.**
 
@@ -284,9 +285,9 @@ Pârghia asta avantajează turelele, deci se verifică de fiecare dată și pe l
 
 ## Înainte de construcție
 
-Repo-ul e ales: WorldGuard, public. Au rămas două lucruri pe care le poate face doar Andrei:
+Repo-ul e ales: WorldGuard, public. Erau două lucruri pe care le putea face doar Andrei; amândouă sunt făcute:
 
-- [ ] Aprobă accesul de scriere la WorldGuard pentru sesiunea care construiește, când apare cererea.
+- [x] Aprobă accesul de scriere la WorldGuard pentru sesiunea care construiește, când apare cererea. Făcut pe 17.11.2026.
 - [x] Pornește GitHub Pages din setările repo-ului, cu sursa „GitHub Actions”. Făcut de Andrei pe 17.11.2026; faza 1 e la `https://andreibesliu.github.io/WorldGuard/`.
 
 Construcția se face pe o ramură separată din WorldGuard, cu pull request.

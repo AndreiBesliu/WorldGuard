@@ -213,3 +213,9 @@ Proba din browser, verificarea 7: limita de timp corectată la 0:50–2:10, fiin
 - De întrebat pe Andrei la proba pe telefon: se citesc jetoanele de 11 px din bandă? se citește inelul când planeta e atacată fără oprire (clipește
   aproape tot timpul)?
 - Rândul din `src/ui/strings.test.ts` care înșiră cuvintele temei vechi e singura potrivire a căutării finale și rămâne: e chiar paza care le refuză în texte.
+
+**Proba pe telefon (18.11.2026).** Andrei a încercat tema pe telefonul lui, din varianta într-un singur fișier construită din commit-ul
+`4ec9120`, și a spus: „pe telefon, totul arată super bine, poți continua”. Cu asta, tema se îmbină în `main` (pull request-ul #13).
+- Cifrele de la „Test de viteză” cu tema nouă nu le-a spus; rămân de aflat înaintea fazei 2, care presupune că desenatul rămâne pe Canvas 2D.
+- Cele două întrebări de aspect (jetoanele de 11 px din bandă, inelul sub atac fără oprire) n-au primit răspuns separat; „totul arată super bine” le acoperă deocamdată.
+- În `docs/GDD.md`, „Înainte de construcție”: cele două lucruri care erau ale lui Andrei (accesul de scriere și GitHub Pages) sunt amândouă bifate.
