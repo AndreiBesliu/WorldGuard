@@ -1,6 +1,6 @@
 # World Guard: designul primei versiuni
 
-Scris pe 2026-11-13, actualizat pe 2026-11-18 (tema de spațiu). Sursa: documentul „World Guard: designul primei versiuni”, aprobat de Andrei pe 2026-11-17.
+Scris pe 2026-11-13, actualizat pe 2026-11-18 (tema de spațiu, plasa pentru dificultate). Sursa: documentul „World Guard: designul primei versiuni”, aprobat de Andrei pe 2026-11-17.
 
 Prima versiune este jocul din prototip făcut ca proiect adevărat: instalat pe telefon, jucabil fără internet, cu cifre ușor de reglat și cu o plasă care prinde stricarea dificultății. Se construiește în repo-ul WorldGuard, unde ia locul jocului de acolo.
 
@@ -53,6 +53,9 @@ Andrei a vorbit despre rezultate, nu despre unelte, deci alegerile de mai jos su
 - Ce se păstrează din WorldGuard și ce se înlocuiește.
 - Jocul nou preia numele de lucru World Guard.
 - Găzduirea pe GitHub Pages.
+- Purtarea jucătorilor automați din plasă: toți apără planeta (lasă totul când o navă dușmană e la mai puțin de 120 de centrul ei) și niciunul nu repară planeta. Razele 80 și 160 se tipăresc doar ca informație.
+- Cifrele schimbate la reechilibrarea din 18.11.2026, propuneri până le vede Andrei în joc: lovitura navei crește cu 10 pe nivel în loc de 6; viața dușmanului e 14 × (1 + t / 45) în loc de 14 × (1 + t / 80). Pe înțelesul jocului: spre minutul 5 un dușman are 107 viață (înainte 66,5), iar nava de nivelul 5 lovește cu 50 (înainte 34); primul minut e neschimbat.
+- Pârghia cu grupuri de dușmani din părți opuse a fost încercată în explorare și nu s-a folosit; a rămas notată mai jos, în „Plasa pentru dificultate”.
 - Din spec: misiunile speciale sunt un proiect separat, după v1; tema se construiește înaintea fazei 2; numele din cod descriu rolul, nu aspectul; fontul titlului și al cifrelor e Exo 2; testul „aceeași partidă” a fost o schelă temporară (ștearsă la sfârșitul lucrării); inelul-scut se desenează peste nave; câmpurile loviturii au nume fără sabie, iar câmpul `walk` a dispărut din stare.
 
 ## Ce se întâmplă cu WorldGuard
@@ -88,7 +91,7 @@ Jocul nou preia numele de lucru World Guard, care e și numele repo-ului. „Str
 
 ## Ce a arătat prototipul
 
-Investiția doar în navă (în prototip, erou) ține la fel de mult ca a construi, deci tensiunea dintre cele trei direcții nu e încă asigurată de cifre. V1 trebuie să o asigure (vezi „Plasa pentru dificultate”).
+Investiția doar în navă (în prototip, erou) ține la fel de mult ca a construi, deci tensiunea dintre cele trei direcții nu e încă asigurată de cifre. V1 trebuie să o asigure (vezi „Plasa pentru dificultate”). Măsurătorile făcute apoi cu jucătorii automați din repo, cu cifrele de azi, sunt în „Plasa pentru dificultate”; cele ale prototipului sunt cele de mai jos.
 
 Măsurători făcute în prototip cu jucători automați, la 30 de pași pe secundă:
 
@@ -177,9 +180,9 @@ Jocul a eșuat, chiar dacă merge tehnic, dacă:
 
 **Ce se vede mereu.** O bandă sus cu cristalele, metalul, ceasul și viața planetei, care se înroșește când planeta e lovită. Viața planetei se vede și ca inel-scut în jurul ei. Când planeta iese din ecran, un indicator pe margine arată încotro e și câtă viață are, și pulsează roșu când e atacată.
 
-## Cifrele de pornire
+## Cifrele jocului
 
-Sunt cifrele cu care s-a încheiat prototipul. Sunt punct de plecare, nu țintă: se vor schimba ca să treacă plasa pentru dificultate. Timpul t e în secunde de la începutul partidei.
+Sunt cifrele de după reechilibrarea din 18.11.2026 (două s-au schimbat față de prototip: lovitura navei pe nivel și viața dușmanului, ambele propuneri până le vede Andrei); cele cu care s-a încheiat prototipul sunt în `DEVLOG.md`. Timpul t e în secunde de la începutul partidei.
 
 | Lucru | Valoare |
 | --- | --- |
@@ -275,11 +278,31 @@ Cinci jucători automați rulează simularea fără browser, pe 20 de semințe f
 | Fără navă | ca „Amestec”, dar nu investește niciodată în nivelul navei | cel mult 90% din mediana „Amestec” |
 | Fără economie | ca „Amestec”, dar nu construiește colector sau mină | fără limită; doar tipărit |
 
-Limita „Doar navă” nu e îndeplinită de cifrele de pornire (vezi măsurătorile). „Fără navă” și „Fără economie” nu au fost măsurate niciodată. Aducerea celor două limite în regulă face parte din v1.
+**Cum sunt făcuți jucătorii automați** (`src/bots/`). Au aceeași purtare și diferă doar prin lista de cumpărături: strâng resursa care le lipsește, plătesc la cercul următor din listă și, când o navă dușmană e la mai puțin de 120 de centrul planetei, lasă totul și luptă cu ea. Niciunul nu repară planeta. Un jucător nu stă pe un cerc care nu e ținta lui, ca să nu plătească din greșeală. Tabelul depinde de aceste alegeri: dacă purtarea se schimbă, se schimbă și cifrele.
 
-Prima pârghie de încercat, fiindcă nu schimbă senzația navei pe care Andrei a aprobat-o: dușmanii vin și în grupuri simultane din părți opuse, astfel încât o singură navă să nu poată fi în două locuri.
+**Comanda.** `npm run balance` rulează cele 100 de partide (5 jucători × 20 de semințe, cam 13 s) și tipărește tabelul; cu `-- --raze` tipărește și razele de apărare 80 și 160 (cam 40 s). Comanda doar afișează. Limitele rulează ca teste în `src/bots/net.test.ts` și pică build-ul când sunt depășite.
 
-Pârghia asta avantajează turelele, deci se verifică de fiecare dată și pe limita „Fără navă”. Dacă patru turele ajung singure, investiția în navă a devenit inutilă și anti-scopul e încălcat din partea cealaltă. Abia dacă pârghia nu ajunge se umblă la arcul și la împinsul loviturii navei.
+**Măsurat după reechilibrare** (mediana pe 20 de semințe, raza de apărare 120, 18.11.2026):
+
+| Jucător | Mediana | Procent din „Amestec” | Verdict |
+| --- | --- | --- | --- |
+| Nimic | 66 s | | în limită |
+| Amestec | 327 s | | în limită |
+| Doar navă | 221 s | 68% | în limită |
+| Fără navă | 246 s | 75% | în limită |
+| Fără economie | 262 s | | fără limită |
+
+Înainte de reechilibrare „Amestec” avea 372 s, peste limita de 360, iar „Doar navă” 67% și „Fără navă” 89%.
+
+**Razele 80 și 160** sunt informație, nu țintă. La raza 80: „Amestec” 299 s, „Doar navă” 72%, „Fără navă” 83%. La raza 160: „Amestec” 314 s, „Doar navă” 75% (74,5% nerotunjit), „Fără navă” 80%.
+
+**Ce e fragil.** „Amestec” e la 33 s de limita de sus (327 față de 360). La raza de apărare 160, „Doar navă” e la 74,5%, la o jumătate de punct de limită: o rază mai largă ar pica plasa. Cifrele depind de cum sunt scriși jucătorii automați (toți apără la 120 de centrul planetei, niciunul nu repară).
+
+Cu jucători care apără, limita „Doar navă” era îndeplinită chiar cu cifrele de dinainte (65%); peste limită era „Amestec” (368 s în explorare, 372 s cu jucătorii din repo). Cele două cifre schimbate la reechilibrare l-au adus în bandă fără să strice celelalte limite.
+
+Prima pârghie de încercat, fiindcă nu schimbă senzația navei pe care Andrei a aprobat-o, era: dușmanii vin și în grupuri simultane din părți opuse, astfel încât o singură navă să nu poată fi în două locuri. A fost încercată în explorare, cu același număr total de nave: grupuri de 2 + 2 nu schimbă nimic (66% și 88%), iar grupuri de 3 + 3 fac jocul mai ușor („Amestec” 413 s) și duc „Fără navă” la 100%, fiindcă lovitura navei prinde tot grupul deodată. Nu s-a construit.
+
+Pârghia asta avantaja turelele, deci s-a verificat și pe limita „Fără navă”: dacă patru turele ajung singure, investiția în navă devine inutilă și anti-scopul e încălcat din partea cealaltă. Arcul și împinsul loviturii navei nu s-au atins.
 
 „Fără economie” rămâne fără limită în v1, ca echilibrarea să nu aibă trei constrângeri care trag una de alta. Dacă tabelul arată că economia e inutilă, asta devine o problemă de rezolvat după v1.
 
