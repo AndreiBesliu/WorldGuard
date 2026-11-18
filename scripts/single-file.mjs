@@ -53,6 +53,11 @@ for (const m of css.matchAll(/url\(\s*["']?([^"')]+)/g)) {
 }
 if (leftovers.length > 0) fail(`au rămas referințe spre fișiere: ${leftovers.slice(0, 5).join(', ')}`)
 
+// Pagina privată nu se instalează și nu are service worker: legăturile spre manifest și spre pictogramă (și culoarea temei)
+// stau în <head>, din care fragmentul ia doar <title>, deci rămân pe dinafară; aici se verifică asta, la fel și `sw.js`.
+const install = ['manifest.webmanifest', 'icons/icon', 'theme-color', 'sw.js'].filter((s) => out.includes(s))
+if (install.length > 0) fail(`au rămas în fragment urme ale instalării: ${install.join(', ')}`)
+
 const target = join(dir, 'world-guard.html')
 writeFileSync(target, out)
 console.log(`single-file: ${target} (${Buffer.byteLength(out)} octeți)`)

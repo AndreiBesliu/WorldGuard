@@ -603,7 +603,7 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== self.location.origin) return
   e.respondWith((async () => {
     const c = await caches.open(CACHE)
-    const hit = await c.match(e.request, { ignoreSearch: true })
+    const hit = await c.match(e.request, { ignoreSearch: true, ignoreVary: true })
     if (hit) return hit
     if (e.request.mode === 'navigate') { const page = await c.match('./'); if (page) return page }
     return fetch(e.request)

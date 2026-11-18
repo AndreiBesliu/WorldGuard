@@ -11,6 +11,7 @@ import './ui/ui.css'
 import { parseFlags } from './app/flags'
 import { advance } from './app/loop'
 import { createSession, type OverInfo, type Phase } from './app/session'
+import { registerServiceWorker } from './app/sw'
 import { clearGame, loadGame, saveGame, saveIfRecord } from './app/storage'
 import { createWake, type WakeNav } from './app/wake'
 import { bindInput } from './input/bind'
@@ -45,6 +46,9 @@ const hud = createHud(document)
 const flags = parseFlags(location.search)
 const session = createSession({ saveGame, clearGame, saveIfRecord }, flags.seed ?? Date.now() >>> 0)
 const wake = createWake(navigator as WakeNav)
+// Jocul fără internet, doar în build-ul publicat (`__WG_SW__ && PROD`). Sub `if`, pagina într-un singur fișier
+// (`__WG_SW__` fals) pierde la build apelul cu totul, cu adresa lui `./sw.js` cu tot.
+if (__WG_SW__) registerServiceWorker(navigator, import.meta.env.PROD)
 const input = bindInput(canvas, () => session.phase === 'playing')
 const still = { x: 0, y: 0 }
 let saved = loadGame()

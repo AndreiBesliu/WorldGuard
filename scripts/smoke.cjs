@@ -3,8 +3,11 @@
 // apoi jocul: (4) cartonașul de start, (5) tragerea cu degetul, (6) eroul stă, (7) cartonașul de final,
 // (8) „Încă o partidă”, (9) testul de viteză, apoi pauza și reluarea: (10) butonul și cartonașul de pauză, (11) „Continuă”,
 // (12) pauza la pagina ascunsă, (13) „Continuă partida” după reîncărcare, (14) „Partidă nouă” din pauză,
-// (15) finalul șterge salvarea, (16) testul de viteză nu salvează.
+// (15) finalul șterge salvarea, (16) testul de viteză nu salvează, apoi instalarea și jocul fără internet: (17) manifestul și pictogramele,
+// (18) service worker-ul și cache-ul, (19) pornirea fără rețea.
+// Fiecare rulare pornește un browser cu un context nou, deci fără cache sau service worker rămase de la o rulare anterioară.
 // Nu face parte din `npm run check`: are nevoie de un Playwright instalat pe mașină.
+// Merge doar pe Linux și macOS: oprește serverul prin grupul lui de procese (`process.kill(-pid)`), pe care Windows nu îl are.
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -21,6 +24,7 @@ const PORT = 4180
 const URL_ = `http://localhost:${PORT}/`
 const PAGE = `${URL_}?seed=7&debug=1`
 const root = path.resolve(__dirname, '..')
+const dist = path.join(root, 'dist')
 const outDir = path.join(root, 'smoke-out')
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -96,7 +100,8 @@ async function main() {
     await load()
     await page.waitForTimeout(700)
     await shot('01-cer.png')
-    const colors = await page.evaluate(() => {
+    // Câte culori are proba de 64 × 64 din mijlocul canvasului.
+    const canvasColors = () => page.evaluate(() => {
       const c = document.getElementById('field')
       const ctx = c.getContext('2d')
       const d = ctx.getImageData(Math.floor(c.width / 2) - 32, Math.floor(c.height / 2) - 32, 64, 64).data
@@ -104,6 +109,7 @@ async function main() {
       for (let i = 0; i < d.length; i += 4) seen.add((d[i] << 16) | (d[i + 1] << 8) | d[i + 2])
       return seen.size
     })
+    const colors = await canvasColors()
     check(3, 'canvasul e desenat (cel puțin 20 de culori în proba din mijloc)', colors >= 20, `culori: ${colors}`)
 
     // 4. cartonașul de start
@@ -289,6 +295,58 @@ async function main() {
     const phase16 = await page.evaluate(() => window.__wg.phase())
     const saved16 = await saveRaw()
     check(16, 'testul de viteză pus pe pauză nu lasă nicio salvare', phase16 === 'paused' && saved16 === null, `fază ${phase16}, salvare ${saved16 === null ? 'lipsă' : 'există'}`)
+
+    // 17. manifestul și pictogramele lui, cerute din pagină, cum le cere telefonul la instalare
+    const m17 = await page.evaluate(async () => {
+      const href = document.querySelector('link[rel="manifest"]')?.href
+      if (!href) return { name: null, icons: [] }
+      const m = await (await fetch(href)).json()
+      const icons = []
+      for (const i of m.icons ?? []) {
+        const r = await fetch(new URL(i.src, href))
+        icons.push(`${i.src} ${r.status} ${r.headers.get('content-type')}`)
+      }
+      return { name: m.name, icons }
+    })
+    check(17, 'manifestul se încarcă, iar cele trei pictograme răspund cu image/png', m17.name === 'World Guard' && m17.icons.length === 3 && m17.icons.every((t) => / 200 image\/png$/.test(t)), `nume ${m17.name}, pictograme: ${m17.icons.join('; ') || 'niciuna'}`)
+
+    // 18. service worker-ul e activ, controlează pagina, iar cache-ul are fiecare fișier din `dist` (fără `sw.js`)
+    const listFiles = (dir) => fs.readdirSync(dir).flatMap((n) => { const p = path.join(dir, n); return fs.statSync(p).isDirectory() ? listFiles(p) : [path.relative(dist, p).split(path.sep).join('/')] })
+    const expected = listFiles(dist).filter((f) => f !== 'sw.js').map((f) => (f === 'index.html' ? '/' : `/${f}`)).sort()
+    const sw18 = await page.evaluate(async () => {
+      const reg = await navigator.serviceWorker.ready
+      for (let i = 0; i < 50 && !navigator.serviceWorker.controller; i++) await new Promise((r) => setTimeout(r, 100))
+      const names = (await caches.keys()).filter((k) => k.startsWith('wg-'))
+      const paths = names.length === 1 ? (await (await caches.open(names[0])).keys()).map((r) => new URL(r.url).pathname).sort() : []
+      return { state: reg.active?.state ?? null, controlled: navigator.serviceWorker.controller !== null, names, paths }
+    })
+    const missing = expected.filter((p) => !sw18.paths.includes(p))
+    const extra = sw18.paths.filter((p) => !expected.includes(p))
+    check(18, 'service worker-ul e activ și controlează pagina, iar cache-ul wg-… are fiecare fișier din dist în afară de sw.js',
+      sw18.state === 'activated' && sw18.controlled && sw18.names.length === 1 && missing.length === 0 && extra.length === 0,
+      `stare ${sw18.state}, controlează ${sw18.controlled}, cache-uri ${sw18.names.join(', ') || 'niciunul'}, ${sw18.paths.length} din ${expected.length} fișiere, lipsă: ${missing.join(', ') || 'nimic'}, în plus: ${extra.join(', ') || 'nimic'}`)
+
+    // 19. fără rețea: reîncărcarea arată cartonașul de start, iar după „Începe” canvasul e desenat, tot din cache
+    const answered = []
+    const onResponse = (r) => answered.push(r)
+    await context.setOffline(true)
+    try {
+      page.on('response', onResponse)
+      await load()
+      const start19 = await visible('#startVeil')
+      if (start19) await page.click('#start')
+      await page.waitForTimeout(700)
+      await shot('08-fara-retea.png')
+      const colors19 = await canvasColors()
+      const phase19 = await page.evaluate(() => window.__wg?.phase() ?? null)   // fără JavaScript încărcat, __wg lipsește
+      const fromNet = answered.filter((r) => !r.fromServiceWorker()).map((r) => r.url())
+      check(19, 'fără rețea, după reîncărcare se vede cartonașul de start, iar după „Începe” canvasul e desenat (tot din service worker)',
+        start19 && phase19 === 'playing' && colors19 >= 20 && answered.length > 0 && fromNet.length === 0,
+        `cartonaș ${start19}, fază ${phase19}, culori ${colors19}, răspunsuri ${answered.length}, din rețea: ${fromNet.join(', ') || 'niciunul'}`)
+    } finally {
+      page.off('response', onResponse)
+      await context.setOffline(false)
+    }
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))
