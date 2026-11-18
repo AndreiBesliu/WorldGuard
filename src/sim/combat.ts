@@ -38,7 +38,7 @@ function strike(s: GameState): void {
   h.face = a
 }
 
-/** Fiecare turelÄ construitÄ trage în cel mai apropiat dușman viu din bătaia lui. */
+/** Fiecare turelă construită trage în cel mai apropiat dușman viu din bătaia lui. */
 function fireTurrets(s: GameState): void {
   for (const p of s.pads) {
     if (p.kind !== 'turret' || p.lvl <= 0) continue
