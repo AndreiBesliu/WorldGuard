@@ -1,5 +1,8 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { BALANCE } from '../data/balance'
+import type { GameState } from '../sim/state'
 import { addFoe, addNode, padOf, quietGame } from '../sim/testkit'
+import { ORBIT } from './orbit'
 import type { Skin } from './skin'
 import { drawWorld } from './world'
 
@@ -14,6 +17,48 @@ function fakeCtx(): CanvasRenderingContext2D {
     get: (_t, k) => (k === 'measureText' ? () => ({ width: 10 }) : () => undefined),
     set: () => true,
   }) as unknown as CanvasRenderingContext2D
+}
+
+/** Ca fakeCtx, dar gradientul întors are addColorStop: îl folosește aspectul adevărat. */
+function fakeCtxWithGradients(): CanvasRenderingContext2D {
+  const gradient = { addColorStop: (): void => undefined }
+  return new Proxy({}, {
+    get: (_t, k) => {
+      if (k === 'measureText') return () => ({ width: 10 })
+      if (k === 'createRadialGradient' || k === 'createLinearGradient') return () => gradient
+      return () => undefined
+    },
+    set: () => true,
+  }) as unknown as CanvasRenderingContext2D
+}
+
+/** O stare cu din toate: resurse pline și golite, fiecare fel de clădire, nave obișnuite și grele, raze, texte. */
+function richGame(): GameState {
+  const s = quietGame()
+  s.t = 60; s.tick = 3600
+  s.core.hp = BALANCE.core.hp * 0.2; s.core.hitT = s.t - 0.05
+  addNode(s, 'crystal', 400, 600).shakeT = s.t - 0.05
+  const emptyCrystal = addNode(s, 'crystal', 440, 640); emptyCrystal.left = 0; emptyCrystal.regrowAt = s.t + 4
+  addNode(s, 'metal', 640, 600).shape = [0.9, 1, 0.8, 1.05, 0.95, 0.85, 1]
+  const emptyMetal = addNode(s, 'metal', 680, 640); emptyMetal.left = 0; emptyMetal.regrowAt = s.t + 10; emptyMetal.shape = [1, 1, 1, 1, 1, 1, 1]
+  padOf(s, 'turret', 0).lvl = 3
+  padOf(s, 'turret', 1).paid.crystal = 7
+  padOf(s, 'collector').lvl = 2
+  padOf(s, 'mine').lvl = 1
+  padOf(s, 'mine').prodT = s.t - 0.1
+  const grunt = addFoe(s, 560, 690, { hp: 5, hitT: s.t - 0.02, lungeT: s.t - 0.1 })
+  addFoe(s, 540, 820, { brute: true, r: BALANCE.foe.brute.r, hp: 30, maxHp: 60 })
+  s.shots.push({ x: 500, y: 700, tx: 560, ty: 690, a: 0.4, targetId: grunt.id, dmg: 6 })
+  s.shots.push({ x: 520, y: 720, tx: 600, ty: 700, a: -0.2, targetId: -1, dmg: 6 })
+  s.fx.push(
+    { kind: 'gain', res: 'crystal', x: 400, y: 600, t0: s.t - 0.2 },
+    { kind: 'gain', res: 'metal', x: 640, y: 600, t0: s.t - 0.3 },
+    { kind: 'level', what: 'turret', lvl: 3, x: 500, y: 650, t0: s.t - 0.1 },
+    { kind: 'heroDown', x: 470, y: 760, t0: s.t - 0.4 },
+    { kind: 'puff', r: 20, x: 560, y: 690, t0: s.t - 0.1 },
+  )
+  s.hero.lvl = 3; s.hero.waveT = s.t - 0.05; s.hero.waveA = 1; s.hero.hurtT = s.t - 0.03; s.hero.face = 0.7
+  return s
 }
 
 function recorder(): { skin: Skin; calls: string[] } {
@@ -45,6 +90,8 @@ describe('ordinea straturilor', () => {
       expect(last(n)).toBeLessThan(first('shield'))
     }
     expect(first('shield')).toBeLessThan(first('shot'))
+    expect(calls).toContain('glyph')
+    expect(last('glyph')).toBeLessThan(first('core'))           // cercurile, sub nucleu
   })
   it('ce nu se vede nu se desenează', () => {
     const s = quietGame()
@@ -53,5 +100,21 @@ describe('ordinea straturilor', () => {
     drawWorld(fakeCtx(), s, { x: 0, y: 0 }, { l: 300, t: 500, r: 700, b: 1000 }, skin)
     expect(calls).not.toContain('foe')
     expect(calls).toContain('core')
+  })
+})
+
+describe('desenul doar citește starea', () => {
+  const all = { l: 0, t: 0, r: 1100, b: 1500 }
+  it('cu aspectul „Orbită”, peste o stare bogată, cu nava ta vie: nu aruncă și nu schimbă starea', () => {
+    const s = richGame(), before = JSON.stringify(s)
+    expect(() => drawWorld(fakeCtxWithGradients(), s, { x: 0.6, y: -0.3 }, all, ORBIT)).not.toThrow()
+    expect(JSON.stringify(s)).toBe(before)
+  })
+  it('la fel cu nava ta doborâtă, cât așteaptă să reapară', () => {
+    const s = richGame()
+    s.hero.dead = true; s.hero.respawnT = 2.4; s.hero.hp = 0
+    const before = JSON.stringify(s)
+    expect(() => drawWorld(fakeCtxWithGradients(), s, { x: 0, y: 0 }, all, ORBIT)).not.toThrow()
+    expect(JSON.stringify(s)).toBe(before)
   })
 })

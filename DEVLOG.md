@@ -187,3 +187,29 @@ Proba din browser, verificarea 7: limita de timp corectată la 0:50–2:10, fiin
 **Rămâne (tema de spațiu):**
 - [ ] verificarea pe telefonul lui Andrei (Samsung Galaxy A54): arată ca varianta „Orbită”, deosebește dintr-o privire nava, navele dușmane, cristalele și asteroizii, și câte cadre pe secundă dă „Test de viteză” (cifrele de pe A54 pentru aspectul vechi lipsesc, deci se notează măcar cele noi);
 - [ ] misiunile speciale, cu aspectul „Colonie”: proiect separat, după v1, cu designul lui.
+
+**Valul de reparații de după recenzia finală** (fără schimbare de reguli, de cifre sau de așezare):
+- **Timpul de desen, remăsurat cu navele în vedere.** Cifrele de mai sus (5,70 ms înainte, 6,24 ms după, și cele intermediare de la Task 3 și Task 4)
+  măsurau un cadru fără nave în vedere: la 1,5 s după pornirea testului de viteză toate cele 150 sunt încă la marginea hărții, iar desenul le sare.
+  Ele compară cerul, cercurile și planeta, nu navele. `scripts/smoke.cjs` așază acum, într-un singur `page.evaluate`, cele 150 de nave în jurul
+  planetei (nava `i` la unghiul `i × 2,399963` rad și la raza `70 + (i % 5) × 28`, deci între 70 și 182 de centrul `550, 750`), face captura
+  `05-test.png` și apoi măsoară; rândul e `SMOKE INFO: desen cu 150 de nave în jurul planetei: <x.xx> ms pe cadru`.
+  Aceeași mașină (`uname -r` = `6.18.44-fc-v595`, Chromium fără ecran), `npm run smoke` de trei ori, aceeași așezare:
+  înainte (commit `0dc0ad0`, aspectul vechi, într-un arbore de lucru temporar, șters la sfârșit) 7,71 / 8,21 / 7,90 ms (mijloc 7,90);
+  după 9,03 / 9,88 / 8,79 ms (mijloc 9,03). Raport 9,03 / 7,90 = 1,14 (+14 %), sub pragul de 1,25, deci nicio formă nu se simplifică.
+- **`alpha()` și culorile scurte.** La build, CSS-ul micșorat scrie `--star: #fff`, iar `alpha('#fff', 0.8)` ieșea `rgba(0,15,255,0.8)`: dunga de pe
+  discul din indicatorul spre planetă era albastră în jocul construit (corectă doar în `npm run dev`). `hex6()` din `src/render/palette.ts` aduce `#rgb`
+  la `#rrggbb`, aplicată în `palette()` și în `alpha()`; `src/render/palette.test.ts` (2 teste) o fixează. Dunga din `coreIcon` e acum o umbră din
+  `night`, străvezie, pe partea din dreapta-jos a discului, ca să se vadă și pe tonul `ink`, și pe tonul `foe`; verificat cu o captură din build.
+- Teste noi pentru desen: fișierele desenului trebuie găsite de `discipline.test.ts`, al cărui tipar prinde și `createConicGradient` și `ctx.filter = …`
+  (cu probă negativă); ordinea straturilor fixează și cercurile sub planetă; `drawWorld` cu `ORBIT` peste o stare bogată (nava vie și, separat,
+  doborâtă) nu aruncă și lasă `JSON.stringify(s)` neschimbat. Aspectul lasă `globalAlpha` cum l-a găsit (contract scris în `skin.ts`); cercul de bătaie
+  al turelei își pune singur `lineCap`. 99 de teste trec; `npm run smoke`: `SMOKE OK (9 verificări)`.
+- Comentarii și documente: turela trage raze (`balance.ts`, coloana de comentarii realiniată), „turela”, „bătaia ei”, „îl strânge”; `LOW_FRAC` colorează
+  și inelul planetei; GDD-ul spune „marginea ei” și „bariere”; starea proiectului spusă drept (Pages pornit pe 17.11.2026, faza 1 încercată pe A54,
+  designul temei aprobat pe 18.11.2026) în `README.md`, `CLAUDE.md`, `docs/GDD.md`, spec și planul fazei 2.
+- Câmpul `tilt` din `ResNode` nu mai are cititor (e mereu 0). A rămas în stare, fiindcă designul temei îngăduie o singură schimbare de stare care nu e
+  redenumire; de hotărât înainte ca faza 2 să fixeze forma salvării.
+- De întrebat pe Andrei la proba pe telefon: se citesc jetoanele de 11 px din bandă? se citește inelul când planeta e atacată fără oprire (clipește
+  aproape tot timpul)?
+- Rândul din `src/ui/strings.test.ts` care înșiră cuvintele temei vechi e singura potrivire a căutării finale și rămâne: e chiar paza care le refuză în texte.

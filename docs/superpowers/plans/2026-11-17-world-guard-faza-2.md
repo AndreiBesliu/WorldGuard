@@ -10,7 +10,7 @@
 
 **Spec:** `docs/GDD.md`, secțiunile „Ce e nou față de prototip” (punctele 1, 2, 3, 6, 7), „Scopuri pentru v1” (2, 3, 8) și „Când e gata v1”.
 
-**De la ce pornește.** Faza 1 e pe `main` (commit `c2bfc36`) și publicată pe GitHub Pages. Andrei a încercat-o pe Samsung Galaxy A54 și a spus că se simte în regulă. Planul presupune că desenatul rămâne pe Canvas 2D. Dacă „Test de viteză” arată sub 60 de cadre pe secundă, mutarea pe PixiJS primește planul ei și trece înaintea Task-ului 4, singurul care atinge desenatul.
+**De la ce pornește.** Faza 1 e pe `main` (commit `c2bfc36`) și publicată pe GitHub Pages. Andrei a încercat-o pe Samsung Galaxy A54 și a spus că se simte în regulă. Planul pornește de la tema de spațiu: numele din cod (`core`, `crystal`, `metal`, `turret`, `collector`, `mine`) și aspectul „Orbită” de pe ramura `ccr-a5a7e643-gpwbh0`. Planul presupune că desenatul rămâne pe Canvas 2D. Dacă „Test de viteză” arată sub 60 de cadre pe secundă, mutarea pe PixiJS primește planul ei și trece înaintea Task-ului 4, singurul care atinge desenatul.
 
 ## Global Constraints
 

@@ -3,8 +3,9 @@
 Aperi o planetă cu o navă: un joc web pentru telefon, văzut de sus, cu tema de spațiu. Strângi cristale
 și metal și decizi unde le investești — turele, colector, mină, nivelul navei sau repararea planetei — în
 timp ce navele dușmane vin tot mai des. Scorul e cât reziști.
-**Stare:** faza 1 e gata în cod: jocul se joacă pe telefon și pe calculator, cu record local. Încă nu a fost
-încercat pe telefonul lui Andrei; urmează pauza, instalarea și reluarea (planul 2).
+**Stare:** faza 1 e publicată pe GitHub Pages (pornit pe 17.11.2026, https://andreibesliu.github.io/WorldGuard/), iar
+Andrei a încercat-o pe telefonul lui, un Samsung Galaxy A54 („se simte ok până aici”). Tema de spațiu e în cod
+(18.11.2026); proba ei pe telefon n-a fost făcută încă. Urmează pauza, instalarea și reluarea (planul 2).
 
 ```bash
 npm install
@@ -23,7 +24,8 @@ planeta și nava mereu întregi (fără nave noi în afara celor 150), și arat�
 
 **Semne în adresă:** `?seed=7` fixează sămânța (aceeași partidă la fiecare pornire); `?debug=1` pune în fereastră
 `window.__wg` (starea jocului, `run(secunde)` și `drawMs(cadre)`, timpul mediu de desen pe cadru în ms), folosit de proba din browser;
-`npm run smoke` tipărește din el un rând `SMOKE INFO` cu timpul de desen la 150 de nave dușmane.
+`npm run smoke` tipărește din el un rând `SMOKE INFO` cu timpul de desen pe cadru cu cele 150 de nave dușmane așezate
+în jurul planetei (în vedere, ca desenul să nu le sară).
 
 Designul: [`docs/GDD.md`](docs/GDD.md). Regulile proiectului: [`CLAUDE.md`](CLAUDE.md).
 Jocul vechi (tower defense pe hexagoane) a rămas la commit-ul `ec73b9e`.

@@ -38,7 +38,7 @@ describe('erou', () => {
     stepFor(s, 1 / 60); expect([s.crystal, n.left]).toEqual([21, 7])
     stepFor(s, 2.6); expect([s.crystal, n.left]).toEqual([28, 0])
     expect(s.fx.some((f) => f.kind === 'gain' && f.res === 'crystal')).toBe(true)
-    heroAt(s, 700, 1200)                                     // pleacă, altfel îl taie din nou când crește
+    heroAt(s, 700, 1200)                                     // pleacă, altfel îl strânge din nou când crește
     stepFor(s, 17); expect(n.left).toBe(0)
     stepFor(s, 1.5); expect(n.left).toBe(8)
   })

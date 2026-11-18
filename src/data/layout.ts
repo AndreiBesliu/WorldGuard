@@ -3,8 +3,8 @@ import type { PadKind } from '../sim/state'
 
 export const WORLD = { w: 1100, h: 1500 }       // dimensiunile lumii, px
 export const VIEW_H = 880                        // înălțimea vederii de referință, px de lume: scara ecranului = max(înălțime / VIEW_H, lățime / WORLD.w)
-export const LOW_FRAC = 0.35                     // sub atâta din viața nucleului, bara se face roșie (prezentare, într-un singur loc)
-export const CORE = { x: 550, y: 750, r: 54 } // centrul și raza nucleului, px
+export const LOW_FRAC = 0.35                     // sub atâta din viața nucleului, bara și inelul planetei se fac roșii (prezentare, într-un singur loc)
+export const CORE = { x: 550, y: 750, r: 54 }   // centrul și raza nucleului, px
 export const HOME = { x: 464, y: 756 }          // unde stă eroul la început și unde reapare
 export const PAD_R = 28                          // raza unui cerc de investit, px
 export const LAYOUT_SEED = 7                     // sămânța hărții: aceeași la orice partidă

@@ -63,7 +63,7 @@ function drawPad(ctx: CanvasRenderingContext2D, s: GameState, p: Pad, skin: Skin
   skin.glyph(ctx, p.kind, p.x, p.y)
   if (on && p.kind === 'turret') {
     ctx.beginPath(); ctx.arc(p.bx, p.by, BALANCE.turret.range, 0, TAU)
-    ctx.setLineDash([4, 8]); ctx.lineWidth = 1.5; ctx.strokeStyle = alpha(C.ink, 0.3); ctx.stroke(); ctx.setLineDash([])
+    ctx.setLineDash([4, 8]); ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.strokeStyle = alpha(C.ink, 0.3); ctx.stroke(); ctx.setLineDash([])
   }
   const lvl = levelOf(s, p), name = STR.pad[p.kind]
   const title = repair ? name : maxed ? STR.padMax(name) : lvl === 0 ? name : STR.padLevel(name, lvl + 1)

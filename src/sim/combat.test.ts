@@ -7,7 +7,7 @@ const turret = (s: GameState, lvl = 1) => { const p = padOf(s, 'turret'); p.lvl 
 const dummy = (s: GameState, x: number, y: number) => addFoe(s, x, y, { hp: 1000, maxHp: 1000, speed: 0, dmg: 0 })
 
 describe('lupta', () => {
-  it('tureta trage la 0,8 s, cu 6 pe rază', () => {
+  it('turela trage la 0,8 s, cu 6 pe rază', () => {
     const s = quietGame(); heroAt(s, 100, 100); const p = turret(s); const f = dummy(s, p.bx + 100, p.by)
     stepFor(s, 1 / 60); expect(s.shots).toHaveLength(1)
     stepFor(s, 4.5); expect(f.hp).toBe(1000 - 6 * 6)

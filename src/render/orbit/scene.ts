@@ -113,13 +113,15 @@ export function shield(ctx: CanvasRenderingContext2D, s: GameState): void {
   ctx.beginPath(); ctx.arc(x, y, R, -Math.PI / 2, -Math.PI / 2 + span)
   ctx.lineWidth = 3.4; ctx.lineCap = 'round'
   ctx.strokeStyle = s.core.hp / BALANCE.core.hp < LOW_FRAC ? C.foe : C.shield
-  ctx.globalAlpha = 0.78 + 0.18 * Math.sin(s.t * 3); ctx.stroke(); ctx.globalAlpha = 1
+  const ga = ctx.globalAlpha
+  ctx.globalAlpha = ga * (0.78 + 0.18 * Math.sin(s.t * 3)); ctx.stroke(); ctx.globalAlpha = ga
   if (s.t - s.core.hitT < HIT_FLASH) { ctx.strokeStyle = alpha(C.ink, 0.6); ctx.stroke() }
 }
 
-/** Planeta în mic, pentru indicator: disc în culoarea dată, cu o dungă de lumină. */
+/** Planeta în mic, pentru indicator: disc în culoarea dată, cu o dungă de umbră pe partea din dreapta-jos.
+ *  Umbra (din `night`, străvezie) se vede și pe tonul deschis (`ink`), și pe cel roșu (`foe`); o dungă albă se pierdea pe `ink`. */
 export function coreIcon(ctx: CanvasRenderingContext2D, x: number, y: number, tone: string): void {
   disc(ctx, x, y, 7, tone)
-  ctx.beginPath(); ctx.arc(x, y, 4.6, Math.PI * 1.05, Math.PI * 1.6)
-  ctx.strokeStyle = alpha(palette().star, 0.8); ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.stroke()
+  ctx.beginPath(); ctx.arc(x, y, 4.6, Math.PI * 0.05, Math.PI * 0.6)
+  ctx.strokeStyle = alpha(palette().night, 0.55); ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.stroke()
 }

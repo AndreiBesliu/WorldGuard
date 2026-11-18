@@ -170,7 +170,7 @@ Jocul a eșuat, chiar dacă merge tehnic, dacă:
 
 **Lupta.** Nava lovește singură, la intervale fixe, toți dușmanii aflați în raza ei într-un arc de aproximativ 143° în jurul celui mai apropiat, și îi împinge înapoi. Își reface viața dacă nu e lovită o vreme. Doborâtă, reapare lângă planetă după câteva secunde, timp în care nu strânge și nu plătește.
 
-**Dușmanii.** Sunt nave. Apar într-un punct la întâmplare de pe marginea hărții și merg drept spre planetă. Ajunse la inelul ei, o lovesc. Dacă nava ta e la mai puțin de 90 de unități, o urmăresc și o lovesc pe ea. Nu atacă turelele sau clădirile. Există două feluri: nava invadatoare, obișnuită, și nava grea, care apare mai rar, mai târziu, cu mai multă viață.
+**Dușmanii.** Sunt nave. Apar într-un punct la întâmplare de pe marginea hărții și merg drept spre planetă. Ajunse la marginea ei, o lovesc. Dacă nava ta e la mai puțin de 90 de unități, o urmăresc și o lovesc pe ea. Nu atacă turelele sau clădirile. Există două feluri: nava invadatoare, obișnuită, și nava grea, care apare mai rar, mai târziu, cu mai multă viață.
 
 **Sfârșitul.** Partida se termină când viața planetei ajunge la zero. Ecranul de final arată cât ai rezistat, recordul și câte nave ai doborât.
 
@@ -287,7 +287,7 @@ Pârghia asta avantajează turelele, deci se verifică de fiecare dată și pe l
 Repo-ul e ales: WorldGuard, public. Au rămas două lucruri pe care le poate face doar Andrei:
 
 - [ ] Aprobă accesul de scriere la WorldGuard pentru sesiunea care construiește, când apare cererea.
-- [ ] Pornește GitHub Pages din setările repo-ului, cu sursa „GitHub Actions”. Poate aștepta până la prima publicare.
+- [x] Pornește GitHub Pages din setările repo-ului, cu sursa „GitHub Actions”. Făcut de Andrei pe 17.11.2026; faza 1 e la `https://andreibesliu.github.io/WorldGuard/`.
 
 Construcția se face pe o ramură separată din WorldGuard, cu pull request.
 
@@ -303,7 +303,7 @@ Construcția se face pe o ramură separată din WorldGuard, cu pull request.
 
 ### Ce ar putea veni după v1
 
-Nimic de aici nu e promis și fiecare ar avea designul lui: sunet și vibrații, grafică desenată, feluri noi de dușmani (rapizi, care trag de la distanță, care atacă turelele), scuturi, limită la cât cară nava, îmbunătățiri păstrate între partide, mai multe hărți, împachetare pentru magazin, limba engleză.
+Nimic de aici nu e promis și fiecare ar avea designul lui: sunet și vibrații, grafică desenată, feluri noi de dușmani (rapizi, care trag de la distanță, care atacă turelele), bariere, limită la cât cară nava, îmbunătățiri păstrate între partide, mai multe hărți, împachetare pentru magazin, limba engleză.
 
 **Misiunile speciale** (ideea lui Andrei, 2026-11-17): partide de alt fel, pe suprafața planetei, cu aspectul „Colonie” (varianta 3 din `docs/machete-tema-spatiu.html`, păstrată doar ca referință). Ce e o misiune, cum ajungi la ea și cum se termină nu s-a discutat. Ar fi un proiect separat, după v1, cu designul lui. Împărțirea desenului din tema de spațiu (aspectul în spatele interfeței `Skin`) există ca „Colonie” să fie, mai târziu, un al doilea modul și nu o rescriere.
 

@@ -166,16 +166,24 @@ async function main() {
     await load()
     await page.click('#stress')
     await page.waitForTimeout(1500)
-    await shot('05-test.png')
     const foes = await page.evaluate(() => window.__wg.state().foes.length)
     const fpsText = await page.locator('#fps').innerText()
     check(9, 'testul de viteză are 150 de dușmani și banda arată „fps” și „min”', foes === 150 && fpsText.includes('fps') && fpsText.includes('min'), `dușmani ${foes}, bandă „${fpsText}”`)
 
-    // Informativ, nu o verificare: cât durează desenul cu 150 de dușmani (mediana a cinci serii de 200 de cadre).
+    // Informativ, nu o verificare: cât durează desenul cu 150 de nave în vedere (mediana a cinci serii de 200 de cadre).
+    // La 1,5 s navele sunt încă la marginea hărții, în afara vederii, iar desenul le sare; de aceea sunt aduse,
+    // la fel de fiecare dată, în jurul planetei: nava i la unghiul i × 2,399963 rad și la raza 70 + (i % 5) × 28.
+    await page.evaluate(() => {
+      window.__wg.state().foes.forEach((f, i) => {
+        const a = i * 2.399963, r = 70 + (i % 5) * 28
+        f.x = 550 + Math.cos(a) * r; f.y = 750 + Math.sin(a) * r
+      })
+    })
+    await shot('05-test.png')
     const draws = []
     for (let i = 0; i < 5; i++) draws.push(await page.evaluate(() => window.__wg.drawMs(200)))
     draws.sort((a, b) => a - b)
-    console.log(`SMOKE INFO: desen cu 150 de dușmani: ${draws[2].toFixed(2)} ms pe cadru`)
+    console.log(`SMOKE INFO: desen cu 150 de nave în jurul planetei: ${draws[2].toFixed(2)} ms pe cadru`)
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))

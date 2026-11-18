@@ -26,14 +26,24 @@ function renderSources(): Record<string, string> {
   return out
 }
 
+/** Gradientul de orice fel, decupajul și filtrul de canvas: costisitoare pe fiecare cadru. */
+const COSTLY = /createRadialGradient|createLinearGradient|createConicGradient|\.clip\(|\.filter\s*=(?!=)/
+
 describe('disciplina desenului', () => {
   const files = renderSources()
 
+  it('fișierele desenului au fost găsite', () => {
+    expect(Object.keys(files)).toEqual(expect.arrayContaining(['world.ts', 'orbit/scene.ts', 'orbit/things.ts']))
+  })
   it('nicio umbră estompată în desen', () => {
     expect(offenders(files, /shadowBlur/)).toEqual([])
   })
   it('gradient și decupaj doar la cer și la nucleu', () => {
-    expect(offenders(files, /createRadialGradient|createLinearGradient|\.clip\(/, ['orbit/scene.ts'])).toEqual([])
+    expect(offenders(files, COSTLY, ['orbit/scene.ts'])).toEqual([])
+  })
+  it('tiparul celor costisitoare prinde și gradientul conic și filtrul, dar nu metoda filter a listelor', () => {
+    const probe = { 'a.ts': 'ctx.createConicGradient(0, 0, 0)', 'b.ts': "ctx.filter = 'blur(2px)'", 'c.ts': 'xs.filter((x) => x)' }
+    expect(offenders(probe, COSTLY)).toEqual(['a.ts', 'b.ts'])
   })
   it('proba negativă: un fișier cu umbră estompată e prins', () => {
     expect(offenders({ 'x.ts': 'ctx.shadowBlur = 4' }, /shadowBlur/)).toEqual(['x.ts'])

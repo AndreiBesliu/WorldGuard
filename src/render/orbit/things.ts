@@ -57,9 +57,10 @@ function crystal(ctx: CanvasRenderingContext2D, s: GameState, n: ResNode): void 
   const C = palette()
   if (n.left <= 0) {
     ctx.beginPath(); ctx.ellipse(n.x, n.y + 3, 7, 4, 0, 0, TAU); ctx.fillStyle = C.crystalBase; ctx.fill()
-    ctx.globalAlpha = 0.5
+    const ga = ctx.globalAlpha
+    ctx.globalAlpha = ga * 0.5
     shard(ctx, n.x, n.y + 1, 4.5, 0, C.crystalShade, C.crystalShade, C.crystalBase)         // ciotul
-    ctx.globalAlpha = 1
+    ctx.globalAlpha = ga
     const g = regrown(n, s.t)
     if (g > SPROUT) shard(ctx, n.x, n.y + 1, (7 * (g - SPROUT)) / (1 - SPROUT), 0, C.crystal, C.crystalLift, C.crystalShade)
     return
@@ -172,9 +173,10 @@ export function hero(ctx: CanvasRenderingContext2D, s: GameState, input: Input):
   ctx.restore()
   const sa = s.t - h.waveT
   if (sa < WAVE) {
-    ctx.globalAlpha = 1 - sa / WAVE
+    const ga = ctx.globalAlpha
+    ctx.globalAlpha = ga * (1 - sa / WAVE)
     ctx.beginPath(); ctx.arc(h.x, h.y, BALANCE.hero.reach * 0.8, h.waveA - BALANCE.hero.arc + sa * 5, h.waveA + BALANCE.hero.arc)
-    ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.strokeStyle = C.bolt; ctx.stroke(); ctx.globalAlpha = 1
+    ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.strokeStyle = C.bolt; ctx.stroke(); ctx.globalAlpha = ga
   }
 }
 

@@ -8,7 +8,7 @@ import type { GameState, Pad } from './state'
 const on = (s: GameState, p: Pad) => heroAt(s, p.x, p.y)
 
 describe('cercurile', () => {
-  it('plata începe abia după 0,35 s și construiește tureta din 20 de cristale', () => {
+  it('plata începe abia după 0,35 s și construiește turela din 20 de cristale', () => {
     const s = quietGame(); const p = padOf(s, 'turret'); on(s, p)
     stepFor(s, 0.3); expect([s.crystal, p.paid.crystal]).toEqual([20, 0])
     stepFor(s, 1); expect([s.crystal, p.lvl, p.paid.crystal]).toEqual([0, 1, 0])

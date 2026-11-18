@@ -43,11 +43,12 @@ npm run single     # dist-single/world-guard.html: tot jocul într-un singur fi�
   aspectul și pictează cerul o dată), `camera.ts` (scara ecranului și urmărirea navei), `world.ts` (tot ce e în coordonate de lume și ar fi la fel
   în orice aspect: straturile, săritul peste ce nu se vede, cercurile, etichetele, barele, textele plutitoare),
   `overlay.ts` (indicatorul spre planetă și joystickul, în coordonate de ecran), `palette.ts` (culorile citite o dată din variabilele CSS),
-  `skin.ts` (interfața `Skin`: tot ce diferă de la un aspect la altul), `draw.ts` (primitivele de desen), `derive.ts` (ce citește desenul din
+  `skin.ts` (interfața `Skin`: formele de pe canvas care diferă de la un aspect la altul; culorile stau în `palette.ts` și în `ui.css`), `draw.ts` (primitivele de desen), `derive.ts` (ce citește desenul din
   stare, fără DOM: `turretAim`, `shieldSpan`, `regrown`), `orbit/` (aspectul „Orbită”, singura implementare a lui `Skin`: `index.ts`;
   `scene.ts` — cerul și planeta, **singurul loc cu gradient și decupaj**; `things.ts` — resurse, clădiri, nave, raze, doar forme pline și linii).
-  Testele: `derive.test.ts`, `world.test.ts` (ordinea straturilor), `discipline.test.ts` (fără `shadowBlur`; gradient și decupaj doar în
-  `orbit/scene.ts`) și `camera.test.ts`. `ground.ts` nu mai există. Mișcările doar de desen (continente, nori, satelit, flăcări, țeava turelei)
+  Testele: `derive.test.ts`, `world.test.ts` (ordinea straturilor; `drawWorld` cu `ORBIT` peste o stare bogată nu schimbă starea),
+  `discipline.test.ts` (fără `shadowBlur`; gradient de orice fel, decupaj și `ctx.filter` doar în `orbit/scene.ts`), `palette.test.ts`
+  (culorile `#rgb` lăsate de micșorarea CSS-ului la build, aduse la `#rrggbb`) și `camera.test.ts`. `ground.ts` nu mai există. Mișcările doar de desen (continente, nori, satelit, flăcări, țeava turelei)
   se calculează din timpul partidei și din stare; nu scriu nimic în stare.
 - `src/input/` — comenzile: `joystick.ts` (logica joystickului, fără DOM, testată), `bind.ts` (singurul cu DOM: pointer și taste).
 - `src/ui/` — textele (în română, într-un singur modul `strings.ts`, fixate de `strings.test.ts`), banda de sus (`hud.ts`),
@@ -55,7 +56,7 @@ npm run single     # dist-single/world-guard.html: tot jocul într-un singur fi�
   fontul titlului e Exo 2).
 - `src/main.ts` — legătura dintre ele: trei stări (start, joc, final), bucla de cadre, testul de viteză.
 - `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 9 verificări, capturi în `smoke-out/`, plus un rând `SMOKE INFO` cu timpul de
-  desen la 150 de nave dușmane, din `window.__wg.drawMs`) și `single-file.mjs`
+  desen pe cadru cu cele 150 de nave dușmane ale testului de viteză așezate în jurul planetei, ca să fie în vedere, din `window.__wg.drawMs`) și `single-file.mjs`
   (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`).
 - `.github/workflows/` — `ci.yml` (`npm run check` la fiecare pull request) și `deploy.yml` (publică pe GitHub Pages la push pe `main`).
 
@@ -87,10 +88,12 @@ Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
   CI rulează `check` la fiecare pull request; `deploy.yml` publică pe GitHub Pages la push pe `main`;
   `npm run single` dă varianta într-un singur fișier.
 - **Tema de spațiu, în cod (18.11.2026):** planetă, nave, cristale și asteroizi în locul castelului; numele din cod, textele și fontul
-  sunt cele noi, regulile și cifrele neschimbate. `npm run check` (93 de teste) și `npm run smoke` (9 verificări) trec. Schela „aceeași
-  partidă” a fost ștearsă; cifrele ei de la sfârșit sunt în `DEVLOG.md`. Timpul de desen cu 150 de nave: vezi `DEVLOG.md`.
-- **Nefăcut încă:** eticheta `hex-td-v0.0.1`, pornirea GitHub Pages din setările repo-ului și verificarea pe telefonul
-  lui Andrei (Samsung Galaxy A54), inclusiv că arată ca varianta „Orbită” și că deosebește dintr-o privire nava lui, navele
-  dușmane, cristalele și asteroizii — toate ale lui Andrei.
+  sunt cele noi, regulile și cifrele neschimbate. `npm run check` (99 de teste) și `npm run smoke` (9 verificări) trec. Schela „aceeași
+  partidă” a fost ștearsă; cifrele ei de la sfârșit sunt în `DEVLOG.md`. Timpul de desen cu 150 de nave așezate în jurul
+  planetei (rândul `SMOKE INFO`): vezi `DEVLOG.md`. Designul temei a fost aprobat de Andrei pe 18.11.2026.
+- **Publicat:** Andrei a pornit GitHub Pages pe 17.11.2026; faza 1 e la https://andreibesliu.github.io/WorldGuard/ și a încercat-o
+  pe telefonul lui (Samsung Galaxy A54): „se simte ok până aici”.
+- **Nefăcut încă:** eticheta `hex-td-v0.0.1` și proba temei de spațiu pe telefonul lui Andrei: că arată ca varianta „Orbită” și că
+  deosebește dintr-o privire nava lui, navele dușmane, cristalele și asteroizii — ale lui Andrei.
 - **Urmează:** planul 2 (pauză, instalare pe telefon, joc fără internet, reluarea unei partide întrerupte) și planul 3
   (plasa pentru dificultate și reechilibrarea).

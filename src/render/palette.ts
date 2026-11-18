@@ -15,19 +15,24 @@ export function palette(): Palette {
   if (cached) return cached
   const css = getComputedStyle(document.documentElement)
   const out: Record<string, string> = {}
-  for (const n of NAMES) out[n.replace(/-(\w)/g, (_, c: string) => c.toUpperCase())] = css.getPropertyValue('--' + n).trim()
+  for (const n of NAMES) out[n.replace(/-(\w)/g, (_, c: string) => c.toUpperCase())] = hex6(css.getPropertyValue('--' + n).trim())
   cached = out as Palette
   return cached
 }
 
+/** '#rgb' -> '#rrggbb'; micșorarea CSS-ului la build scurtează '#ffffff' la '#fff'. Orice altă formă trece neschimbată. */
+export function hex6(v: string): string {
+  return /^#[0-9a-fA-F]{3}$/.test(v) ? '#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3] : v
+}
+
 const alphas = new Map<string, string>()
 
-/** '#rrggbb' + opacitate -> 'rgba(...)'; rezultatul se ține minte, ca desenul să nu construiască texte în fiecare cadru. */
+/** '#rrggbb' (sau '#rgb') + opacitate -> 'rgba(...)'; rezultatul se ține minte, ca desenul să nu construiască texte în fiecare cadru. */
 export function alpha(hex: string, a: number): string {
   const key = hex + a
   let out = alphas.get(key)
   if (out === undefined) {
-    const v = parseInt(hex.slice(1), 16)
+    const v = parseInt(hex6(hex).slice(1), 16)
     out = `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`
     alphas.set(key, out)
   }

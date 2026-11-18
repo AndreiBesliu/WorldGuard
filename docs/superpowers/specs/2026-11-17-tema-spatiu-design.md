@@ -1,6 +1,6 @@
 # World Guard: tema de spațiu
 
-Scris pe 2026-11-17. Stare: așteaptă aprobarea lui Andrei.
+Scris pe 2026-11-17. Stare: aprobat de Andrei pe 2026-11-18.
 
 Jocul își schimbă haina: în loc de castel, turnuri, copaci și stânci, apar o planetă, nave, cristale și asteroizi. Regulile, cifrele și mișcarea rămân exact cele de azi. Odată cu haina se schimbă și numele din cod, ca jocul și codul să vorbească aceeași limbă.
 
