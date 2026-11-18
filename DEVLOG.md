@@ -287,3 +287,37 @@ Proba din browser, verificarea 7: limita de timp corectată la 0:50–2:10, fiin
 
   „Doar navă” e la 67,0% din „Amestec”, „Fără navă” la 89,1%. Cele 100 de partide durează împreună 12,4–13,3 s (două rulări). „Amestec”, sămânța 1: prima turelă la 1,42 s, 6 cumpărături la secunda 120. Mersul (harta adevărată, fără nave dușmane) ajunge la cercuri și grupuri în 18–51% din marginea de timp a testului, iar ocolind planeta în 55%. „Doar navă” se încheie cu nava la nivelul 2 pe semințele 1–3, ca în explorare.
 - `npx vitest run src/bots src/sim/discipline.test.ts`: 70 de teste, 24,1 s; `src/bots` singur: 54 de teste, 23,0 s (aproape tot timpul e parcursul celor 100 de partide din `bot.test.ts`: 21,8 s sub Vitest, cu verificările pe fiecare pas, față de 12,4–13,3 s pentru aceleași partide în scriptul construit cu Vite). `npm run check`: 202 de teste trec (143 înainte).
+
+**Task 2 — Tabelul și comanda lui.**
+- `src/bots/limits.ts`: `LIMITS` (cele patru limite din design, ca date), `verdicts` (un verdict pe rând; limitele sunt închise; lipsa rândului „Amestec” aruncă o eroare) și `formatTable` (antet și un rând pe jucător, coloane aliniate; o mediană lipită de `RUN_CAP` se scrie „≥ 900 s”). `src/bots/table.ts` tipărește tabelul; cu `--raze` și pe cele pentru razele de apărare 80 și 160. Construit cu `vite.balance.config.ts` (build `ssr`, fără `public/`, în `dist-balance/`, ignorat de git). Testele din `limits.test.ts` merg pe rânduri făcute de mână: 10 teste, sub o secundă.
+- `npm run balance` nu iese cu cod de eroare când o limită pică: e un afișaj. Limitele ca teste care pică build-ul vin în taskul următor. Durata, măsurată cu `time`: `npm run balance` 13,1 s, `npm run balance -- --raze` 40,1 s.
+- Ieșirea întreagă a `npm run balance -- --raze` (partidele sunt deterministe; medianele pe 20 de semințe):
+
+```
+Raza de apărare 120
+Jucător        Mediană      Min    Max    Limită             Verdict
+Nimic          66 s         59 s   82 s   60–130 s           în limită
+Amestec        372 s        347 s  428 s  240–360 s          ÎN AFARA LIMITEI
+Doar navă      250 s (67%)  231 s  283 s  ≤ 75% din Amestec  în limită
+Fără navă      332 s (89%)  307 s  388 s  ≤ 90% din Amestec  în limită
+Fără economie  308 s        273 s  365 s  —                  fără limită
+
+Raza de apărare 80
+Jucător        Mediană       Min    Max    Limită             Verdict
+Nimic          66 s          59 s   82 s   60–130 s           în limită
+Amestec        331 s         229 s  370 s  240–360 s          în limită
+Doar navă      238 s (72%)   207 s  281 s  ≤ 75% din Amestec  în limită
+Fără navă      344 s (104%)  296 s  384 s  ≤ 90% din Amestec  ÎN AFARA LIMITEI
+Fără economie  299 s         185 s  329 s  —                  fără limită
+
+Raza de apărare 160
+Jucător        Mediană      Min    Max    Limită             Verdict
+Nimic          66 s         59 s   82 s   60–130 s           în limită
+Amestec        390 s        361 s  420 s  240–360 s          ÎN AFARA LIMITEI
+Doar navă      252 s (65%)  229 s  291 s  ≤ 75% din Amestec  în limită
+Fără navă      328 s (84%)  310 s  359 s  ≤ 90% din Amestec  în limită
+Fără economie  301 s         275 s  352 s  —                  fără limită
+```
+
+- Cifrele de azi (raza 120) coincid cu cele de la Task 1: „Amestec” e ÎN AFARA limitei (372 s față de 360), restul în limită. Raza 80 mută problema la „Fără navă”, raza 160 o lasă la „Amestec”, deci cifrele jocului trebuie schimbate în taskul următor, nu raza jucătorilor.
+- Nimic din `src/bots/` nu ajunge în joc: după `npm run bundle`, `grep -l "fara-economie" dist/assets/*.js` nu găsește nimic. `npm run check`: 214 teste trec.

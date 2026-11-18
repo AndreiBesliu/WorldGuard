@@ -15,6 +15,7 @@ npm run dev      # http://localhost:5180
 npm run check    # typecheck + teste + build cu service worker (poarta înainte de commit; CI rulează același lucru)
 npm run smoke    # proba în browser (Playwright, 20 de verificări); nu face parte din `check`
 npm run single   # dist-single/world-guard.html: tot jocul într-un singur fișier, fără nicio referință în afară
+npm run balance  # tabelul jucătorilor automați (100 de partide, ~13 s); cu `-- --raze` și pentru razele de apărare 80 și 160 (~40 s)
 npm run icons    # desenează din nou pictogramele PNG din public/icons/icon.svg (doar când se schimbă desenul)
 ```
 
