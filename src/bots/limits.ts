@@ -18,7 +18,10 @@ function secs(x: number): string {
   return x >= RUN_CAP ? `≥ ${RUN_CAP} s` : `${n} s`
 }
 
+/** Limita, în procente întregi. */
 const pct = (x: number) => `${Math.round(x * 100)}%`
+/** Partea din „Amestec”, cu o zecimală: un rând picat la 75,4% nu se scrie „75%” lângă limita „≤ 75%”. */
+const share1 = (x: number) => `${(x * 100).toFixed(1).replace('.', ',')}%`
 
 /** Un verdict pe rând, în ordinea rândurilor; `ok === null` înseamnă „fără limită”. */
 export function verdicts(rows: readonly Row[]): Verdict[] {
@@ -37,10 +40,10 @@ export function verdicts(rows: readonly Row[]): Verdict[] {
           limit: `${LIMITS.amestec.min}–${LIMITS.amestec.max} s`, value }
       case 'doar-nava':
         return { ...base, ok: share <= LIMITS.doarNava,
-          limit: `≤ ${pct(LIMITS.doarNava)} din Amestec`, value: `${value} (${pct(share)})` }
+          limit: `≤ ${pct(LIMITS.doarNava)} din Amestec`, value: `${value} (${share1(share)})` }
       case 'fara-nava':
         return { ...base, ok: share <= LIMITS.faraNava,
-          limit: `≤ ${pct(LIMITS.faraNava)} din Amestec`, value: `${value} (${pct(share)})` }
+          limit: `≤ ${pct(LIMITS.faraNava)} din Amestec`, value: `${value} (${share1(share)})` }
       case 'fara-economie':
         return { ...base, ok: null, limit: '—', value }
     }

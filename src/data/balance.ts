@@ -35,8 +35,8 @@ export const BALANCE = {
   turret: {
     range: 190,                              // bătaia turelei, px
     every: 0.8,                              // secunde între două focuri
-    dmgBase: 6,                              // raza la nivelul 1
-    dmgPerLevel: 5,                          // rază în plus la fiecare nivel
+    dmgBase: 6,                              // lovitura turelei la nivelul 1
+    dmgPerLevel: 5,                          // lovitură în plus la fiecare nivel
     maxLevel: 5,                             // nivelul maxim al turelei
     shotSpeed: 420,                          // viteza proiectilului, px/s
     r: 14,                                   // raza turelei, px

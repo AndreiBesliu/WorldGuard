@@ -23,7 +23,7 @@ describe('plasa pentru dificultate', { timeout: 120_000 }, () => {
   for (const name of ['nimic', 'amestec', 'doar-nava', 'fara-nava'] as const) {
     it(`limita pentru ${POLICIES.find((p) => p.name === name)!.label}`, () => {
       const v = verdictOf(name)
-      expect(v.ok, `${v.label}: ${v.value}, limita ${v.limit}`).not.toBe(false)
+      expect(v.ok, `${v.label}: ${v.value}, limita ${v.limit}`).toBe(true)
     })
   }
   it('fiecare partidă s-a încheiat înainte de marginea testului', () => {

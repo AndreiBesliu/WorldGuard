@@ -41,11 +41,12 @@ describe('verdictele', () => {
     expect(okOf(rows({ amestec: 300, 'fara-nava': 270 }), 'fara-nava')).toBe(true)
     expect(okOf(rows({ amestec: 300, 'fara-nava': 273 }), 'fara-nava')).toBe(false)
   })
-  it('valoarea: secunde întregi, iar la cele două procentul din „Amestec”', () => {
+  it('valoarea: secunde întregi, iar la cele două procentul din „Amestec”, cu o zecimală', () => {
     const v = verdicts(rows({ amestec: 300, 'doar-nava': 200.4, 'fara-nava': 270 }))
     expect(v.find((x) => x.name === 'amestec')!.value).toBe('300 s')
-    expect(v.find((x) => x.name === 'doar-nava')!.value).toBe('200 s (67%)')
-    expect(v.find((x) => x.name === 'fara-nava')!.value).toBe('270 s (90%)')
+    expect(v.find((x) => x.name === 'doar-nava')!.value).toBe('200 s (66,8%)')
+    expect(v.find((x) => x.name === 'fara-nava')!.value).toBe('270 s (90,0%)')
+    expect(v.find((x) => x.name === 'doar-nava')!.limit).toBe('≤ 75% din Amestec')
   })
   it('rotunjirea de afișare nu intră în comparație: „Nimic” la 59,6 s se scrie „60 s” și e în afara limitei', () => {
     const v = verdicts(rows({ nimic: 59.6 })).find((x) => x.name === 'nimic')!
@@ -55,9 +56,9 @@ describe('verdictele', () => {
     const v = verdicts(rows({ nimic: 130.4 })).find((x) => x.name === 'nimic')!
     expect([v.value, v.ok]).toEqual(['130 s', false])
   })
-  it('rotunjirea de afișare nu intră în comparație: „Doar navă” la 75,4% se scrie „75%” și e în afara limitei', () => {
+  it('„Doar navă” la 75,4% se scrie „75,4%”, nu „75%”, și e în afara limitei', () => {
     const v = verdicts(rows({ amestec: 300, 'doar-nava': 226.2 })).find((x) => x.name === 'doar-nava')!
-    expect([v.value, v.ok]).toEqual(['226 s (75%)', false])
+    expect([v.value, v.ok]).toEqual(['226 s (75,4%)', false])
   })
   it('fără rândul „Amestec” aruncă o eroare cu mesaj', () => {
     expect(() => verdicts(rows({}, 'amestec'))).toThrow(/Amestec/)

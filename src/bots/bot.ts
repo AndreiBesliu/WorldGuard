@@ -3,7 +3,7 @@
 import { BALANCE } from '../data/balance'
 import { HOME, PAD_R } from '../data/layout'
 import type { GameState, Input } from '../sim/state'
-import { createNav, offForeignPad, slipOff, type Nav } from './nav'
+import { createNav, createSkirt, offForeignPad, slipOff, type Nav } from './nav'
 import { chooseGoal, GUARD, nextPad, type Goal, type Policy } from './policy'
 
 const ZERO: Input = { x: 0, y: 0 }
@@ -28,12 +28,12 @@ function go(s: GameState, nav: Nav, g: Goal): Input {
 }
 
 export function createBot(p: Policy, guard = GUARD): Bot {
-  const nav = createNav()
+  const nav = createNav(), skirt = createSkirt()
   return (s) => {
     const out = go(s, nav, chooseGoal(s, p, guard))
     if (p.still || s.hero.dead) return out
     const target = nextPad(s, p.buy)   // singurul cerc pe care are voie să stea și să plătească
     if (out.x === 0 && out.y === 0) return offForeignPad(s, target) ?? out
-    return slipOff(s, target, out) ?? out
+    return slipOff(s, target, out) ?? skirt(s, target, out) ?? out
   }
 }

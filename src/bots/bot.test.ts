@@ -24,13 +24,17 @@ function ending(p: Policy, s: GameState): string[] {
   return bad
 }
 
+// Cel mai lung șir de pași la rând pe un cerc străin care numără (`dwell > 0`). Plata pornește după
+// `BALANCE.pay.dwell` (21 de pași), deci rămân 11 pași de rezervă.
+const FOREIGN_STEPS = 10
+
 // Un singur parcurs al celor 100 de partide pentru toate regulile de partidă întreagă.
 describe('pe toate semințele: ce cumpără, unde plătește, dacă repară', () => {
   for (const p of POLICIES) {
     it(p.label, () => {
       const bad: string[] = []
       for (const seed of SEEDS) {
-        const s = createGame(seed), bot = createBot(p), before = s.pads.map(() => 0)
+        const s = createGame(seed), bot = createBot(p), before = s.pads.map(() => 0), on = s.pads.map(() => 0)
         while (s.mode === 'playing' && s.t < RUN_CAP && bad.length < 5) {
           const target = nextPad(s, p.buy), hp = s.core.hp
           for (let i = 0; i < s.pads.length; i++) before[i] = paidAt(s, s.pads[i]!)
@@ -39,6 +43,8 @@ describe('pe toate semințele: ce cumpără, unde plătește, dacă repară', ()
           for (let i = 0; i < s.pads.length; i++) {
             const q = s.pads[i]!
             if (q !== target && paidAt(s, q) > before[i]!) bad.push(`s${seed} ${s.t.toFixed(2)} s: plată la ${q.kind} (${q.x}, ${q.y})`)
+            on[i] = q !== target && q.dwell > 0 ? on[i]! + 1 : 0
+            if (on[i] === FOREIGN_STEPS + 1) bad.push(`s${seed} ${s.t.toFixed(2)} s: peste ${FOREIGN_STEPS} pași pe ${q.kind} (${q.x}, ${q.y})`)
           }
         }
         for (const why of ending(p, s)) bad.push(`s${seed} la sfârșit: ${why}`)
