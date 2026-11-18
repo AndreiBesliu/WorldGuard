@@ -54,7 +54,8 @@ Andrei a vorbit despre rezultate, nu despre unelte, deci alegerile de mai jos su
 - Jocul nou preia numele de lucru World Guard.
 - Găzduirea pe GitHub Pages.
 - Purtarea jucătorilor automați din plasă: toți apără planeta (lasă totul când o navă dușmană e la mai puțin de 120 de centrul ei) și niciunul nu repară planeta. Razele 80 și 160 se tipăresc doar ca informație.
-- Cifrele schimbate la reechilibrarea din 18.11.2026, propuneri până le vede Andrei în joc: lovitura navei crește cu 10 pe nivel în loc de 6; viața dușmanului e 14 × (1 + t / 45) în loc de 14 × (1 + t / 80). Pe înțelesul jocului: spre minutul 5 un dușman are 107 viață (înainte 66,5), iar nava de nivelul 5 lovește cu 50 (înainte 34); primul minut e neschimbat.
+- Cifrele schimbate la reechilibrarea din 18.11.2026, propuneri până le vede Andrei în joc: lovitura navei crește cu 10 pe nivel în loc de 6; viața dușmanului e 14 × (1 + t / 45) în loc de 14 × (1 + t / 80). Pe înțelesul jocului: spre minutul 5 un dușman are 107 viață (înainte 66,5), iar nava de nivelul 5 lovește cu 50 (înainte 34). Primul minut se schimbă puțin: jucătorul automat „Nimic” rezistă exact la fel pe toate cele 20 de semințe, dar la secunda 60 un dușman are 32,7 viață în loc de 24,5, deci nava de nivelul 1 are nevoie de 4 lovituri în loc de 3.
+- Ce face reechilibrarea cu turelele (măsurat cu jucătorii automați, cifrele vechi față de cele noi): în „Amestec”, nava dă 71,6% din toată lovitura (înainte 61,1%); o turelă de nivelul 1 are nevoie de 18 trageri (14,4 s) pentru un dușman de la minutul 5 (înainte 12, adică 9,6 s); un jucător care cumpără doar turele ține 79% din „Amestec” (înainte 90%), iar unul fără turele (economie și navă) 82% (înainte 79%). Turelele încă merită și „Amestec” rămâne peste toate, dar direcția e spre anti-scopul „Devine joc de acțiune”, iar plasa nu are un rând care s-o vadă. E o propunere: Andrei hotărăște dacă așa vrea jocul.
 - Pârghia cu grupuri de dușmani din părți opuse a fost încercată în explorare și nu s-a folosit; a rămas notată mai jos, în „Plasa pentru dificultate”.
 - Din spec: misiunile speciale sunt un proiect separat, după v1; tema se construiește înaintea fazei 2; numele din cod descriu rolul, nu aspectul; fontul titlului și al cifrelor e Exo 2; testul „aceeași partidă” a fost o schelă temporară (ștearsă la sfârșitul lucrării); inelul-scut se desenează peste nave; câmpurile loviturii au nume fără sabie, iar câmpul `walk` a dispărut din stare.
 
@@ -278,29 +279,29 @@ Cinci jucători automați rulează simularea fără browser, pe 20 de semințe f
 | Fără navă | ca „Amestec”, dar nu investește niciodată în nivelul navei | cel mult 90% din mediana „Amestec” |
 | Fără economie | ca „Amestec”, dar nu construiește colector sau mină | fără limită; doar tipărit |
 
-**Cum sunt făcuți jucătorii automați** (`src/bots/`). Au aceeași purtare și diferă doar prin lista de cumpărături: strâng resursa care le lipsește, plătesc la cercul următor din listă și, când o navă dușmană e la mai puțin de 120 de centrul planetei, lasă totul și luptă cu ea. Niciunul nu repară planeta. Un jucător nu stă pe un cerc care nu e ținta lui, ca să nu plătească din greșeală. Tabelul depinde de aceste alegeri: dacă purtarea se schimbă, se schimbă și cifrele.
+**Cum sunt făcuți jucătorii automați** (`src/bots/`). Au aceeași purtare și diferă doar prin lista de cumpărături: strâng resursa care le lipsește, plătesc la cercul următor din listă și, când o navă dușmană e la mai puțin de 120 de centrul planetei, lasă totul și luptă cu ea. Niciunul nu repară planeta. Un jucător nu stă pe un cerc care nu e ținta lui, ca să nu plătească din greșeală, iar un cerc străin construit îl ocolește împreună cu clădirea lui, ca pe un singur obstacol (altfel nava rămânea în colțul dintre ele). Tabelul depinde de aceste alegeri: dacă purtarea se schimbă, se schimbă și cifrele.
 
-**Comanda.** `npm run balance` rulează cele 100 de partide (5 jucători × 20 de semințe, cam 13 s) și tipărește tabelul; cu `-- --raze` tipărește și razele de apărare 80 și 160 (cam 40 s). Comanda doar afișează. Limitele rulează ca teste în `src/bots/net.test.ts` și pică build-ul când sunt depășite.
+**Comanda.** `npm run balance` rulează cele 100 de partide (5 jucători × 20 de semințe, cam 13 s) și tipărește tabelul; cu `-- --raze` tipărește și razele de apărare 80 și 160 (cam 35 s). Comanda doar afișează. Limitele rulează ca teste în `src/bots/net.test.ts` și pică build-ul când sunt depășite. Zgomotul tabelului: o schimbare mică de cifre (viața dușmanului cu t / 44 … t / 46 în loc de t / 45) mută „Amestec” între 326 și 344 s și procentele cu până la 3 puncte; un ultim bit diferit în calcule, ca pe altă mașină, îl mută cu ±2 s și procentele cu cam ±0,6 puncte.
 
-**Măsurat după reechilibrare** (mediana pe 20 de semințe, raza de apărare 120, 18.11.2026):
+**Măsurat după reechilibrare și după repararea mersului** (mediana pe 20 de semințe, raza de apărare 120, 18.11.2026):
 
 | Jucător | Mediana | Procent din „Amestec” | Verdict |
 | --- | --- | --- | --- |
-| Nimic | 66 s | | în limită |
-| Amestec | 327 s | | în limită |
-| Doar navă | 221 s | 68% | în limită |
-| Fără navă | 246 s | 75% | în limită |
-| Fără economie | 262 s | | fără limită |
+| Nimic | 65,6 s | | în limită |
+| Amestec | 334,7 s | | în limită |
+| Doar navă | 221,3 s | 66,1% | în limită |
+| Fără navă | 250,5 s | 74,8% | în limită |
+| Fără economie | 255,8 s | | fără limită |
 
-Înainte de reechilibrare „Amestec” avea 372 s, peste limita de 360, iar „Doar navă” 67% și „Fără navă” 89%.
+„Amestec” iese puțin peste ținta de 330 s pe care și-o pusese planul fazei (pentru rezervă); limita din design, 360 s, ține. Înainte de reechilibrare, cu mersul de atunci, „Amestec” avea 372 s, peste limita de 360, iar „Doar navă” 67% și „Fără navă” 89%; cu mersul de acum, cifrele vechi dau „Amestec” 382 s.
 
-**Razele 80 și 160** sunt informație, nu țintă. La raza 80: „Amestec” 299 s, „Doar navă” 72%, „Fără navă” 83%. La raza 160: „Amestec” 314 s, „Doar navă” 75% (74,5% nerotunjit), „Fără navă” 80%.
+**Razele 80 și 160** sunt informație, nu țintă. La raza 80: „Amestec” 299,1 s, „Doar navă” 72,3%, „Fără navă” 82,4%. La raza 160: „Amestec” 316,9 s, „Doar navă” 73,9%, „Fără navă” 79,2%.
 
-**Ce e fragil.** „Amestec” e la 33 s de limita de sus (327 față de 360). La raza de apărare 160, „Doar navă” e la 74,5%, la o jumătate de punct de limită: o rază mai largă ar pica plasa. Cifrele depind de cum sunt scriși jucătorii automați (toți apără la 120 de centrul planetei, niciunul nu repară).
+**Ce e fragil.** „Amestec” e la 25 s de limita de sus (335 față de 360), iar la raza 160 „Doar navă” e la 73,9%, aproape de limită. Mai important, plasa măsoară mai puțin decât pare. „Doar navă” cumpără o singură dată: în 19 din 20 de partide ia nivelul 2 la secunda 18 și nimic altceva. Toți jucătorii sunt țintuiți lângă planetă în ultima treime a partidei (luptă în 88–95% din pași, iar „Amestec” termină cu 117–164 de cristale necheltuite), deci tabelul măsoară mai ales ce s-a cumpărat în prima jumătate. Raza 120 dă cel mai mic procent pentru „Doar navă” dintre 11 raze între 80 și 200 (la celelalte, 68,1–73,9%), iar o purtare la fel de rezonabilă (nava plecată la peste 200 de planetă se întoarce abia la două nave dușmane) dă „Doar navă” 76,7% din „Amestec”, peste limită. Plafonul navei a urcat cu reechilibrarea: nava de nivelul 2 primită pe gratis din prima secundă ține 80,8% din „Amestec” (înainte 73,7%), cea de nivelul 5, 98,7% (înainte 91,9%). Ce ține: niciuna din 13 variante de „Doar navă” care își amână lupta ca să cumpere mai mult n-a bătut „Amestec” (cel mai sus, 65,1%); deci „Doar navă nu bate amestecul” ține calitativ, dar pragul de 75% nu e robust la purtarea jucătorului automat.
 
-Cu jucători care apără, limita „Doar navă” era îndeplinită chiar cu cifrele de dinainte (65%); peste limită era „Amestec” (368 s în explorare, 372 s cu jucătorii din repo). Cele două cifre schimbate la reechilibrare l-au adus în bandă fără să strice celelalte limite.
+Cu jucători care apără, limita „Doar navă” era îndeplinită chiar cu cifrele de dinainte (65% în explorare, 67% cu jucătorii din repo); peste limită era „Amestec” (368 s în explorare, 372 s cu jucătorii din repo). Problema văzută în prototip („Doar navă” ținea cât amestecul) a dispărut deci prin schimbarea instrumentului de măsură, adică jucători care apără planeta, nu printr-o schimbare a jocului. Cele două cifre schimbate la reechilibrare au adus „Amestec” în bandă fără să strice celelalte limite.
 
-Prima pârghie de încercat, fiindcă nu schimbă senzația navei pe care Andrei a aprobat-o, era: dușmanii vin și în grupuri simultane din părți opuse, astfel încât o singură navă să nu poată fi în două locuri. A fost încercată în explorare, cu același număr total de nave: grupuri de 2 + 2 nu schimbă nimic (66% și 88%), iar grupuri de 3 + 3 fac jocul mai ușor („Amestec” 413 s) și duc „Fără navă” la 100%, fiindcă lovitura navei prinde tot grupul deodată. Nu s-a construit.
+Prima pârghie de încercat, fiindcă nu schimbă senzația navei pe care Andrei a aprobat-o, era: dușmanii vin și în grupuri simultane din părți opuse, astfel încât o singură navă să nu poată fi în două locuri. A fost încercată în explorare, cu același număr total de nave: grupuri de 2 + 2 nu schimbă nimic (66% și 88%), iar grupuri de 3 + 3 fac jocul mai ușor („Amestec” 413 s) și duc „Fără navă” la 100%, fiindcă lovitura navei prinde tot grupul deodată. Nu s-a construit. Jucătorii de aruncat cu care a fost încercată pârghia nu s-au păstrat, deci cifrele acestea nu se mai pot reface.
 
 Pârghia asta avantaja turelele, deci s-a verificat și pe limita „Fără navă”: dacă patru turele ajung singure, investiția în navă devine inutilă și anti-scopul e încălcat din partea cealaltă. Arcul și împinsul loviturii navei nu s-au atins.
 

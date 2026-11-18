@@ -27,7 +27,7 @@ npm run bundle     # vite build + scripts/build-sw.mjs (scrie dist/sw.js); `buil
 npm run build
 npm run smoke      # proba în browser (Playwright instalat pe mașină); nu face parte din `check`
 npm run single     # dist-single/world-guard.html: tot jocul într-un singur fișier (pentru încercat pe telefon)
-npm run balance    # tabelul jucătorilor automați (100 de partide, ~13 s); `-- --raze` adaugă razele de apărare 80 și 160 (~40 s); doar afișează
+npm run balance    # tabelul jucătorilor automați (100 de partide, ~13 s); `-- --raze` adaugă razele de apărare 80 și 160 (~35 s); doar afișează
 npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se schimbă desenul; PNG-urile se comit)
 ```
 
@@ -49,7 +49,7 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   `maskable` 512, făcute din el de `scripts/make-icons.cjs`). `src/env.d.ts` declară `__WG_SW__` (pus de `vite.config.ts` la `true`,
   de `vite.single.config.ts` la `false`: pagina într-un singur fișier nu are service worker).
 - `src/bots/` — plasa pentru dificultate: cinci jucători automați care joacă partide întregi pe simulare. **Nu intră în jocul livrat** (`main.ts` nu-l importă) și e păzit de aceeași disciplină ca `src/sim/` (`src/sim/discipline.test.ts` îl citește și pe el): fără ceas și fără hazard global, doar citește starea.
-  `policy.ts` (cele cinci purtări, `POLICIES`, și alegerea țintei: luptă, plată, strâns, acasă), `nav.ts` (mersul drept spre țintă, cu ocolire când nu se mai apropie, și ieșirea de pe cercurile străine), `bot.ts` (`createBot`: starea în, `Input` afară), `run.ts` (`playOne`, `measure`, `measureAll`; `SEEDS` = 1…20, `RUN_CAP` = 900 s),
+  `policy.ts` (cele cinci purtări, `POLICIES`, și alegerea țintei: luptă, plată, strâns, acasă), `nav.ts` (mersul drept spre țintă, cu ocolire când nu se mai apropie, ieșirea de pe cercurile străine și ocolitul unui cerc străin construit împreună cu clădirea lui, ca un singur obstacol), `bot.ts` (`createBot`: starea în, `Input` afară), `run.ts` (`playOne`, `measure`, `measureAll`; `SEEDS` = 1…20, `RUN_CAP` = 900 s),
   `limits.ts` (limitele din design ca date, `verdicts`, `formatTable`), `table.ts` (tipărește tabelul pentru `npm run balance`; construit cu `vite.balance.config.ts` în `dist-balance/`, ignorat de git) și `net.test.ts` (limitele ca teste: joacă o dată cele 100 de partide și are un test pe fiecare limită; durează cam 20 s).
 - `src/render/` — desenarea pe Canvas 2D. Citește starea, nu o modifică. `canvas.ts` (mărimea, ordinea straturilor; singurul care numește
   aspectul și pictează cerul o dată), `camera.ts` (scara ecranului și urmărirea navei), `world.ts` (tot ce e în coordonate de lume și ar fi la fel
@@ -113,10 +113,9 @@ Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
   pe telefonul lui (Samsung Galaxy A54): „se simte ok până aici”.
 - **Tema, încercată pe telefon:** Andrei a încercat tema de spațiu pe telefonul lui pe 18.11.2026: „pe telefon, totul arată super bine”.
   Cifrele de la „Test de viteză” cu tema nouă nu le-a spus încă.
-- **Faza 2, în cod (18.11.2026):** pauza (buton, Escape, automată la ieșirea din pagină), salvarea partidei în telefon și „Continuă partida”,
-  ecranul aprins cât se joacă, instalarea pe ecranul de pornire (manifest, pictograme) și jocul fără internet (service worker generat la build).
-  `npm run check` (143 de teste) și `npm run smoke` (20 de verificări) trec, după valul de reparații al recenziei finale. Pe telefonul lui Andrei nu a fost încercată încă.
-- **Faza 2, publicată:** îmbinată în `main` pe 18.11.2026 (pull request-ul #14); încă neîncercată de Andrei pe telefon. Pe 18.11.2026 a cerut să se meargă mai departe fără să aștepte proba: o va face când se strâng mai multe lucruri.
-- **Faza 3, în cod, pe ramură (18.11.2026; pull request-ul #15, neîmbinat):** plasa pentru dificultate (`src/bots/`, `npm run balance`, limitele din design ca teste în `src/bots/net.test.ts`) și reechilibrarea a două cifre, **propuneri până le vede Andrei în joc**: lovitura navei +10 pe nivel (era +6) și viața dușmanului 14 × (1 + t / 45) (era t / 80). Spre minutul 5 un dușman are 107 viață (înainte 66,5), nava de nivelul 5 lovește cu 50 (înainte 34); primul minut e neschimbat. `npm run check`: 224 de teste trec; `npm run smoke`: 20 de verificări. Cifrele de azi (mediane, raza de apărare 120): Nimic 66 s, Amestec 327 s, Doar navă 221 s (68%), Fără navă 246 s (75%), Fără economie 262 s. Fragil: „Amestec” e la 33 s de limita de sus, iar la raza 160 „Doar navă” e la 74,5% (limita 75%); tabelul depinde de cum sunt scriși jucătorii automați.
+- **Faza 2, în cod și publicată (18.11.2026, pull request-ul #14):** pauza (buton, Escape, automată la ieșirea din pagină), salvarea partidei în
+  telefon și „Continuă partida”, ecranul aprins cât se joacă, instalarea pe ecranul de pornire și jocul fără internet (service worker generat la build).
+  Neîncercată încă de Andrei pe telefon: pe 18.11.2026 a cerut să se meargă mai departe fără să aștepte proba; o va face când se strâng mai multe lucruri.
+- **Faza 3, în cod (18.11.2026):** plasa pentru dificultate (`src/bots/`, `npm run balance`, limitele din design ca teste în `src/bots/net.test.ts`) și reechilibrarea a două cifre, **propuneri până le vede Andrei în joc**: lovitura navei +10 pe nivel (era +6) și viața dușmanului 14 × (1 + t / 45) (era t / 80). Spre minutul 5 un dușman are 107 viață (înainte 66,5), nava de nivelul 5 lovește cu 50 (înainte 34); în primul minut nava de nivelul 1 are nevoie de 4 lovituri pe dușman în loc de 3. Plasa: cinci jucători automați joacă partide întregi pe 20 de semințe, iar testele pică dacă dificultatea iese din limitele designului; tabelul măsurat, ce nu vede plasa și ce face reechilibrarea cu turelele sunt în `docs/GDD.md`, la „Plasa pentru dificultate” și „Cine a hotărât ce”. `npm run check`: 232 de teste trec; `npm run smoke`: 20 de verificări.
 - **Nefăcut încă:** eticheta `hex-td-v0.0.1` — a lui Andrei; proba lui pe telefon pentru fazele 2 și 3 împreună (instalarea, jocul fără internet, pauza, reluarea, ecranul aprins, cum se simte dificultatea nouă).
-- **Urmează:** lista „Scopuri pentru v1” din design e acoperită în cod după faza 3; ce vine mai departe are nevoie de hotărârea lui Andrei.
+- **Urmează:** lista „Scopuri pentru v1” din design e în cod după faza 3; scopul 7 („nicio strategie care ignoră o direcție nu bate un amestec”) e păzit pentru acești cinci jucători automați, nu acoperit în general (vezi „Ce e fragil” în `docs/GDD.md`). Ce vine mai departe are nevoie de hotărârea lui Andrei.

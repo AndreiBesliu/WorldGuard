@@ -7,9 +7,8 @@ timp ce navele dușmane vin tot mai des. Scorul e cât reziști.
 Andrei a încercat-o pe telefonul lui, un Samsung Galaxy A54 („se simte ok până aici”). Tema de spațiu e în cod
 (18.11.2026), iar Andrei a încercat-o pe telefon în aceeași zi: „pe telefon, totul arată super bine”. Planul 2 e în cod
 (18.11.2026): pauza, reluarea unei partide întrerupte, ecranul aprins, instalarea pe telefon și jocul fără internet; e publicat
-(pull request-ul #14), dar Andrei nu l-a încercat încă pe telefon. Planul 3 e în cod, pe ramură, în pull request-ul #15, încă
-neîmbinat: plasa pentru dificultate și reechilibrarea a două cifre (propuneri, până le vede Andrei în joc). Proba lui pe
-telefon va acoperi fazele 2 și 3 împreună.
+(pull request-ul #14), dar Andrei nu l-a încercat încă pe telefon. Planul 3 e în cod (18.11.2026): plasa pentru dificultate și
+reechilibrarea a două cifre (propuneri, până le vede Andrei în joc). Proba lui pe telefon va acoperi fazele 2 și 3 împreună.
 
 ```bash
 npm install
@@ -17,7 +16,7 @@ npm run dev      # http://localhost:5180
 npm run check    # typecheck + teste + build cu service worker (poarta înainte de commit; CI rulează același lucru)
 npm run smoke    # proba în browser (Playwright, 20 de verificări); nu face parte din `check`
 npm run single   # dist-single/world-guard.html: tot jocul într-un singur fișier, fără nicio referință în afară
-npm run balance  # tabelul jucătorilor automați (100 de partide, ~13 s); cu `-- --raze` și pentru razele de apărare 80 și 160 (~40 s)
+npm run balance  # tabelul jucătorilor automați (100 de partide, ~13 s); cu `-- --raze` și pentru razele de apărare 80 și 160 (~35 s)
 npm run icons    # desenează din nou pictogramele PNG din public/icons/icon.svg (doar când se schimbă desenul)
 ```
 
@@ -33,7 +32,7 @@ pauză rămâne în telefon: la următoarea deschidere, „Continuă partida” 
 (pe calculator: WASD sau săgețile). Strânge singură cristale și metal de lângă cristale și asteroizi, lovește singură
 navele dușmane din apropiere și plătește stând pe cercurile punctate de pe hartă. Partida se termină când cade planeta; scorul e timpul rezistat, iar recordul rămâne în telefon.
 
-**Plasa pentru dificultate:** `npm run balance` joacă, fără browser, cinci jucători automați (Nimic, Amestec, Doar navă, Fără navă, Fără economie) pe câte 20 de semințe și tipărește cât rezistă fiecare. Testele din `src/bots/net.test.ts` păzesc limitele din design: „Nimic” între 60 și 130 s, „Amestec” între 240 și 360 s, „Doar navă” cel mult 75% și „Fără navă” cel mult 90% din „Amestec”; dacă o cifră de joc le strică, `npm run check` pică. Cifrele de azi (raza de apărare 120): 66, 327, 221 (68%), 246 (75%) și 262 s. Jucătorii automați nu intră în joc.
+**Plasa pentru dificultate:** `npm run balance` joacă, fără browser, cinci jucători automați (Nimic, Amestec, Doar navă, Fără navă, Fără economie) pe câte 20 de semințe și tipărește cât rezistă fiecare; testele din `src/bots/net.test.ts` păzesc limitele din design și fac `npm run check` să pice când o cifră de joc le strică. Tabelul măsurat, limitele și ce nu vede plasa sunt în `docs/GDD.md`, la „Plasa pentru dificultate”. Zgomotul tabelului: o schimbare mică de cifre mișcă „Amestec” cu până la ±10 s și procentele cu până la 3 puncte; altă mașină, cu cam ±2 s și sub un punct. Jucătorii automați nu intră în joc.
 
 **Test de viteză:** butonul de pe cartonașul de start pornește o partidă cu 150 de nave dușmane mereu pe hartă și
 planeta și nava mereu întregi (fără nave noi în afara celor 150), și arată în bandă câte cadre pe secundă desenează telefonul, plus cea mai mică valoare de la pornire (`min`). Nu atinge recordul și nu salvează nimic. Din test se iese cu pauză, apoi „Partidă nouă” (sau reîncărcând pagina).

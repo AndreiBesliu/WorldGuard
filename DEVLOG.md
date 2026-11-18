@@ -377,6 +377,54 @@ Fără economie  263 s        235 s  298 s  —                  fără limită
 - **Ce e fragil:** „Amestec” e la 33 s de limita de sus (360 s). La raza de apărare 160, „Doar navă” e la 74,5%, la o jumătate de punct de limită. Tabelul depinde de cum sunt scriși jucătorii automați: toți apără la 120 de centrul planetei, niciunul nu repară.
 - Cu faza 3, lista „Scopuri pentru v1” din design e acoperită în cod; ce urmează are nevoie de hotărârea lui Andrei.
 
+**Reparațiile de după recenzia finală.**
+- Ce a găsit recenzia întregii ramuri (verdict: gata de îmbinare, cu reparații), pe scurt:
+  1. Nava se înțepenea între o clădire construită și cercul ei: ieșitul de pe un cerc străin o scotea pe raza cercului, adică în clădire. „Fără economie” pierdea 51 s pe cele 20 de partide în colțul primei turele. Cel mai lung șir de pași pe un cerc străin era 12 („Fără navă”, sămânța 14), nu 4 cum scrie mai sus la Task 1: cifra aceea era de dinaintea reechilibrării. Regula „nicio plată la un cerc străin” cădea la două din 24 de cifre vecine (lovitura navei +11 pe nivel; turela la 0,9 s).
+  2. Documentele spuneau despre „Doar navă” și despre scopul 7 mai mult decât arată plasa.
+  3. Propunerea pentru Andrei nu spunea ce face reechilibrarea cu turelele.
+- Mersul, reparat (`src/bots/nav.ts`): un cerc străin construit și clădirea lui sunt un singur obstacol, segmentul de la centrul cercului la clădire (`fromPad`). Lângă el (la 34 px de segment), nava nu mai intră spre el, ci merge de-a lungul marginii, pe o parte aleasă la primul pas și păstrată până se depărtează (`createSkirt`; fără partea păstrată, cu ținta chiar în spatele laturii, nava stătea pe loc). Ieșitul de pe cerc (`offForeignPad`, `slipOff`) pleacă și el din segment, deci în colț iese într-o parte. Cercurile fără clădire (al navei, cel de reparat) și cele neconstruite se poartă ca înainte; ținta de plată nu e niciodată obstacol.
+- Teste noi, scrise înaintea codului și văzute picând pe codul vechi: mersul cu jucătorul întreg pe lângă o turelă construită (pe codul vechi nu ajungea deloc la cristalul de dincolo) și pe lângă un colector construit (pe codul vechi călca 12 pași pe cercul colectorului), ocolitul pe aceeași parte și ieșitul din colț; în `bot.test.ts`, cel mult 10 pași la rând pe un cerc străin care numără (pe codul vechi: 12 și 11 pași la „Fără navă”).
+- Măsurat după reparație: cel mai lung șir pe un cerc străin are 2 pași, pe toate cele 80 de partide ale jucătorilor care se mișcă și în toate cele 24 de schimbări mici de cifre ale recenziei; regula „nicio plată la un cerc străin, niciun reparat” ține în toate 24, inclusiv cele două care cădeau. Timpul pierdut în colț: 0 s la toți (înainte 51 s la „Fără economie”, 5 s la „Amestec”, 1 s la „Fără navă”).
+- Mărunțișuri: tabelul scrie partea din „Amestec” cu o zecimală (de pildă „75,4%”); `net.test.ts` cere `toBe(true)`; `src/sim/discipline.test.ts` verifică acum că nimic din `src/` din afara `src/bots/` nu importă din el; comentariile de la lovitura turelei din `balance.ts` spuneau „raza” (nicio cifră schimbată).
+- Tabelul de după (`npm run balance -- --raze`; cu el, tabelele de mai sus din această intrare sunt istorie):
+
+```
+Raza de apărare 120
+Jucător        Mediană        Min    Max    Limită             Verdict
+Nimic          66 s           59 s   82 s   60–130 s           în limită
+Amestec        335 s          297 s  357 s  240–360 s          în limită
+Doar navă      221 s (66,1%)  203 s  256 s  ≤ 75% din Amestec  în limită
+Fără navă      250 s (74,8%)  235 s  273 s  ≤ 90% din Amestec  în limită
+Fără economie  256 s          231 s  293 s  —                  fără limită
+
+Raza de apărare 80
+Jucător        Mediană        Min    Max    Limită             Verdict
+Nimic          66 s           59 s   82 s   60–130 s           în limită
+Amestec        299 s          270 s  324 s  240–360 s          în limită
+Doar navă      216 s (72,3%)  189 s  281 s  ≤ 75% din Amestec  în limită
+Fără navă      246 s (82,4%)  223 s  267 s  ≤ 90% din Amestec  în limită
+Fără economie  255 s          220 s  303 s  —                  fără limită
+
+Raza de apărare 160
+Jucător        Mediană        Min    Max    Limită             Verdict
+Nimic          66 s           59 s   82 s   60–130 s           în limită
+Amestec        317 s          288 s  371 s  240–360 s          în limită
+Doar navă      234 s (73,9%)  213 s  266 s  ≤ 75% din Amestec  în limită
+Fără navă      251 s (79,2%)  227 s  267 s  ≤ 90% din Amestec  în limită
+Fără economie  266 s          245 s  312 s  —                  fără limită
+```
+
+  Nerotunjit, la raza 120: 65,6 / 334,7 / 221,3 / 250,5 / 255,8 s. „Amestec” iese puțin peste ținta de rezervă a planului (330 s); limita din design (360 s) ține. `src/data/balance.ts` n-a fost atins în afara celor două comentarii.
+- Ce măsoară plasa și ce nu (remăsurat după repararea mersului; amănuntele în `docs/GDD.md`, „Ce e fragil”): „Doar navă” cumpără o singură dată (nivelul 2, la secunda 18, în 19 din 20 de partide); în ultima treime toți luptă în 88–95% din pași, iar „Amestec” termină cu 117–164 de cristale necheltuite; raza 120 dă cel mai mic procent pentru „Doar navă” dintre 11 raze între 80 și 200; o purtare la fel de rezonabilă (nava plecată la peste 200 de planetă se întoarce abia la două nave dușmane) dă 76,7%, peste limită. Scopul 7 din design e deci păzit pentru acești cinci jucători automați, nu acoperit în general.
+- Ce face reechilibrarea cu turelele (propunere pentru Andrei): în „Amestec”, nava dă 71,6% din toată lovitura (înainte 61,1%); o turelă de nivelul 1 are nevoie de 18 trageri (14,4 s) pentru un dușman de la minutul 5 (înainte 12, adică 9,6 s); „doar turele” ține 79% din „Amestec” (înainte 90%), „fără turele” 82% (înainte 79%). Direcția e spre anti-scopul „Devine joc de acțiune”, iar plasa nu are un rând care s-o vadă.
+- „Primul minut e neschimbat”, scris mai sus, e prea tare: „Nimic” e identic pe toate cele 20 de semințe, dar la secunda 60 un dușman are 32,7 viață în loc de 24,5, deci nava de nivelul 1 are nevoie de 4 lovituri în loc de 3.
+- `npm run check`: 232 de teste trec; `npm test` durează 23,4 s. `npm run smoke`: „SMOKE OK (20 verificări)”.
+- De știut pentru Andrei:
+  - Îmbinarea în `main` publică jocul, deci cele două cifre noi ajung pe telefonul lui.
+  - Recordul din telefon rămâne cel făcut cu cifrele mai ușoare (cheia `wg.v1.record` nu se schimbă), iar „Amestec” ține acum cu 12% mai puțin.
+  - Trecerea în fugă prin centrul unui cerc durează 0,34 s, iar plata pornește la 0,35 s: e regula din faza 1, dar e la limită față de anti-scopul „Cheltui fără să vrei”. Propunere pentru mai târziu.
+  - Propunere pentru mai târziu: două rânduri doar tipărite în tabel, „Doar navă, cu nivelul 3 din prima secundă” (plafonul navei) și „Fără turele”, ca tabelul să arate ce nu vede azi.
+
 **Rămâne:**
 - [ ] proba lui Andrei pe telefon pentru fazele 2 și 3 împreună: instalarea, jocul fără internet, pauza apăsată cu cealaltă mână, reluarea, ecranul aprins și cum se simte dificultatea nouă (cele două cifre schimbate sunt propuneri);
 - [ ] cele două cifre de la „Test de viteză” (cadre pe secundă și `min`), niciodată notate;
