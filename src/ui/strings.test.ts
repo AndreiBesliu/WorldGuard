@@ -21,6 +21,11 @@ describe('textele temei de spațiu', () => {
     expect(STR.ruleInvest).toBe('Oprește-te pe un cerc punctat ca să investești în turele, colector, mină sau navă.')
     expect(STR.ruleFight).toBe('Nava lovește singură ce e aproape. Partida ține până cade planeta.')
   })
+  it('textele pauzei și ale reluării', () => {
+    expect([STR.pause, STR.pauseTitle, STR.pauseSoFar]).toEqual(['Pauză', 'Pauză', 'Ai rezistat până acum'])
+    expect([STR.resume, STR.fresh]).toEqual(['Continuă', 'Partidă nouă'])
+    expect(STR.continueSaved('2:47')).toBe('Continuă partida · 2:47')
+  })
   it('niciun text nu mai pomenește tema veche', () => {
     const all = JSON.stringify(STR, (_k, v) => (typeof v === 'function' ? v('x', 1) : v)).toLowerCase()
     for (const w of ['castel', 'turn', 'lemn', 'piatr', 'copac', 'stânc', 'tăietor', 'carier', 'erou']) expect(all).not.toContain(w)

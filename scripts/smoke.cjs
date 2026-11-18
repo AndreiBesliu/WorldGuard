@@ -1,7 +1,9 @@
 // Proba în browser: pornește `vite preview` pe build-ul existent și deschide pagina în Chromium (Playwright).
 // Verifică: (1) nicio eroare în consolă sau excepție, (2) nicio cerere în afara localhost, (3) canvasul e desenat,
 // apoi jocul: (4) cartonașul de start, (5) tragerea cu degetul, (6) eroul stă, (7) cartonașul de final,
-// (8) „Încă o partidă”, (9) testul de viteză.
+// (8) „Încă o partidă”, (9) testul de viteză, apoi pauza și reluarea: (10) butonul și cartonașul de pauză, (11) „Continuă”,
+// (12) pauza la pagina ascunsă, (13) „Continuă partida” după reîncărcare, (14) „Partidă nouă” din pauză,
+// (15) finalul șterge salvarea, (16) testul de viteză nu salvează.
 // Nu face parte din `npm run check`: are nevoie de un Playwright instalat pe mașină.
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')
@@ -184,6 +186,109 @@ async function main() {
     for (let i = 0; i < 5; i++) draws.push(await page.evaluate(() => window.__wg.drawMs(200)))
     draws.sort((a, b) => a - b)
     console.log(`SMOKE INFO: desen cu 150 de nave în jurul planetei: ${draws[2].toFixed(2)} ms pe cadru`)
+
+    // Pauza și reluarea. Blocul de mai sus lasă pagina în testul de viteză, deci se pornește dintr-o pagină reîncărcată.
+    const clockNow = () => page.locator('#clock').innerText()
+    const secsOf = (t) => { const [m, s] = t.split(':').map(Number); return m * 60 + s }
+    const saveRaw = () => page.evaluate(() => localStorage.getItem('wg.v1.save'))
+    const visible = (sel) => page.locator(sel).isVisible()
+    // Pagina ascunsă și apoi din nou la vedere, cum ar face telefonul când jucătorul iese din aplicație.
+    const setVisibility = (state) => page.evaluate((v) => {
+      Object.defineProperty(document, 'visibilityState', { value: v, configurable: true })
+      Object.defineProperty(document, 'hidden', { value: v === 'hidden', configurable: true })
+      document.dispatchEvent(new Event('visibilitychange'))
+    }, state)
+
+    // 10. butonul de pauză și cartonașul de pauză
+    await load()
+    await page.click('#start')
+    await page.waitForTimeout(1000)
+    const pauseShown = await visible('#pause')
+    if (pauseShown) await page.click('#pause')
+    await page.waitForTimeout(200)
+    await shot('06-pauza.png')
+    const pauseCard = (await visible('#pauseVeil')) && (await page.locator('#resume').innerText().catch(() => '')) === 'Continuă' && (await page.locator('#fresh').innerText().catch(() => '')) === 'Partidă nouă'
+    const phase10 = await page.evaluate(() => window.__wg.phase?.())
+    const c10a = await clockNow()
+    await page.waitForTimeout(700)
+    const c10b = await clockNow()
+    check(10, 'butonul de pauză se vede în joc; apăsat, arată cartonașul de pauză, faza „paused”, iar ceasul stă', pauseShown && pauseCard && phase10 === 'paused' && c10a === c10b, `buton ${pauseShown}, cartonaș ${pauseCard}, fază ${phase10}, ceas ${c10a} → ${c10b}`)
+    failFast(10)
+
+    // 11. „Continuă” reia partida
+    await page.click('#resume')
+    await page.waitForTimeout(1200)
+    const c11 = await clockNow()
+    const veil11 = await visible('#pauseVeil')
+    check(11, '„Continuă” ascunde cartonașul de pauză, iar ceasul înaintează', !veil11 && secsOf(c11) > secsOf(c10b), `cartonaș ${veil11}, ceas ${c10b} → ${c11}`)
+    failFast(11)
+
+    // 12. pagina ascunsă în timpul jocului pune pauză și salvează
+    await page.evaluate(() => { window.__wg.state().crystal = 37; window.__wg.state().metal = 12 })   // stoc ușor de recunoscut după reluare
+    await setVisibility('hidden')
+    await page.waitForTimeout(100)
+    await setVisibility('visible')
+    await page.waitForTimeout(300)
+    const veil12 = await visible('#pauseVeil')
+    const saved12 = await saveRaw()
+    check(12, 'pagina ascunsă în joc: la revenire, cartonașul de pauză e pe ecran și partida e salvată', veil12 && saved12 !== null, `cartonaș ${veil12}, salvare ${saved12 === null ? 'lipsă' : `${saved12.length} caractere`}`)
+    failFast(12)
+
+    // 13. după reîncărcare, „Continuă partida” reia partida salvată
+    const before = JSON.parse(saved12).state
+    const savedClock = `${Math.floor(Math.floor(before.t) / 60)}:${String(Math.floor(before.t) % 60).padStart(2, '0')}`
+    await load()
+    await shot('07-reluare.png')
+    const contText = await page.locator('#continue').innerText().catch(() => '')
+    const contShown = await visible('#continue')
+    const startText = await page.locator('#start').innerText().catch(() => '')
+    // Apăsat și citit în același pas, înaintea oricărui cadru: starea e exact cea reluată.
+    const after = await page.evaluate(() => {
+      document.getElementById('continue').click()
+      const s = window.__wg.state()
+      return { t: s.t, crystal: s.crystal, metal: s.metal, phase: window.__wg.phase() }
+    })
+    await page.waitForTimeout(300)
+    const c13 = await clockNow()
+    check(13, '„Continuă partida · m:ss” pe cartonașul de start, „Partidă nouă” pe buton; reluarea pornește de la timpul și stocul salvat',
+      contShown && contText === `Continuă partida · ${savedClock}` && startText === 'Partidă nouă' && after.phase === 'playing' &&
+      after.t === before.t && after.crystal === 37 && after.metal === 12 && secsOf(c13) >= secsOf(savedClock) && secsOf(c13) <= secsOf(savedClock) + 1,
+      `„${contText}” (${contShown}), start „${startText}”, salvat t ${before.t.toFixed(2)}, reluat t ${after.t.toFixed(2)}, cristale ${after.crystal}, metal ${after.metal}, fază ${after.phase}, ceas ${c13}`)
+    failFast(13)
+
+    // 14. „Partidă nouă” din pauză
+    await page.click('#pause')
+    await page.waitForTimeout(200)
+    await page.click('#fresh')
+    await page.waitForTimeout(400)
+    const c14 = await clockNow()
+    const saved14 = await saveRaw()
+    check(14, '„Partidă nouă” din pauză pornește o partidă cu ceasul sub 0:02 și șterge salvarea', !(await visible('#pauseVeil')) && secsOf(c14) < 2 && saved14 === null, `ceas ${c14}, salvare ${saved14 === null ? 'lipsă' : 'există'}`)
+    failFast(14)
+
+    // 15. sfârșitul partidei șterge salvarea
+    await page.click('#pause')
+    await page.waitForTimeout(200)
+    const saved15a = await saveRaw()
+    await page.click('#resume')
+    await page.evaluate(() => window.__wg.run(200))
+    await page.waitForSelector('#overVeil:not([hidden])', { timeout: 3000 }).catch(() => {})
+    const over15 = await visible('#overVeil')
+    const saved15 = await saveRaw()
+    await load()
+    const cont15 = await visible('#continue')
+    const start15 = await page.locator('#start').innerText().catch(() => '')
+    check(15, 'după final salvarea dispare, iar la reîncărcare cartonașul de start are doar „Începe”', saved15a !== null && over15 && saved15 === null && !cont15 && start15 === 'Începe', `salvare la pauză ${saved15a !== null}, final ${over15}, salvare după final ${saved15 === null ? 'lipsă' : 'există'}, „Continuă partida” ${cont15}, start „${start15}”`)
+    failFast(15)
+
+    // 16. testul de viteză pus pe pauză nu salvează
+    await page.click('#stress')
+    await page.waitForTimeout(500)
+    await page.click('#pause')
+    await page.waitForTimeout(200)
+    const phase16 = await page.evaluate(() => window.__wg.phase())
+    const saved16 = await saveRaw()
+    check(16, 'testul de viteză pus pe pauză nu lasă nicio salvare', phase16 === 'paused' && saved16 === null, `fază ${phase16}, salvare ${saved16 === null ? 'lipsă' : 'există'}`)
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))

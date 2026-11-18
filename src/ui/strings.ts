@@ -27,6 +27,12 @@ export interface Strings {
   recordNew: string
   overKills: string
   again: string
+  pause: string
+  pauseTitle: string
+  pauseSoFar: string
+  resume: string
+  fresh: string
+  continueSaved(time: string): string
 }
 
 export const STR: Strings = {
@@ -55,4 +61,10 @@ export const STR: Strings = {
   recordNew: 'Record nou',
   overKills: 'Nave doborâte',
   again: 'Încă o partidă',
+  pause: 'Pauză',
+  pauseTitle: 'Pauză',
+  pauseSoFar: 'Ai rezistat până acum',
+  resume: 'Continuă',
+  fresh: 'Partidă nouă',
+  continueSaved: (time) => `Continuă partida · ${time}`,
 }

@@ -14,6 +14,7 @@
           <div class="stock"><i class="chip chip-crystal"></i><b id="crystal"></b><span data-str="crystal"></span></div>
           <div class="stock"><i class="chip chip-metal"></i><b id="metal"></b><span data-str="metal"></span></div>
           <div class="time"><span class="fps" id="fps"></span><div class="clock" id="clock"></div></div>
+          <button class="pause" id="pause" type="button" data-str-aria="pause" hidden></button>
           <div class="core">
             <span data-str="core"></span>
             <div class="meter" id="meter"><i id="coreFill"></i></div>
@@ -33,8 +34,18 @@
             <li><i class="chip chip-hero"></i><span data-str="ruleInvest"></span></li>
             <li><i class="chip chip-foe"></i><span data-str="ruleFight"></span></li>
           </ul>
+          <button class="go" id="continue" type="button" hidden></button>
           <button class="go" id="start" type="button" data-str="start"></button>
           <button class="go quiet" id="stress" type="button" data-str="stress"></button>
+        </div>
+      </div>
+
+      <div class="veil" id="pauseVeil" hidden>
+        <div class="card">
+          <h1 data-str="pauseTitle"></h1>
+          <div class="result"><span data-str="pauseSoFar"></span><b id="pauseTime"></b></div>
+          <button class="go" id="resume" type="button" data-str="resume"></button>
+          <button class="go alt" id="fresh" type="button" data-str="fresh"></button>
         </div>
       </div>
 
