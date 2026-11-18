@@ -3,13 +3,16 @@
 Faptele stabile și regulile proiectului. Se încarcă la fiecare sesiune.
 
 ## Ce e
-**World Guard** — un joc de apărat castelul, văzut de sus, pentru telefon. Un erou condus cu joystick
-strânge lemn și piatră și le investește: turnuri, tăietori, carieră, nivelul eroului, repararea castelului.
-Dușmanii vin continuu și tot mai des; scorul e cât reziști. Pentru Andrei, deocamdată; nimic nu se
-construiește acum pentru o publicare.
+**World Guard** — un joc de apărat o planetă (genul: „castle defense”, cum l-a numit Andrei; tema e de spațiu), văzut de sus,
+pentru telefon. O navă condusă cu joystick strânge cristale și metal și le investește: turele, colector, mină,
+nivelul navei, repararea planetei. Dușmanii (nave) vin continuu și tot mai des; scorul e cât reziști. Pentru Andrei,
+deocamdată; nimic nu se construiește acum pentru o publicare. În cod, rolurile păstrează numele `hero` (nava) și `foe`
+(dușmanul); planeta e `core`, resursele `crystal` și `metal`, cercurile `turret`, `collector`, `mine`.
 
 - Designul complet: [`docs/GDD.md`](docs/GDD.md) (în conflict cu prototipul, câștigă documentul).
-- Prototipul de aruncat, referință pentru aspect și comportament: [`docs/prototip.html`](docs/prototip.html).
+- Tema de spațiu, aspectul „Orbită” și numele din cod: [`docs/superpowers/specs/2026-11-17-tema-spatiu-design.md`](docs/superpowers/specs/2026-11-17-tema-spatiu-design.md)
+  (macheta: [`docs/machete-tema-spatiu.html`](docs/machete-tema-spatiu.html); varianta 3, „Colonie”, e doar pentru misiuni speciale de mai târziu).
+- Prototipul de aruncat, referință de **comportament**: [`docs/prototip.html`](docs/prototip.html). Aspectul lui e cel vechi (castel, turnuri, copaci); nu mai e referință de aspect.
 - Planul fazei 1: [`docs/superpowers/plans/2026-11-17-world-guard-faza-1.md`](docs/superpowers/plans/2026-11-17-world-guard-faza-1.md).
 - Istoria lucrului: [`DEVLOG.md`](DEVLOG.md).
 - Jocul vechi (tower defense pe hexagoane) e la commit-ul `ec73b9e`. Andrei poate pune eticheta:
@@ -29,22 +32,31 @@ npm run single     # dist-single/world-guard.html: tot jocul într-un singur fi�
 - `src/sim/` — **nucleul de joc, determinist, fără DOM.** Tot ce contează pentru reguli stă aici.
   `state.ts` (starea, `DT`, `EPS`, tipurile), `step.ts` (un pas de 1/60 s, în ordine: ceas, erou, cercuri, luptă, dușmani),
   `hero.ts` (mers, coliziuni, reapariție, strâns), `pads.ts` (cercurile de investit: plată, nivele, producție, reparat),
-  `combat.ts` (lovitura eroului, tragerea turnurilor, săgeți), `foes.ts` (apariții, mers, atac, despărțire),
+  `combat.ts` (unda navei, tragerea turelelor, raze; `nearestFoeWithin` e regula de țintire, folosită și de desen), `foes.ts` (apariții, mers, atac, despărțire),
   `rng.ts` (aleatorul cu fluxuri numite), `result.ts` (verificări cu motiv), `testkit.ts` (ajutoare de test),
   plus testele de lângă fiecare (`*.test.ts`, între ele `discipline.test.ts` și `run.test.ts`, care măsoară partida întreagă).
-- `src/data/` — cifrele (`balance.ts`) și așezarea lumii (`layout.ts`: hartă, castel, grupuri de resurse, cercuri,
+- `src/data/` — cifrele (`balance.ts`) și așezarea lumii (`layout.ts`: hartă, nucleu, grupuri de resurse, cercuri,
   vederea de referință, pragul de viață scăzută). **Un număr de gameplay scris în afara lui `src/data/` e o greșeală.**
 - `src/app/` — lipiciul fără desen și fără reguli: `loop.ts` (acumulatorul: pași fixi din timpul cadrului, cel mult 5 pe cadru),
   `flags.ts` (`?seed=` și `?debug=1` din adresă), `storage.ts` (recordul în `localStorage`; orice eroare = fără record).
-- `src/render/` — desenarea pe Canvas 2D. Citește starea, nu o modifică. `canvas.ts` (mărimea, ordinea straturilor),
-  `camera.ts` (scara ecranului și urmărirea eroului), `ground.ts` (terenul, pictat o dată), `world.ts` (tot ce e în coordonate de lume;
-  sare peste ce e în afara ecranului), `overlay.ts` (indicatorul spre castel și joystickul, în coordonate de ecran),
-  `palette.ts` (culorile citite o dată din variabilele CSS).
+- `src/render/` — desenarea pe Canvas 2D. Citește starea, nu o modifică. `canvas.ts` (mărimea, ordinea straturilor; singurul care numește
+  aspectul și pictează cerul o dată), `camera.ts` (scara ecranului și urmărirea navei), `world.ts` (tot ce e în coordonate de lume și ar fi la fel
+  în orice aspect: straturile, săritul peste ce nu se vede, cercurile, etichetele, barele, textele plutitoare),
+  `overlay.ts` (indicatorul spre planetă și joystickul, în coordonate de ecran), `palette.ts` (culorile citite o dată din variabilele CSS),
+  `skin.ts` (interfața `Skin`: formele de pe canvas care diferă de la un aspect la altul; culorile stau în `palette.ts` și în `ui.css`), `draw.ts` (primitivele de desen), `derive.ts` (ce citește desenul din
+  stare, fără DOM: `turretAim`, `shieldSpan`, `regrown`), `orbit/` (aspectul „Orbită”, singura implementare a lui `Skin`: `index.ts`;
+  `scene.ts` — cerul și planeta, **singurul loc cu gradient și decupaj**; `things.ts` — resurse, clădiri, nave, raze, doar forme pline și linii).
+  Testele: `derive.test.ts`, `world.test.ts` (ordinea straturilor; `drawWorld` cu `ORBIT` peste o stare bogată nu schimbă starea),
+  `discipline.test.ts` (fără `shadowBlur`; gradient de orice fel, decupaj și `ctx.filter` doar în `orbit/scene.ts`), `palette.test.ts`
+  (culorile `#rgb` lăsate de micșorarea CSS-ului la build, aduse la `#rrggbb`) și `camera.test.ts`. `ground.ts` nu mai există. Mișcările doar de desen (continente, nori, satelit, flăcări, țeava turelei)
+  se calculează din timpul partidei și din stare; nu scriu nimic în stare.
 - `src/input/` — comenzile: `joystick.ts` (logica joystickului, fără DOM, testată), `bind.ts` (singurul cu DOM: pointer și taste).
-- `src/ui/` — textele (în română, într-un singur modul `strings.ts`), banda de sus (`hud.ts`), cartonașele de start și de final
-  (`cards.ts`), formatul ceasului (`format.ts`) și stilurile (`ui.css`).
+- `src/ui/` — textele (în română, într-un singur modul `strings.ts`, fixate de `strings.test.ts`), banda de sus (`hud.ts`),
+  cartonașele de start și de final (`cards.ts`), formatul ceasului (`format.ts`) și stilurile (`ui.css`; variabilele de culoare au nume pe roluri,
+  fontul titlului e Exo 2).
 - `src/main.ts` — legătura dintre ele: trei stări (start, joc, final), bucla de cadre, testul de viteză.
-- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 9 verificări, capturi în `smoke-out/`) și `single-file.mjs`
+- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 9 verificări, capturi în `smoke-out/`, plus un rând `SMOKE INFO` cu timpul de
+  desen pe cadru cu cele 150 de nave dușmane ale testului de viteză așezate în jurul planetei, ca să fie în vedere, din `window.__wg.drawMs`) și `single-file.mjs`
   (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`).
 - `.github/workflows/` — `ci.yml` (`npm run check` la fiecare pull request) și `deploy.yml` (publică pe GitHub Pages la push pe `main`).
 
@@ -71,11 +83,18 @@ Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
   publicarea pe live doar de owner, cu confirmare și jurnal.
 
 ## Stare
-- **Faza 1, în cod (17.11.2026):** jocul e jucabil: erou cu joystick, strâns resurse, cercuri de investit,
-  dușmani, luptă, turnuri, desenat pe Canvas 2D, cartonașe de start și de final cu record local, „Test de viteză”.
-  `npm run check` (77 de teste) și `npm run smoke` (9 verificări) trec. CI rulează `check` la fiecare pull request;
-  `deploy.yml` publică pe GitHub Pages la push pe `main`; `npm run single` dă varianta într-un singur fișier.
-- **Nefăcut încă:** eticheta `hex-td-v0.0.1`, pornirea GitHub Pages din setările repo-ului și verificarea pe telefonul
-  lui Andrei (Samsung Galaxy A54) — toate ale lui Andrei.
+- **Faza 1, în cod (17.11.2026):** jocul e jucabil: navă cu joystick, strâns resurse, cercuri de investit,
+  dușmani, luptă, turele, desenat pe Canvas 2D, cartonașe de start și de final cu record local, „Test de viteză”.
+  CI rulează `check` la fiecare pull request; `deploy.yml` publică pe GitHub Pages la push pe `main`;
+  `npm run single` dă varianta într-un singur fișier.
+- **Tema de spațiu, în cod (18.11.2026):** planetă, nave, cristale și asteroizi în locul castelului; numele din cod, textele și fontul
+  sunt cele noi, regulile și cifrele neschimbate. `npm run check` (99 de teste) și `npm run smoke` (9 verificări) trec. Schela „aceeași
+  partidă” a fost ștearsă; cifrele ei de la sfârșit sunt în `DEVLOG.md`. Timpul de desen cu 150 de nave așezate în jurul
+  planetei (rândul `SMOKE INFO`): vezi `DEVLOG.md`. Designul temei a fost aprobat de Andrei pe 18.11.2026.
+- **Publicat:** Andrei a pornit GitHub Pages pe 17.11.2026; faza 1 e la https://andreibesliu.github.io/WorldGuard/ și a încercat-o
+  pe telefonul lui (Samsung Galaxy A54): „se simte ok până aici”.
+- **Tema, încercată pe telefon:** Andrei a încercat tema de spațiu pe telefonul lui pe 18.11.2026: „pe telefon, totul arată super bine”.
+  Cifrele de la „Test de viteză” cu tema nouă nu le-a spus încă.
+- **Nefăcut încă:** eticheta `hex-td-v0.0.1` — a lui Andrei.
 - **Urmează:** planul 2 (pauză, instalare pe telefon, joc fără internet, reluarea unei partide întrerupte) și planul 3
   (plasa pentru dificultate și reechilibrarea).

@@ -8,13 +8,13 @@ export const DT = 1 / 60
 export const EPS = 1e-9          // cronometrele se compară cu `<= EPS`, nu cu `<= 0`
 export const NEVER = -9          // „nu s-a întâmplat încă”, pentru câmpurile …T de afișare
 
-export type Res = 'wood' | 'stone'
-export type BuildKind = 'tower' | 'camp' | 'quarry' | 'hero'
+export type Res = 'crystal' | 'metal'
+export type BuildKind = 'turret' | 'collector' | 'mine' | 'hero'
 export type PadKind = BuildKind | 'repair'
 export interface Input { x: number; y: number }                    // lungime ≤ 1
 export interface ResNode { type: Res; x: number; y: number; left: number; regrowAt: number; shakeT: number; tilt: number; shape: number[] }
 export interface Pad { kind: PadKind; x: number; y: number; bx: number; by: number; lvl: number; paid: Record<Res, number>; dwell: number; payT: number; flip: boolean; cool: number; prodT: number; popT: number }
-export interface Hero { x: number; y: number; face: number; hp: number; lvl: number; dead: boolean; respawnT: number; swingT: number; gatherT: number; slashT: number; slashA: number; hurtT: number; walk: number; moved: boolean }
+export interface Hero { x: number; y: number; face: number; hp: number; lvl: number; dead: boolean; respawnT: number; strikeT: number; gatherT: number; waveT: number; waveA: number; hurtT: number; moved: boolean }
 export interface Foe { id: number; x: number; y: number; r: number; hp: number; maxHp: number; speed: number; dmg: number; brute: boolean; atkT: number; kx: number; ky: number; a: number; hitT: number; lungeT: number }
 export interface Shot { x: number; y: number; tx: number; ty: number; a: number; targetId: number; dmg: number }   // targetId = -1 după moartea țintei
 export type Fx =
@@ -24,8 +24,8 @@ export type Fx =
   | { kind: 'puff'; r: number; x: number; y: number; t0: number }
 export interface GameState {
   seed: number; mode: 'playing' | 'over'; tick: number; t: number   // t = tick * DT
-  wood: number; stone: number; kills: number
-  castle: { hp: number; hitT: number }
+  crystal: number; metal: number; kills: number
+  core: { hp: number; hitT: number }
   hero: Hero; nodes: ResNode[]; pads: Pad[]; foes: Foe[]; shots: Shot[]; fx: Fx[]
   spawnT: number; spawnN: number; nextId: number
 }
@@ -43,7 +43,7 @@ function layNodes(): ResNode[] {
       const y = c.y + Math.sin(ang) * dist
       if (nodes.some((n) => Math.hypot(n.x - x, n.y - y) < NODE_GAP)) continue
       const shape: number[] = []
-      if (c.type === 'stone') for (let i = 0; i < 7; i++) shape.push(0.78 + rng.next() * 0.3)
+      if (c.type === 'metal') for (let i = 0; i < 7; i++) shape.push(0.78 + rng.next() * 0.3)
       nodes.push({ type: c.type, x, y, left: BALANCE.node[c.type].amount, regrowAt: 0, shakeT: NEVER, tilt: 0, shape })
       placed++
     }
@@ -54,15 +54,15 @@ function layNodes(): ResNode[] {
 export function createGame(seed: number): GameState {
   return {
     seed, mode: 'playing', tick: 0, t: 0,
-    wood: BALANCE.start.wood, stone: BALANCE.start.stone, kills: 0,
-    castle: { hp: BALANCE.castle.hp, hitT: NEVER },
+    crystal: BALANCE.start.crystal, metal: BALANCE.start.metal, kills: 0,
+    core: { hp: BALANCE.core.hp, hitT: NEVER },
     hero: {
       x: HOME.x, y: HOME.y, face: 0, hp: BALANCE.hero.hp, lvl: 1, dead: false, respawnT: 0,
-      swingT: NEVER, gatherT: NEVER, slashT: NEVER, slashA: 0, hurtT: NEVER, walk: 0, moved: false,
+      strikeT: NEVER, gatherT: NEVER, waveT: NEVER, waveA: 0, hurtT: NEVER, moved: false,
     },
     nodes: layNodes(),
     pads: PADS.map((p) => ({
-      kind: p.kind, x: p.x, y: p.y, bx: p.bx, by: p.by, lvl: 0, paid: { wood: 0, stone: 0 },
+      kind: p.kind, x: p.x, y: p.y, bx: p.bx, by: p.by, lvl: 0, paid: { crystal: 0, metal: 0 },
       dwell: 0, payT: NEVER, flip: false, cool: 0, prodT: NEVER, popT: NEVER,
     })),
     foes: [], shots: [], fx: [],

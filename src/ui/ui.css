@@ -1,31 +1,22 @@
-/* Un singur teren pe tot ecranul. Banda de sus ține stocul, ceasul și viața castelului; cartonașele stau în mijloc.
+/* Un singur câmp de joc pe tot ecranul. Banda de sus ține stocul, ceasul și viața planetei; cartonașele stau în mijloc.
    Zonele sigure ale telefonului (env(safe-area-inset-*)) le adaugă banda și cartonașele singure. */
 :root {
-  --ground: #3f5c47;
-  --ground-lift: #4a6a52;
-  --ground-sink: #36503e;
-  --edge: #1b2b23;
-  --dirt: #8b7b5d;
-  --stone: #d3d6d0;
-  --stone-shade: #9aa4a0;
-  --rock: #8d9ba7;
-  --rock-shade: #6a7782;
-  --wood: #d09a57;
-  --trunk: #76532f;
-  --pine: #1f3f33;
-  --pine-lift: #2e5f49;
-  --hero: #f4c542;
-  --hero-shade: #a97f12;
-  --foe: #dc4764;
-  --foe-shade: #8c2640;
-  --ink: #f4f0e3;
-  --ink-soft: #b9c2b6;
-  --night: #14201a;
-  --panel: rgba(20, 32, 26, .86);
-  --veil: rgba(20, 32, 26, .55);
-  --track: rgba(244, 240, 227, .16);
-  --line: rgba(244, 240, 227, .14);
-  --font-display: "Alfa Slab One", Rockwell, Georgia, serif;
+  --sky: #0c1236; --sky-deep: #090c26; --edge: #05071a;
+  --nebula-a: #3b2a86; --nebula-b: #0f4a6a; --nebula-c: #6a2a7a; --nebula-d: #2a3aa0;
+  --star: #ffffff; --star-cool: #c9dcff; --star-warm: #ffe9c9;
+  --ocean: #2f7fd8; --land: #4fc98a; --land-shade: #39b077;
+  --air: #78cdff; --shield: #8fe9ff;
+  --hero: #ffcf4a; --hero-shade: #b8860b; --jet: #8fe9ff;
+  --foe: #ff4d6d; --foe-shade: #a81f44; --foe-jet: #ffb347; --foe-glass: #3a0c1e;
+  --crystal: #4fe3c1; --crystal-lift: #a8f7e4; --crystal-shade: #22a58c; --crystal-base: #343062;
+  --ore: #8d88b5; --ore-shade: #5f5a86; --ore-pit: #4d4973; --ore-fleck: #e9e6ff;
+  --metal: #b3aee6;
+  --hull: #dfe6f7; --hull-shade: #8a94b8; --hull-dark: #1a2147; --solar: #3f73d9; --solar-line: #9cc0ff;
+  --bolt: #d8fbff;
+  --ink: #f1f4ff; --ink-soft: #9fa9c9; --night: #060a1f;
+  --panel: rgba(6, 10, 31, .86); --veil: rgba(6, 10, 31, .55);
+  --track: rgba(241, 244, 255, .16); --line: rgba(241, 244, 255, .14);
+  --font-display: "Exo 2", "Rubik", system-ui, sans-serif;
   --font-ui: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: dark;
 }
@@ -36,7 +27,7 @@ html { height: 100%; background: var(--edge); overscroll-behavior: none; }
 html, body, .veil { touch-action: pan-y; }
 body {
   height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none;
-  background: var(--ground); color: var(--ink); font-family: var(--font-ui);
+  background: var(--sky); color: var(--ink); font-family: var(--font-ui);
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
 }
@@ -57,25 +48,25 @@ body {
 }
 .banner.alarm { border-color: var(--foe); }
 .stock { display: flex; align-items: baseline; gap: 6px; }
-.stock b, .clock, .castle b {
-  font-family: var(--font-display); font-weight: 400; font-size: 20px; line-height: 1;
+.stock b, .clock, .core b {
+  font-family: var(--font-display); font-weight: 800; font-size: 20px; line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 .stock b { min-width: 2.2ch; }
-.stock span, .castle span {
+.stock span, .core span {
   font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-soft);
 }
 .chip { width: 11px; height: 11px; border-radius: 3px; align-self: center; flex: none; }
-.chip-wood { background: var(--wood); }
-.chip-stone { background: var(--rock); }
+.chip-crystal { background: var(--crystal); border-radius: 0; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }   /* romb, ca cristalul de pe canvas */
+.chip-metal { background: var(--metal); border-radius: 0; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }   /* hexagon, ca metalul de pe canvas */
 .chip-ink { background: var(--ink); }
 .chip-hero { background: var(--hero); }
 .chip-foe { background: var(--foe); }
 .time { justify-self: end; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 4px; }   /* „TEST · 58 fps” sub ceas, ca să nu se rupă pe două rânduri */
 .fps { white-space: nowrap; font-size: 11px; font-weight: 500; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .fps:empty { display: none; }
-.castle { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
-.castle b { font-size: 15px; min-width: 3ch; text-align: right; }
+.core { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+.core b { font-size: 15px; min-width: 3ch; text-align: right; }
 .meter { height: 9px; border-radius: 5px; background: var(--track); overflow: hidden; }
 .meter i { display: block; height: 100%; width: 100%; border-radius: 5px; background: var(--ink); transition: width .15s linear; }
 .meter.low i { background: var(--foe); }
@@ -102,18 +93,18 @@ body {
   padding: 22px 22px 22px;
   display: flex; flex-direction: column; gap: 16px;
 }
-.card h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1.08; text-wrap: balance; }
+.card h1 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1.08; text-wrap: balance; }
 .rules { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 14.5px; line-height: 1.4; }
 .rules li { display: grid; grid-template-columns: 11px 1fr; gap: 11px; align-items: start; }
 .rules .chip { margin-top: 5px; }
 .result { display: flex; flex-direction: column; gap: 2px; }
 .result span, .facts dt { font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-soft); }
-.result b { font-family: var(--font-display); font-weight: 400; font-size: 52px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--hero); }
+.result b { font-family: var(--font-display); font-weight: 800; font-size: 52px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--hero); }
 .facts { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .facts div { display: flex; flex-direction: column; gap: 3px; }
-.facts dd { margin: 0; font-family: var(--font-display); font-size: 20px; line-height: 1; font-variant-numeric: tabular-nums; }
+.facts dd { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 20px; line-height: 1; font-variant-numeric: tabular-nums; }
 .go {
-  font-family: var(--font-display); font-weight: 400; font-size: 18px; color: var(--night);
+  font-family: var(--font-display); font-weight: 800; font-size: 18px; color: var(--night);
   background: var(--hero); border: 0; border-radius: 12px; padding: 14px 18px; cursor: pointer;
 }
 .go.quiet {

@@ -15,6 +15,6 @@ export function step(s: GameState, input: Input): void {
   updateCombat(s)
   updateFoes(s)
   s.fx = s.fx.filter((f) => s.t - f.t0 <= (f.kind === 'puff' ? BALANCE.fx.puffLife : BALANCE.fx.textLife))   // efectele bătrâne dispar
-  if (s.castle.hp <= EPS) { s.castle.hp = 0; s.mode = 'over' }                                          // castelul a căzut
+  if (s.core.hp <= EPS) { s.core.hp = 0; s.mode = 'over' }                                          // nucleul a căzut
   for (const n of s.nodes) if (n.left === 0 && s.t + EPS >= n.regrowAt) n.left = BALANCE.node[n.type].amount   // resursa crește la loc
 }

@@ -93,7 +93,7 @@ async function main() {
 
     await load()
     await page.waitForTimeout(700)
-    await shot('01-teren.png')
+    await shot('01-cer.png')
     const colors = await page.evaluate(() => {
       const c = document.getElementById('field')
       const ctx = c.getContext('2d')
@@ -107,7 +107,14 @@ async function main() {
     // 4. cartonașul de start
     await shot('02-start.png')
     const title = await page.locator('#startVeil h1').innerText().catch(() => '')
-    check(4, 'cartonașul de start se vede, cu titlul „World Guard”', (await page.locator('#startVeil').isVisible()) && title === 'World Guard', `titlu: „${title}”`)
+    const faces = await page.evaluate(async () => (await document.fonts.load('800 20px "Exo 2"', 'Planetă șț')).map((f) => `${f.family.replace(/["']/g, '')}:${f.status}`))
+    const fontOk = faces.length >= 2 && faces.every((f) => f === 'Exo 2:loaded')
+    const digits = await page.evaluate(() => {
+      const host = document.getElementById('clock')
+      const width = (t) => { const e = document.createElement('span'); e.textContent = t; e.style.position = 'absolute'; host.appendChild(e); const w = e.getBoundingClientRect().width; e.remove(); return w }
+      return [width('1111'), width('0000')]
+    })
+    check(4, 'cartonașul de start se vede, cu titlul „World Guard”, în Exo 2, cu cifre de lățime egală', (await page.locator('#startVeil').isVisible()) && title === 'World Guard' && fontOk && Math.abs(digits[0] - digits[1]) < 0.01, `titlu: „${title}”, fețe de font: ${faces.join(', ') || 'niciuna'}, cifre ${digits.join(' / ')}`)
     failFast(4)
 
     // 5. tragere cu degetul de la (200, 600) la (140, 600), ținută 500 ms
@@ -144,7 +151,7 @@ async function main() {
     const overTime = await page.locator('#overTime').innerText().catch(() => '')
     const [om, os] = overTime.split(':').map(Number)
     const overSecs = om * 60 + os
-    check(7, 'cartonașul de final arată „Castelul a căzut” și un timp între 0:50 și 2:10', overTitle === 'Castelul a căzut' && overSecs >= 50 && overSecs <= 130, `titlu „${overTitle}”, timp ${overTime}`)
+    check(7, 'cartonașul de final arată „Planeta a căzut” și un timp între 0:50 și 2:10', overTitle === 'Planeta a căzut' && overSecs >= 50 && overSecs <= 130, `titlu „${overTitle}”, timp ${overTime}`)
     failFast(7)
 
     // 8. încă o partidă
@@ -159,10 +166,24 @@ async function main() {
     await load()
     await page.click('#stress')
     await page.waitForTimeout(1500)
-    await shot('05-test.png')
     const foes = await page.evaluate(() => window.__wg.state().foes.length)
     const fpsText = await page.locator('#fps').innerText()
     check(9, 'testul de viteză are 150 de dușmani și banda arată „fps” și „min”', foes === 150 && fpsText.includes('fps') && fpsText.includes('min'), `dușmani ${foes}, bandă „${fpsText}”`)
+
+    // Informativ, nu o verificare: cât durează desenul cu 150 de nave în vedere (mediana a cinci serii de 200 de cadre).
+    // La 1,5 s navele sunt încă la marginea hărții, în afara vederii, iar desenul le sare; de aceea sunt aduse,
+    // la fel de fiecare dată, în jurul planetei: nava i la unghiul i × 2,399963 rad și la raza 70 + (i % 5) × 28.
+    await page.evaluate(() => {
+      window.__wg.state().foes.forEach((f, i) => {
+        const a = i * 2.399963, r = 70 + (i % 5) * 28
+        f.x = 550 + Math.cos(a) * r; f.y = 750 + Math.sin(a) * r
+      })
+    })
+    await shot('05-test.png')
+    const draws = []
+    for (let i = 0; i < 5; i++) draws.push(await page.evaluate(() => window.__wg.drawMs(200)))
+    draws.sort((a, b) => a - b)
+    console.log(`SMOKE INFO: desen cu 150 de nave în jurul planetei: ${draws[2].toFixed(2)} ms pe cadru`)
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))
