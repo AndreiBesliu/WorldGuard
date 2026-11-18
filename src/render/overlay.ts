@@ -1,6 +1,6 @@
 // Ce se desenează în coordonate de ecran: indicatorul spre castel și joystickul.
 import { BALANCE } from '../data/balance'
-import { CASTLE } from '../data/layout'
+import { CORE } from '../data/layout'
 import type { GameState } from '../sim/state'
 import { STICK_R, type Stick } from '../input/joystick'
 import type { Cam, View } from './camera'
@@ -17,13 +17,13 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, s: GameState, cam: Ca
   const C = palette()
   const { w, h: hgt, scale: sc } = view
   const left = cam.x - w / sc / 2, top = cam.y - hgt / sc / 2
-  const sx = (CASTLE.x - left) * sc, sy = (CASTLE.y - top) * sc, topEdge = view.hudBottom + 30, m = 30
+  const sx = (CORE.x - left) * sc, sy = (CORE.y - top) * sc, topEdge = view.hudBottom + 30, m = 30
   if (sx < 0 || sx > w || sy < view.hudBottom || sy > hgt) {
     const px = clamp(sx, m, w - m), py = clamp(sy, topEdge, hgt - m), ang = Math.atan2(sy - py, sx - px)
-    const hit = s.t - s.castle.hitT < 1.2, tone = hit ? C.foe : C.ink
+    const hit = s.t - s.core.hitT < 1.2, tone = hit ? C.foe : C.ink
     const pulse = hit ? 1 + Math.sin(s.t * 14) * 0.12 : 1
     disc(ctx, px, py, 18 * pulse, alpha(C.night, 0.88))
-    ctx.beginPath(); ctx.arc(px, py, 15 * pulse, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0.001, s.castle.hp / BALANCE.castle.hp))
+    ctx.beginPath(); ctx.arc(px, py, 15 * pulse, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0.001, s.core.hp / BALANCE.core.hp))
     ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = tone; ctx.stroke()
     ctx.fillStyle = tone
     ctx.fillRect(px - 6, py - 3, 12, 8); ctx.fillRect(px - 6, py - 7, 3, 4); ctx.fillRect(px - 1.5, py - 7, 3, 4); ctx.fillRect(px + 3, py - 7, 3, 4)

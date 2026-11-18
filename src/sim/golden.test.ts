@@ -16,7 +16,7 @@ interface Tour { s: GameState; marks: number[][]; seen: { shot: boolean; down: b
 function mark(s: GameState): number[] {
   const h = s.hero
   return [
-    s.tick, s.castle.hp, s.wood, s.stone, s.kills,
+    s.tick, s.core.hp, s.crystal, s.metal, s.kills,
     h.x, h.y, h.hp, h.lvl, h.dead ? 1 : 0,
     ...s.pads.map((p) => p.lvl),
     s.foes.length, s.foes.reduce((a, f) => a + f.hp, 0), s.foes.reduce((a, f) => a + f.x + f.y, 0),
@@ -69,22 +69,22 @@ function gather(t: Tour, type: Res): void {
 function tour(): Tour {
   const t: Tour = { s: createGame(7), marks: [], seen: { shot: false, down: false, brute: false, gathered: 0, repaired: false } }
   const s = t.s
-  s.wood = 600; s.stone = 600
-  stay(t, 40)                                    // fără apărare, primii dușmani ajung la castel și îl lovesc
-  for (let i = 0; i < 4; i++) build(t, 'tower', i, 2)
-  build(t, 'camp', 0, 1)
-  build(t, 'quarry', 0, 1)
+  s.crystal = 600; s.metal = 600
+  stay(t, 40)                                    // fără apărare, primii dușmani ajung la nucleu și îl lovesc
+  for (let i = 0; i < 4; i++) build(t, 'turret', i, 2)
+  build(t, 'collector', 0, 1)
+  build(t, 'mine', 0, 1)
   build(t, 'hero', 0, 2)
-  gather(t, 'wood')
-  gather(t, 'stone')
+  gather(t, 'crystal')
+  gather(t, 'metal')
   go(t, 470, 800)
   stayUntil(t, () => s.t >= 130, 200)
   hurtHero(s, 1e9)                               // doborât pe loc, ca să treacă și prin reapariție
   stayUntil(t, () => !s.hero.dead, 10)
-  const repair = padOf(s, 'repair'), hurt = s.castle.hp
+  const repair = padOf(s, 'repair'), hurt = s.core.hp
   go(t, repair.x, repair.y)
   stay(t, 2)
-  t.seen.repaired = s.castle.hp > hurt
+  t.seen.repaired = s.core.hp > hurt
   stayUntil(t, () => s.t >= 200, 200)
   return t
 }
@@ -107,12 +107,12 @@ const MARKS: number[][] = [
 describe('aceeași partidă, înainte și după redenumire', () => {
   it('turul trece prin tot ce au regulile', () => {
     const { s, seen } = tour()
-    for (let i = 0; i < 4; i++) expect(padOf(s, 'tower', i).lvl).toBe(2)
-    expect(padOf(s, 'camp').lvl).toBe(1)
-    expect(padOf(s, 'quarry').lvl).toBe(1)
+    for (let i = 0; i < 4; i++) expect(padOf(s, 'turret', i).lvl).toBe(2)
+    expect(padOf(s, 'collector').lvl).toBe(1)
+    expect(padOf(s, 'mine').lvl).toBe(1)
     expect(s.hero.lvl).toBe(2)
     expect(seen).toEqual({ shot: true, down: true, brute: true, gathered: 2, repaired: true })
-    expect(s.hero.slashT).toBeGreaterThan(0)
+    expect(s.hero.waveT).toBeGreaterThan(0)
     expect(s.kills).toBeGreaterThan(20)
     expect(s.mode).toBe('playing')
   })

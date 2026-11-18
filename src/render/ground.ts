@@ -1,5 +1,5 @@
 // Terenul, pictat o singură dată într-un canvas ascuns. Aleatoriul vine din fluxul 'iarba'.
-import { CASTLE, LAYOUT_SEED, WORLD } from '../data/layout'
+import { CORE, LAYOUT_SEED, WORLD } from '../data/layout'
 import { createRng } from '../sim/rng'
 import { alpha, palette } from './palette'
 
@@ -21,9 +21,9 @@ export function makeGround(): HTMLCanvasElement {
     c.beginPath(); c.ellipse(r() * W, r() * H, 18 + r() * 46, 10 + r() * 26, r() * Math.PI, 0, TAU); c.fill()
   }
   c.globalAlpha = 1
-  const worn = c.createRadialGradient(CASTLE.x, CASTLE.y, CASTLE.r, CASTLE.x, CASTLE.y, 200)
+  const worn = c.createRadialGradient(CORE.x, CORE.y, CORE.r, CORE.x, CORE.y, 200)
   worn.addColorStop(0, alpha(C.dirt, 0.8)); worn.addColorStop(1, alpha(C.dirt, 0))
-  c.fillStyle = worn; c.beginPath(); c.arc(CASTLE.x, CASTLE.y, 200, 0, TAU); c.fill()
+  c.fillStyle = worn; c.beginPath(); c.arc(CORE.x, CORE.y, 200, 0, TAU); c.fill()
   c.strokeStyle = C.groundLift; c.lineWidth = 1.6; c.lineCap = 'round'; c.globalAlpha = 0.8
   for (let i = 0; i < 420; i++) {
     const x = r() * W, y = r() * H

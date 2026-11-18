@@ -1,7 +1,7 @@
 // Desenatorul: mărimea canvasului, camera și ordinea straturilor. Citește starea, nu o scrie.
 import { HOME } from '../data/layout'
 import type { Stick } from '../input/joystick'
-import type { GameState, Input } from '../sim/state'
+import type { GameState } from '../sim/state'
 import { followCamera, viewScale, type Cam, type View } from './camera'
 import { makeGround } from './ground'
 import { drawOverlay } from './overlay'
@@ -10,7 +10,7 @@ import { drawWorld } from './world'
 
 export function createRenderer(canvas: HTMLCanvasElement): {
   resize(hudBottom: number): void
-  frame(s: GameState, input: Input, stick: Stick | null, frameDt: number): void
+  frame(s: GameState, stick: Stick | null, frameDt: number): void
 } {
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('canvas 2D indisponibil')
@@ -28,7 +28,7 @@ export function createRenderer(canvas: HTMLCanvasElement): {
       view.scale = viewScale(view.w, view.h)
       view.hudBottom = hudBottom
     },
-    frame(s, input, stick, frameDt) {
+    frame(s, stick, frameDt) {
       followCamera(cam, s, view, frameDt)
       const { w, h, scale: sc } = view
       if (!w || !h) return
@@ -40,7 +40,7 @@ export function createRenderer(canvas: HTMLCanvasElement): {
       const left = cam.x - w / sc / 2, top = cam.y - h / sc / 2
       ctx.save(); ctx.scale(sc, sc); ctx.translate(-left, -top)
       ctx.drawImage(ground, 0, 0)
-      drawWorld(ctx, s, input, { l: left, t: top, r: left + w / sc, b: top + h / sc })
+      drawWorld(ctx, s, { l: left, t: top, r: left + w / sc, b: top + h / sc })
       ctx.restore()
       drawOverlay(ctx, s, cam, view, stick)
     },

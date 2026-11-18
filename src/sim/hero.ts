@@ -1,6 +1,6 @@
-// Eroul: reapariție, mers, coliziuni, refacere, strâns. Nu lovește (asta e în lupta de mai târziu).
+// Eroul: reapariție, mers, coliziuni, refacere, strâns. Nu atacă (asta e în lupta de mai târziu).
 import { BALANCE } from '../data/balance'
-import { CASTLE, HOME, WORLD } from '../data/layout'
+import { CORE, HOME, WORLD } from '../data/layout'
 import { DT, EPS, NEVER, type GameState, type Input, type PadKind, type ResNode } from './state'
 
 export function heroMaxHp(s: GameState): number {
@@ -13,7 +13,7 @@ export function heroDamage(s: GameState): number {
 
 /** Raza unei clădiri care îl oprește pe erou; cercurile de erou și de reparat nu opresc pe nimeni. */
 function buildingR(kind: PadKind): number {
-  if (kind === 'tower' || kind === 'camp' || kind === 'quarry') return BALANCE[kind].r
+  if (kind === 'turret' || kind === 'collector' || kind === 'mine') return BALANCE[kind].r
   return 0
 }
 
@@ -29,7 +29,7 @@ function pushOut(s: GameState, ox: number, oy: number, or: number): void {
 
 function collide(s: GameState): void {
   const h = s.hero
-  pushOut(s, CASTLE.x, CASTLE.y, CASTLE.r)
+  pushOut(s, CORE.x, CORE.y, CORE.r)
   for (const n of s.nodes) if (n.left > 0) pushOut(s, n.x, n.y, BALANCE.node[n.type].r)
   for (const p of s.pads) if (p.lvl > 0 && buildingR(p.kind) > 0) pushOut(s, p.bx, p.by, buildingR(p.kind))
   const e = BALANCE.hero.edge
@@ -77,8 +77,7 @@ export function updateHero(s: GameState, input: Input): void {
     h.x += ix * BALANCE.hero.speed * DT
     h.y += iy * BALANCE.hero.speed * DT
     h.moved = true
-    h.walk += DT * mag
-    if (s.t - h.slashT > BALANCE.hero.faceLock) h.face = Math.atan2(iy, ix)
+    if (s.t - h.waveT > BALANCE.hero.faceLock) h.face = Math.atan2(iy, ix)
   }
   collide(s)
   if (s.t - h.hurtT - BALANCE.hero.regenWait > EPS && h.hp < heroMaxHp(s)) {

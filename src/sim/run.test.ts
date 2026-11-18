@@ -6,10 +6,10 @@ import { step } from './step'
 import { quietGame } from './testkit'
 
 describe('partida întreagă', () => {
-  it('fără niciun gest, castelul cade după aproximativ un minut', () => {
-    // Măsurat pe semințele 1–5: 71,3 · 62,0 · 65,1 · 60,5 · 64,9 s. Fără erou deloc, castelul cade în 54–58 s:
-    // aceea e podeaua, fiindcă eroul lăsat lângă castel mai doboară câțiva dușmani.
-    // Prototipul ținea mai mult (67–88 s) dintr-o greșeală: cam 30% din dușmanii ajunși singuri la zid nu loveau niciodată.
+  it('fără niciun gest, nucleul cade după aproximativ un minut', () => {
+    // Măsurat pe semințele 1–5: 71,3 · 62,0 · 65,1 · 60,5 · 64,9 s. Fără erou deloc, nucleul cade în 54–58 s:
+    // aceea e podeaua, fiindcă eroul lăsat lângă nucleu mai doboară câțiva dușmani.
+    // Prototipul ținea mai mult (67–88 s) dintr-o greșeală: cam 30% din dușmanii ajunși singuri la nucleu nu loveau niciodată.
     const times = [1, 2, 3, 4, 5].map((seed) => {
       const s = createGame(seed)
       while (s.mode === 'playing' && s.t < 200) step(s, { x: 0, y: 0 })
@@ -33,7 +33,7 @@ describe('partida întreagă', () => {
   it('un pas cu 150 de dușmani durează în medie sub 1 ms', () => {
     const s = quietGame(); s.tick = 200 * 60; s.t = 200
     for (let i = 0; i < 150; i++) spawnFoe(s)
-    s.castle.hp = 1e9
+    s.core.hp = 1e9
     const t0 = performance.now(); for (let i = 0; i < 600; i++) step(s, { x: 1, y: 0 })
     expect((performance.now() - t0) / 600).toBeLessThan(1)
   })

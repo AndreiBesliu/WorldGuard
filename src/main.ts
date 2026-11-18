@@ -22,7 +22,7 @@ import { createCards } from './ui/cards'
 import { createHud } from './ui/hud'
 import { STR } from './ui/strings'
 
-const STRESS_FOES = 150      // cât de plin e terenul în testul de viteză: număr de măsurat, nu de joc
+const STRESS_FOES = 150      // cât de plină e zona de joc în testul de viteză: număr de măsurat, nu de joc
 const FPS_WINDOW = 0.5       // secunde: fereastra pe care se numără cadrele afișate
 
 // Textele din pagină vin din STR: data-str = text, data-str-aria = eticheta de accesibilitate.
@@ -67,7 +67,7 @@ function begin(seed: number, isStress: boolean): void {
   cards.hide()
 }
 const cards = createCards(document, {
-  start: () => begin(s.seed, false),            // prima partidă folosește sămânța deja așezată pe teren
+  start: () => begin(s.seed, false),            // prima partidă folosește sămânța deja așezată în zona de joc
   stress: () => begin(s.seed, true),
   again: () => begin(Date.now() >>> 0, false),
 })
@@ -88,7 +88,7 @@ if (flags.debug) {
       const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
       const t0 = performance.now()
       for (let i = 0; i < frames; i++) {
-        renderer.frame(s, still, null, 0)
+        renderer.frame(s, null, 0)
         ctx.getImageData(0, 0, 1, 1)            // citirea unui pixel obligă desenul să fie dus la capăt
       }
       return (performance.now() - t0) / frames
@@ -109,8 +109,8 @@ function frame(now: number): void {
     for (let i = 0; i < r.steps; i++) step(s, input.read())
     camDt = r.steps * DT                        // camera se mișcă doar cu pașii simulării: eroul nu tremură pe ecrane de 120 Hz
     if (stress) {
-      while (s.foes.length < STRESS_FOES) spawnFoe(s)   // terenul rămâne plin, castelul și eroul nu cad
-      s.castle.hp = BALANCE.castle.hp
+      while (s.foes.length < STRESS_FOES) spawnFoe(s)   // zona de joc rămâne plină, nucleul și eroul nu cad
+      s.core.hp = BALANCE.core.hp
       s.hero.dead = false; s.hero.hp = heroMaxHp(s)
       fpsFrames++; fpsTime += frameDt
       if (fpsTime >= FPS_WINDOW) {
@@ -126,7 +126,7 @@ function frame(now: number): void {
     const secs = Math.floor(s.t)
     cards.showOver({ secs, ...(stress ? { record: secs, isNew: false } : saveIfRecord(secs)), kills: s.kills })   // testul de viteză nu atinge recordul
   }
-  renderer.frame(s, phase === 'playing' ? input.read() : still, phase === 'playing' ? input.stick : null, camDt)
+  renderer.frame(s, phase === 'playing' ? input.stick : null, camDt)
   hud.sync(s, { hint: phase === 'playing' && !s.hero.moved, fps })
 }
 requestAnimationFrame(frame)

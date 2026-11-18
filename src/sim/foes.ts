@@ -1,6 +1,6 @@
 // Dușmanii: apariții, mers, atac, împins, despărțire, scoaterea celor doborâți.
 import { BALANCE, foeHp, spawnEvery } from '../data/balance'
-import { CASTLE, WORLD } from '../data/layout'
+import { CORE, WORLD } from '../data/layout'
 import { DT, EPS, NEVER, type Foe, type GameState } from './state'
 import { createRng } from './rng'
 import { hurtHero } from './hero'
@@ -40,9 +40,9 @@ function act(s: GameState, f: Foe): void {
   const hero = s.hero
   const heroD = Math.hypot(hero.x - f.x, hero.y - f.y)
   const chaseHero = !hero.dead && heroD < BALANCE.foe.chase     // eroul doborât nu e urmărit
-  const tx = chaseHero ? hero.x : CASTLE.x
-  const ty = chaseHero ? hero.y : CASTLE.y
-  const stop = chaseHero ? f.r + BALANCE.hero.r + BALANCE.foe.stopHero : CASTLE.r + f.r + BALANCE.foe.stopCastle
+  const tx = chaseHero ? hero.x : CORE.x
+  const ty = chaseHero ? hero.y : CORE.y
+  const stop = chaseHero ? f.r + BALANCE.hero.r + BALANCE.foe.stopHero : CORE.r + f.r + BALANCE.foe.stopCore
   const dx = tx - f.x, dy = ty - f.y, d = Math.hypot(dx, dy)
   if (d > EPS) f.a = Math.atan2(dy, dx)
   if (d > stop + EPS) {
@@ -55,7 +55,7 @@ function act(s: GameState, f: Foe): void {
   if (f.atkT > EPS) return
   f.lungeT = s.t
   if (chaseHero) { hurtHero(s, f.dmg); f.atkT = BALANCE.foe.hitHeroEvery }
-  else { s.castle.hp -= f.dmg; s.castle.hitT = s.t; f.atkT = BALANCE.foe.hitCastleEvery }
+  else { s.core.hp -= f.dmg; s.core.hitT = s.t; f.atkT = BALANCE.foe.hitCoreEvery }
 }
 
 /** Perechile care se suprapun sunt împinse egal în părți opuse; în același punct, pe axa x. */
@@ -87,11 +87,11 @@ export function updateFoes(s: GameState): void {
     f.kx *= damp; f.ky *= damp
   }
   separate(live)
-  for (const f of live) {                                       // cine a ajuns în castel e scos pe normală
-    const dx = f.x - CASTLE.x, dy = f.y - CASTLE.y, d = Math.hypot(dx, dy), min = CASTLE.r + f.r
+  for (const f of live) {                                       // cine a ajuns în nucleu e scos pe normală
+    const dx = f.x - CORE.x, dy = f.y - CORE.y, d = Math.hypot(dx, dy), min = CORE.r + f.r
     if (d >= min) continue
-    f.x = CASTLE.x + (d <= EPS ? min : (dx / d) * min)
-    f.y = CASTLE.y + (d <= EPS ? 0 : (dy / d) * min)
+    f.x = CORE.x + (d <= EPS ? min : (dx / d) * min)
+    f.y = CORE.y + (d <= EPS ? 0 : (dy / d) * min)
   }
   for (const f of s.foes) {
     if (f.hp > EPS) continue

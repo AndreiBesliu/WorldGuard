@@ -10,9 +10,9 @@ export interface Strings {
   repairCost(heal: number): string
   gain: string
   heroDown: string
-  wood: string
-  stone: string
-  castle: string
+  crystal: string
+  metal: string
+  core: string
   hint: string
   fpsLabel(now: number, min: number): string
   ruleMove: string
@@ -32,15 +32,15 @@ export interface Strings {
 export const STR: Strings = {
   fieldLabel: 'Terenul de joc',
   title: 'World Guard',
-  pad: { tower: 'Turn', camp: 'Tăietori', quarry: 'Carieră', hero: 'Erou', repair: 'Repară castelul' },
+  pad: { turret: 'Turn', collector: 'Tăietori', mine: 'Carieră', hero: 'Erou', repair: 'Repară castelul' },
   padLevel: (name, n) => `${name} nivel ${n}`,
   padMax: (name) => `${name} · nivel maxim`,
   repairCost: (heal) => `1 = +${heal} viață`,
   gain: '+1',
   heroDown: 'Eroul a căzut',
-  wood: 'lemn',
-  stone: 'piatră',
-  castle: 'Castel',
+  crystal: 'lemn',
+  metal: 'piatră',
+  core: 'Castel',
   fpsLabel: (now, min) => `TEST · ${now} fps · min ${min}`,
   hint: 'Ține degetul pe ecran și trage ca să miști eroul',
   ruleMove: 'Ține degetul pe ecran și trage. Eroul merge încotro tragi.',
