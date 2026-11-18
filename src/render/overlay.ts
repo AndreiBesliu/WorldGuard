@@ -1,19 +1,16 @@
-// Ce se desenează în coordonate de ecran: indicatorul spre castel și joystickul.
+// Ce se desenează în coordonate de ecran: indicatorul spre planetă și joystickul.
 import { BALANCE } from '../data/balance'
 import { CORE } from '../data/layout'
 import type { GameState } from '../sim/state'
 import { STICK_R, type Stick } from '../input/joystick'
 import type { Cam, View } from './camera'
+import { disc, TAU } from './draw'
 import { alpha, palette } from './palette'
+import type { Skin } from './skin'
 
-const TAU = Math.PI * 2
 const clamp = (v: number, a: number, b: number): number => (v < a ? a : v > b ? b : v)
 
-function disc(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, fill: string): void {
-  ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = fill; ctx.fill()
-}
-
-export function drawOverlay(ctx: CanvasRenderingContext2D, s: GameState, cam: Cam, view: View, stick: Stick | null): void {
+export function drawOverlay(ctx: CanvasRenderingContext2D, s: GameState, cam: Cam, view: View, stick: Stick | null, skin: Skin): void {
   const C = palette()
   const { w, h: hgt, scale: sc } = view
   const left = cam.x - w / sc / 2, top = cam.y - hgt / sc / 2
@@ -25,8 +22,8 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, s: GameState, cam: Ca
     disc(ctx, px, py, 18 * pulse, alpha(C.night, 0.88))
     ctx.beginPath(); ctx.arc(px, py, 15 * pulse, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0.001, s.core.hp / BALANCE.core.hp))
     ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = tone; ctx.stroke()
+    skin.coreIcon(ctx, px, py, tone)
     ctx.fillStyle = tone
-    ctx.fillRect(px - 6, py - 3, 12, 8); ctx.fillRect(px - 6, py - 7, 3, 4); ctx.fillRect(px - 1.5, py - 7, 3, 4); ctx.fillRect(px + 3, py - 7, 3, 4)
     ctx.beginPath(); ctx.moveTo(px + Math.cos(ang) * 29, py + Math.sin(ang) * 29)
     ctx.lineTo(px + Math.cos(ang + 0.42) * 21, py + Math.sin(ang + 0.42) * 21)
     ctx.lineTo(px + Math.cos(ang - 0.42) * 21, py + Math.sin(ang - 0.42) * 21); ctx.closePath(); ctx.fill()

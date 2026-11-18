@@ -1,6 +1,6 @@
 // Lupta: unda eroului, tragerea turelelor, zborul razelor.
 import { BALANCE, turretDamage } from '../data/balance'
-import { DT, EPS, type GameState } from './state'
+import { DT, EPS, type Foe, type GameState } from './state'
 import { heroDamage } from './hero'
 import { hurtFoe } from './foes'
 
@@ -38,19 +38,25 @@ function strike(s: GameState): void {
   h.face = a
 }
 
+/** Cel mai apropiat dușman viu aflat strict mai aproape de (x, y) decât `range`; la egalitate, primul din listă. */
+export function nearestFoeWithin(s: GameState, x: number, y: number, range: number): Foe | null {
+  let near: Foe | null = null
+  let nearD = range
+  for (const f of s.foes) {
+    if (f.hp <= EPS) continue
+    const d = Math.hypot(f.x - x, f.y - y)
+    if (d < nearD) { nearD = d; near = f }
+  }
+  return near
+}
+
 /** Fiecare turelă construită trage în cel mai apropiat dușman viu din bătaia lui. */
 function fireTurrets(s: GameState): void {
   for (const p of s.pads) {
     if (p.kind !== 'turret' || p.lvl <= 0) continue
     p.cool -= DT
     if (p.cool > EPS) continue
-    let near = null as GameState['foes'][number] | null
-    let nearD: number = BALANCE.turret.range
-    for (const f of s.foes) {
-      if (f.hp <= EPS) continue
-      const d = Math.hypot(f.x - p.bx, f.y - p.by)
-      if (d < nearD) { nearD = d; near = f }
-    }
+    const near = nearestFoeWithin(s, p.bx, p.by, BALANCE.turret.range)
     if (!near) { p.cool = 0; continue }
     s.shots.push({ x: p.bx, y: p.by, tx: near.x, ty: near.y, a: 0, targetId: near.id, dmg: turretDamage(p.lvl) })
     p.cool = BALANCE.turret.every

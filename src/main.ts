@@ -88,7 +88,7 @@ if (flags.debug) {
       const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
       const t0 = performance.now()
       for (let i = 0; i < frames; i++) {
-        renderer.frame(s, null, 0)
+        renderer.frame(s, still, null, 0)
         ctx.getImageData(0, 0, 1, 1)            // citirea unui pixel obligă desenul să fie dus la capăt
       }
       return (performance.now() - t0) / frames
@@ -126,7 +126,7 @@ function frame(now: number): void {
     const secs = Math.floor(s.t)
     cards.showOver({ secs, ...(stress ? { record: secs, isNew: false } : saveIfRecord(secs)), kills: s.kills })   // testul de viteză nu atinge recordul
   }
-  renderer.frame(s, phase === 'playing' ? input.stick : null, camDt)
+  renderer.frame(s, phase === 'playing' ? input.read() : still, phase === 'playing' ? input.stick : null, camDt)
   hud.sync(s, { hint: phase === 'playing' && !s.hero.moved, fps })
 }
 requestAnimationFrame(frame)

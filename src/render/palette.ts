@@ -1,7 +1,9 @@
-// Paleta: citită o singură dată din variabilele CSS de pe :root, ca terenul și HUD-ul să aibă o sursă.
+// Paleta: citită o singură dată din variabilele CSS de pe :root, ca cerul, aspectul și banda de sus să aibă o sursă.
 const NAMES = [
-  'ground', 'ground-lift', 'ground-sink', 'edge', 'dirt', 'stone', 'stone-shade', 'rock', 'rock-shade',
-  'wood', 'trunk', 'pine', 'pine-lift', 'hero', 'hero-shade', 'foe', 'foe-shade', 'ink', 'ink-soft', 'night',
+  'sky', 'sky-deep', 'edge', 'nebula-a', 'nebula-b', 'nebula-c', 'nebula-d', 'star', 'star-cool', 'star-warm',
+  'ocean', 'land', 'land-shade', 'air', 'shield', 'hero', 'hero-shade', 'jet', 'foe', 'foe-shade', 'foe-jet', 'foe-glass',
+  'crystal', 'crystal-lift', 'crystal-shade', 'crystal-base', 'ore', 'ore-shade', 'ore-pit', 'ore-fleck', 'metal',
+  'hull', 'hull-shade', 'hull-dark', 'solar', 'solar-line', 'bolt', 'ink', 'ink-soft', 'night',
 ] as const
 
 type Camel<S extends string> = S extends `${infer A}-${infer B}` ? `${A}${Capitalize<Camel<B>>}` : S
