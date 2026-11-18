@@ -60,12 +60,13 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   se calculează din timpul partidei și din stare; nu scriu nimic în stare.
 - `src/input/` — comenzile: `joystick.ts` (logica joystickului, fără DOM, testată), `bind.ts` (singurul cu DOM: pointer și taste).
 - `src/ui/` — textele (în română, într-un singur modul `strings.ts`, fixate de `strings.test.ts`), banda de sus (`hud.ts`),
-  cartonașele de start (cu „Continuă partida”), de pauză și de final (`cards.ts`), formatul ceasului (`format.ts`) și stilurile (`ui.css`; variabilele de culoare au nume pe roluri,
+  cartonașele de start (cu „Continuă partida”), de pauză și de final (`cards.ts`), apăsarea butoanelor (`tap.ts`: la atingere, la ridicarea
+  degetului deasupra butonului, și pentru al doilea deget; cu mausul și tastatura, la `click`; o singură pornire pe gest), formatul ceasului (`format.ts`) și stilurile (`ui.css`; variabilele de culoare au nume pe roluri,
   fontul titlului e Exo 2).
 - `src/main.ts` — legătura dintre ele: nu ține stări, le ia din sesiune; pauza (buton, Escape, pagina ascunsă), bucla de cadre,
   ecranul aprins, înregistrarea service worker-ului (doar în build, cu `__WG_SW__`). Cu `?debug=1`, `window.__wg` are `state()`,
   `phase()`, `run(secunde)` și `drawMs(cadre)`.
-- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 19 verificări, capturi în `smoke-out/`, plus un rând `SMOKE INFO` cu timpul de
+- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 20 de verificări, capturi în `smoke-out/`, plus un rând `SMOKE INFO` cu timpul de
   desen pe cadru cu cele 150 de nave dușmane ale testului de viteză așezate în jurul planetei, ca să fie în vedere, din `window.__wg.drawMs`;
   merge doar pe Linux și macOS), `single-file.mjs` (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`),
   `sw-template.js` și `build-sw.mjs` (service worker-ul scris de mână; după `vite build`, `build-sw.mjs` pune în el lista fișierelor din
@@ -110,6 +111,6 @@ Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
   Cifrele de la „Test de viteză” cu tema nouă nu le-a spus încă.
 - **Faza 2, în cod (18.11.2026):** pauza (buton, Escape, automată la ieșirea din pagină), salvarea partidei în telefon și „Continuă partida”,
   ecranul aprins cât se joacă, instalarea pe ecranul de pornire (manifest, pictograme) și jocul fără internet (service worker generat la build).
-  `npm run check` (131 de teste) și `npm run smoke` (19 verificări) trec. Pe telefonul lui Andrei nu a fost încercată încă.
+  `npm run check` (143 de teste) și `npm run smoke` (20 de verificări) trec, după valul de reparații al recenziei finale. Pe telefonul lui Andrei nu a fost încercată încă.
 - **Nefăcut încă:** eticheta `hex-td-v0.0.1` — a lui Andrei; proba fazei 2 pe telefonul lui (instalarea, jocul fără internet, pauza și reluarea).
 - **Urmează:** planul 3 (plasa pentru dificultate și reechilibrarea).

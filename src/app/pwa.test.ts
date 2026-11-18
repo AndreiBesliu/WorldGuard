@@ -25,10 +25,19 @@ it('pagina trimite la manifest și la pictogramă', () => {
   const html = read('index.html').toString('utf8')
   expect(html).toContain('rel="manifest" href="./manifest.webmanifest"')
   expect(html).toContain('name="theme-color"')
+  expect(html).toContain('rel="icon" href="./icons/icon-192.png"')
+})
+it('culoarea de margine e aceeași în pagină, în manifest și în stiluri', () => {
+  const meta = /name="theme-color" content="(#[0-9a-f]{6})"/.exec(read('index.html').toString('utf8'))?.[1]
+  const m = JSON.parse(read('public/manifest.webmanifest').toString('utf8'))
+  const edge = /--edge:\s*(#[0-9a-f]{6})/.exec(read('src/ui/ui.css').toString('utf8'))?.[1]
+  expect(edge).toMatch(/^#[0-9a-f]{6}$/)
+  expect([meta, m.theme_color, m.background_color]).toEqual([edge, edge, edge])
 })
 it('service worker-ul nu sare peste așteptare și are locurile de umplut la build', () => {
   const t = read('scripts/sw-template.js').toString('utf8')
   expect(t).not.toMatch(/skipWaiting/)
   expect(t).toContain('__VERSION__'); expect(t).toContain('__FILES__')
   expect(t).toContain('ignoreVary: true')
+  expect(t).toContain("cache: 'reload'")
 })

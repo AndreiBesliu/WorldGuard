@@ -2,6 +2,7 @@
 import type { OverInfo } from '../app/session'
 import { clock } from './format'
 import { STR } from './strings'
+import { onTap } from './tap'
 
 function el<T extends HTMLElement>(doc: Document, id: string): T {
   const e = doc.getElementById(id)
@@ -20,7 +21,7 @@ export function createCards(doc: Document, on: {
   const startVeil = el(doc, 'startVeil'), pauseVeil = el(doc, 'pauseVeil'), overVeil = el(doc, 'overVeil')
   const startBtn = el(doc, 'start'), continueBtn = el(doc, 'continue'), againBtn = el(doc, 'again')
   const pauseBtn = el(doc, 'pause'), resumeBtn = el(doc, 'resume')
-  const bind = (b: HTMLElement, f: () => void): void => b.addEventListener('click', () => f())
+  const bind = (b: HTMLElement, f: () => void): void => onTap(b, f)   // primul deget, al doilea, mausul și tastatura
   bind(startBtn, on.start)
   bind(continueBtn, on.continue)
   bind(el(doc, 'stress'), on.stress)
@@ -30,10 +31,12 @@ export function createCards(doc: Document, on: {
   bind(el(doc, 'fresh'), on.fresh)
 
   // Fără niciun cartonaș, partida e în curs: atunci, și doar atunci, butonul de pauză e la vedere.
+  // Ascuns, rămâne în așezare (invizibil, de neatins, scos din ordinea de tabulare): banda nu-și schimbă înălțimea, iar canvasul nu e realocat.
+  const pauseOn = (yes: boolean): void => { pauseBtn.classList.toggle('off', !yes); pauseBtn.tabIndex = yes ? 0 : -1 }
   const veils = (): void => { startVeil.hidden = true; pauseVeil.hidden = true; overVeil.hidden = true }
   const show = (veil: HTMLElement, focus: HTMLElement): void => {
     veils()
-    pauseBtn.hidden = true
+    pauseOn(false)
     veil.hidden = false
     focus.focus({ preventScroll: true })
   }
@@ -59,7 +62,7 @@ export function createCards(doc: Document, on: {
     },
     hide() {
       veils()
-      pauseBtn.hidden = false
+      pauseOn(true)
     },
   }
 }

@@ -37,6 +37,9 @@ it('pauza salvează o singură dată starea de acum și oprește simularea', () 
 it('pauza nu există pe cartonașul de start și nici după final', () => {
   const { d } = deps(); const x = createSession(d, 5)
   expect([x.pause(), x.unpause()]).toEqual([false, false])
+  x.start(7, false); x.s.core.hp = 0
+  expect(x.advance(1, still)).not.toBeNull(); expect(x.phase).toBe('over')
+  expect([x.pause(), x.unpause()]).toEqual([false, false]); expect(x.phase).toBe('over')
 })
 it('dacă salvarea aruncă, pauza tot are loc', () => {
   const { d } = deps(); d.saveGame = () => { throw new Error('plin') }

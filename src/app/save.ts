@@ -25,10 +25,21 @@ export function unpackSave(text: string | null | undefined): Result<GameState> {
   const state = o.state
   if (state.mode !== 'playing') return fail('partidă terminată')
   const ref = createGame(0) as unknown as Record<string, unknown>
-  const keys = (r: Record<string, unknown>): string => Object.keys(r).sort().join()
   const len = (r: Record<string, unknown>, k: string): number => (Array.isArray(r[k]) ? (r[k] as unknown[]).length : -1)
-  if (keys(state) !== keys(ref) || len(state, 'nodes') !== len(ref, 'nodes') || len(state, 'pads') !== len(ref, 'pads') || hasNull(state)) {
+  if (!sameKeys(state, ref) || len(state, 'nodes') !== len(ref, 'nodes') || len(state, 'pads') !== len(ref, 'pads') || hasNull(state)) {
     return fail('altă formă')
   }
+  // Un nivel mai jos: nava, planeta, fiecare cerc (cu ce s-a plătit în el) și fiecare nod au cheile din partida nouă.
+  const refPad = (ref.pads as Record<string, unknown>[])[0], refNode = (ref.nodes as Record<string, unknown>[])[0]
+  const inner = sameKeys(state.hero, ref.hero) && sameKeys(state.core, ref.core) &&
+    (state.pads as unknown[]).every((p) => sameKeys(p, refPad) && sameKeys((p as Record<string, unknown>).paid, refPad?.paid)) &&
+    (state.nodes as unknown[]).every((n) => sameKeys(n, refNode))
+  if (!inner) return fail('altă formă')
   return ok(state as unknown as GameState)
+}
+
+/** Amândouă sunt obiecte (nu liste) cu exact aceleași chei. */
+function sameKeys(a: unknown, b: unknown): boolean {
+  const keys = (r: Record<string, unknown>): string => Object.keys(r).sort().join()
+  return isObject(a) && isObject(b) && keys(a) === keys(b)
 }

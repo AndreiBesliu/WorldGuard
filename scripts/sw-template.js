@@ -4,7 +4,8 @@ const CACHE = 'wg-__VERSION__'
 const FILES = __FILES__
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)))
+  // `reload` ocolește cache-ul HTTP: altfel o instalare făcută la scurt timp după alta ar putea pune aici pagina veche, care cere fișiere ce nu mai există.
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES.map((u) => new Request(u, { cache: 'reload' })))))
 })
 self.addEventListener('activate', (e) => {
   e.waitUntil(

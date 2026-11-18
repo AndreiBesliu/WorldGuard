@@ -38,6 +38,12 @@ it('partida salvată se citește la fel', () => {
   saveGame(s, st)
   expect(loadGame(st)).toEqual(s)
 })
+it('citirea lasă pe loc o salvare bună: citită de două ori, dă aceeași partidă', () => {
+  const st = mem(); const s = createGame(3); for (let i = 0; i < 600; i++) step(s, { x: 1, y: 0 })
+  saveGame(s, st); const raw = st.getItem(SAVE_KEY)
+  expect([loadGame(st), loadGame(st)]).toEqual([s, s])
+  expect(st.getItem(SAVE_KEY)).toBe(raw)
+})
 it('fără salvare, fără stocare sau cu stocare care aruncă: nicio partidă și nicio eroare', () => {
   const s = createGame(3)
   expect(loadGame(mem())).toBeNull(); expect(loadGame(null)).toBeNull(); expect(loadGame(broken)).toBeNull()

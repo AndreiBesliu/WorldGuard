@@ -4,7 +4,7 @@
 // (8) „Încă o partidă”, (9) testul de viteză, apoi pauza și reluarea: (10) butonul și cartonașul de pauză, (11) „Continuă”,
 // (12) pauza la pagina ascunsă, (13) „Continuă partida” după reîncărcare, (14) „Partidă nouă” din pauză,
 // (15) finalul șterge salvarea, (16) testul de viteză nu salvează, apoi instalarea și jocul fără internet: (17) manifestul și pictogramele,
-// (18) service worker-ul și cache-ul, (19) pornirea fără rețea.
+// (18) service worker-ul și cache-ul, (19) pornirea fără rețea, apoi (20) pauza și „Continuă” atinse cu al doilea deget, cât primul ține joystickul.
 // Fiecare rulare pornește un browser cu un context nou, deci fără cache sau service worker rămase de la o rulare anterioară.
 // Nu face parte din `npm run check`: are nevoie de un Playwright instalat pe mașină.
 // Merge doar pe Linux și macOS: oprește serverul prin grupul lui de procese (`process.kill(-pid)`), pe care Windows nu îl are.
@@ -347,6 +347,35 @@ async function main() {
       page.off('response', onResponse)
       await context.setOffline(false)
     }
+
+    // 20. al doilea deget: cât primul ține joystickul pe canvas, al doilea atinge pauza, apoi „Continuă” (browserul nu dă `click` pentru el)
+    await page.evaluate(() => { if (window.__wg.phase() !== 'playing') document.getElementById('start').click() })
+    await page.waitForTimeout(200)
+    const fingers = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts })
+    const middle = async (sel) => { const b = await page.locator(sel).boundingBox(); return b ? { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2) } : { x: 0, y: 0 } }
+    const stick = { x: 140, y: 600, id: 1 }
+    await fingers('touchStart', [{ ...stick, x: 200 }])
+    await fingers('touchMove', [stick])
+    const x20a = await heroX()
+    await sleep(300)
+    const x20b = await heroX()
+    const p20 = await middle('#pause')
+    await fingers('touchStart', [stick, { ...p20, id: 2 }])
+    await sleep(60)
+    await fingers('touchEnd', [{ ...p20, id: 2 }])   // se ridică doar al doilea deget
+    await page.waitForTimeout(300)
+    const phase20a = await page.evaluate(() => window.__wg.phase())
+    const card20 = await visible('#pauseVeil')
+    const r20 = await middle('#resume')
+    await fingers('touchStart', [stick, { ...r20, id: 3 }])
+    await sleep(60)
+    await fingers('touchEnd', [{ ...r20, id: 3 }])
+    await page.waitForTimeout(300)
+    const phase20b = await page.evaluate(() => window.__wg.phase())
+    await fingers('touchEnd', [])
+    check(20, 'cât un deget ține joystickul, al doilea atinge pauza (faza „paused”, cartonașul pe ecran), apoi „Continuă” (faza „playing”)',
+      x20a - x20b > 5 && phase20a === 'paused' && card20 && phase20b === 'playing',
+      `nava ${x20a.toFixed(1)} → ${x20b.toFixed(1)}, după pauză: fază ${phase20a}, cartonaș ${card20}; după „Continuă”: fază ${phase20b}`)
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))

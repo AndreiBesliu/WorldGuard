@@ -590,7 +590,7 @@ const CACHE = 'wg-__VERSION__'
 const FILES = __FILES__
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)))
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES.map((u) => new Request(u, { cache: 'reload' })))))
 })
 self.addEventListener('activate', (e) => {
   e.waitUntil(
@@ -613,7 +613,7 @@ self.addEventListener('fetch', (e) => {
 
 `scripts/build-sw.mjs` rulează după `vite build`: adună toate fișierele din `dist` în afară de `sw.js`, ca adrese relative (`'./'` pentru `index.html`, apoi `'./assets/…'`, `'./icons/…'`, `'./manifest.webmanifest'`), calculează versiunea din primele 12 caractere ale unui SHA-256 peste numele și conținutul lor, și scrie `dist/sw.js` din șablon. Tipărește câte fișiere a pus și versiunea.
 
-`src/app/sw.ts` cheamă `register('./sw.js')` și înghite refuzul. `src/main.ts` îl cheamă cu `__WG_SW__ && import.meta.env.PROD`. `vite.config.ts` definește `__WG_SW__` ca `true`, iar `vite.single.config.ts` ca `false`: pagina privată nu are service worker.
+`src/app/sw.ts` cheamă `register('./sw.js')` și înghite refuzul. `src/main.ts` îl cheamă cu `if (__WG_SW__) registerServiceWorker(navigator, import.meta.env.PROD)`. `vite.config.ts` definește `__WG_SW__` ca `true`, iar `vite.single.config.ts` ca `false`: pagina privată nu are service worker.
 
 `scripts/single-file.mjs` scoate din fragment legăturile spre manifest și spre pictogramă, care nu au rost în pagina privată; verificarea lui de referințe rămase trebuie să treacă în continuare.
 

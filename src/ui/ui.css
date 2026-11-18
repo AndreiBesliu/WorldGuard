@@ -77,6 +77,7 @@ body {
   pointer-events: auto; touch-action: manipulation;
 }
 .pause::before, .pause::after { content: ''; width: 4px; height: 16px; border-radius: 1px; background: var(--ink); }
+.pause.off { visibility: hidden; pointer-events: none; }   /* cât e un cartonaș pe ecran: locul rămâne, ca banda să nu-și schimbe înălțimea */
 .pause:active { transform: translateY(1px); }
 .pause:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .core { grid-column: 1 / 4; grid-row: 2; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }

@@ -24,7 +24,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # `check` se încheie cu `vite build`, deci `dist` există după el
+      # `check` se încheie cu `npm run bundle` (`vite build`, apoi `dist/sw.js`), deci `dist` e întreg după el
       - run: npm run check
       - uses: actions/upload-pages-artifact@v5
         with:

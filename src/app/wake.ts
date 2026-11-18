@@ -8,7 +8,7 @@ export function createWake(nav: WakeNav): { on(): void; off(): void } {
   let pending = false                     // o cerere a plecat și n-a primit încă răspuns
   let lock: WakeLock | null = null
 
-  const let_go = (l: WakeLock): void => { l.release().catch(() => {}) }
+  const letGo = (l: WakeLock): void => { l.release().catch(() => {}) }
 
   return {
     on() {
@@ -18,7 +18,7 @@ export function createWake(nav: WakeNav): { on(): void; off(): void } {
       let req: Promise<WakeLock>
       try { req = nav.wakeLock.request('screen') } catch { pending = false; return }
       req.then(
-        (l) => { pending = false; if (wanted) lock = l; else let_go(l) },   // oprit între timp: blocarea se lasă imediat
+        (l) => { pending = false; if (wanted) lock = l; else letGo(l) },    // oprit între timp: blocarea se lasă imediat
         () => { pending = false },                                           // refuzat: fără ecran aprins, fără eroare
       )
     },
@@ -27,7 +27,7 @@ export function createWake(nav: WakeNav): { on(): void; off(): void } {
       if (lock === null) return
       const l = lock
       lock = null
-      let_go(l)
+      letGo(l)
     },
   }
 }

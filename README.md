@@ -13,14 +13,15 @@ proba lui pe telefon, apoi planul 3 (plasa pentru dificultate și reechilibrarea
 npm install
 npm run dev      # http://localhost:5180
 npm run check    # typecheck + teste + build cu service worker (poarta înainte de commit; CI rulează același lucru)
-npm run smoke    # proba în browser (Playwright, 19 verificări); nu face parte din `check`
+npm run smoke    # proba în browser (Playwright, 20 de verificări); nu face parte din `check`
 npm run single   # dist-single/world-guard.html: tot jocul într-un singur fișier, fără nicio referință în afară
 npm run icons    # desenează din nou pictogramele PNG din public/icons/icon.svg (doar când se schimbă desenul)
 ```
 
 **Instalare pe telefon:** deschide jocul în Chrome, apoi din meniul cu trei puncte alege „Adaugă pe ecranul de pornire”
 (sau „Instalează aplicația”). Jocul pornește apoi pe tot ecranul, cu pictograma lui. După prima deschidere merge și fără
-internet. O versiune nouă se descarcă în fundal și apare la următoarea pornire a jocului, niciodată în mijlocul unei partide.
+internet. O versiune nouă se descarcă în fundal și apare după ce jocul e închis de tot și deschis din nou, niciodată în mijlocul
+unei partide; o reîncărcare a paginii în aceeași filă o păstrează pe cea veche.
 
 **Pauză și reluare:** butonul din bandă (sau Escape) pune pauză; jocul pune singur pauză când ieși din el. Partida pusă pe
 pauză rămâne în telefon: la următoarea deschidere, „Continuă partida” o reia de unde a rămas. Cât se joacă, ecranul rămâne aprins.
@@ -30,7 +31,7 @@ pauză rămâne în telefon: la următoarea deschidere, „Continuă partida” 
 navele dușmane din apropiere și plătește stând pe cercurile punctate de pe hartă. Partida se termină când cade planeta; scorul e timpul rezistat, iar recordul rămâne în telefon.
 
 **Test de viteză:** butonul de pe cartonașul de start pornește o partidă cu 150 de nave dușmane mereu pe hartă și
-planeta și nava mereu întregi (fără nave noi în afara celor 150), și arată în bandă câte cadre pe secundă desenează telefonul, plus cea mai mică valoare de la pornire (`min`). Nu atinge recordul. Din test se iese doar reîncărcând pagina.
+planeta și nava mereu întregi (fără nave noi în afara celor 150), și arată în bandă câte cadre pe secundă desenează telefonul, plus cea mai mică valoare de la pornire (`min`). Nu atinge recordul și nu salvează nimic. Din test se iese cu pauză, apoi „Partidă nouă” (sau reîncărcând pagina).
 
 **Semne în adresă:** `?seed=7` fixează sămânța (aceeași partidă la fiecare pornire); `?debug=1` pune în fereastră
 `window.__wg` (starea jocului, faza cu `phase()`, `run(secunde)` și `drawMs(cadre)`, timpul mediu de desen pe cadru în ms), folosit de proba din browser;

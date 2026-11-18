@@ -77,7 +77,7 @@ function stopped(): void {
 
 function begin(seed: number, stress: boolean): void {
   session.start(seed, stress)
-  saved = null                                  // o partidă nouă o înlocuiește pe cea salvată (sesiunea o șterge și din stocare)
+  saved = null                                  // „Continuă partida” nu mai e de oferit; din stocare sesiunea o șterge doar la o partidă obișnuită, nu și în testul de viteză
   fps = null; fpsFrames = 0; fpsTime = 0
   playing()
 }
