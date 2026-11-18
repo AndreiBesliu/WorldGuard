@@ -232,3 +232,8 @@ Proba din browser, verificarea 7: limita de timp corectată la 0:50–2:10, fiin
 - `src/app/storage.ts`: `SAVE_KEY = 'wg.v1.save'`, `saveGame`, `loadGame`, `clearGame`; toate prind orice eroare de stocare. `loadGame` șterge o salvare respinsă de `unpackSave` (stricată, altă versiune, altă formă). `Store` capătă `removeItem`.
 - `saveIfRecord`: un `secs` care nu e finit nu atinge nimic și întoarce recordul vechi cu `isNew: false`. Cheia recordului și comportamentul pentru numere obișnuite sunt neschimbate.
 - `main.ts` nu e atins; legarea în pagină e Task 4.
+
+**Task 3 — Sesiunea și ecranul aprins.**
+- `src/app/session.ts`: stările `ready | playing | paused | over` fără DOM, cu `start`, `resume`, `pause`, `unpause`, `advance`. Salvarea, ștergerea și recordul vin prin `SessionDeps`. Partida nouă cheamă `clearGame`; pauza cheamă `saveGame` (o eroare nu oprește pauza); finalul cheamă `clearGame` și `saveIfRecord`. Testul de viteză nu atinge nimic și își ține harta la `STRESS_FOES`. `STRESS_FOES` e acum și în `session.ts`, și în `main.ts`; Task 4 îl scoate din `main.ts`.
+- `src/app/wake.ts`: `createWake(nav)` cu `on`/`off`; cere o singură dată, lasă la oprire (și când răspunsul sosește după oprire), un refuz sau lipsa sprijinului nu aruncă.
+- `main.ts` neschimbat. 124 de teste trec (12 noi).
