@@ -138,3 +138,12 @@ Proba din browser, verificarea 7: limita de timp corectată la 0:50–2:10, fiin
 - [ ] planul 2: pauză, instalare pe telefon și joc fără internet, reluarea unei partide întrerupte;
 - [ ] planul 3: plasa pentru dificultate și reechilibrarea (investiția doar în erou ține azi la fel de mult ca a construi);
 - [ ] jocul e puțin mai aspru decât prototipul, fiindcă dușmanii ajunși la zid lovesc mereu; de văzut la verificarea pe telefon dacă viața castelului trebuie mărită.
+
+## 18.11.2026 — Tema de spațiu
+
+**Cerut:** jocul își schimbă tema din castel în spațiu și numele din cod, fără nicio schimbare de reguli (designul: `docs/superpowers/specs/2026-11-17-tema-spatiu-design.md`).
+
+**Task 1, plasa de dinainte** (pe codul de azi, fără nicio redenumire):
+- `src/sim/golden.test.ts`: o partidă de probă (sămânța 7, 200 s de joc, cu construit, strâns, doborârea eroului și reparat) cu 10 rânduri de cifre măsurate; după redenumire trebuie să iasă aceleași. E schelă și se șterge în Task 5.
+- `window.__wg.drawMs(frames)` (doar cu `?debug=1`): media, în ms pe cadru, a unor cadre desenate unul după altul, cu citirea unui pixel după fiecare ca desenul să fie dus la capăt. `npm run smoke` tipărește `SMOKE INFO: desen cu 150 de dușmani` (mediana a cinci serii de 200 de cadre); nu e verificare, deci rămân 9.
+- **Timpul de desen dinainte:** 5,70 / 5,76 / 5,61 ms pe cadru în trei rulări de `npm run smoke`; cea din mijloc, 5,70 ms, e valoarea de comparat. Mașina: Linux `6.18.44-fc-v595` (`uname -r`), Chromium fără ecran din Playwright.

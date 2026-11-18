@@ -36,7 +36,7 @@ for (const el of document.querySelectorAll<HTMLElement>('[data-str]')) el.textCo
 for (const el of document.querySelectorAll<HTMLElement>('[data-str-aria]')) el.setAttribute('aria-label', text(el.dataset.strAria))
 
 declare global {
-  interface Window { __wg?: { state(): GameState; run(seconds: number): void } }
+  interface Window { __wg?: { state(): GameState; run(seconds: number): void; drawMs(frames: number): number } }
 }
 
 const canvas = document.getElementById('field') as HTMLCanvasElement
@@ -83,6 +83,16 @@ if (flags.debug) {
   window.__wg = {
     state: () => s,
     run(seconds) { for (let i = 0, n = Math.round(seconds / DT); i < n; i++) step(s, still) },
+    // Media, în ms pe cadru, a `frames` cadre desenate unul după altul din starea de acum.
+    drawMs(frames) {
+      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+      const t0 = performance.now()
+      for (let i = 0; i < frames; i++) {
+        renderer.frame(s, still, null, 0)
+        ctx.getImageData(0, 0, 1, 1)            // citirea unui pixel obligă desenul să fie dus la capăt
+      }
+      return (performance.now() - t0) / frames
+    },
   }
 }
 // După ce pagina a stat ascunsă, primul cadru nu trebuie să sară.
