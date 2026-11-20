@@ -61,19 +61,29 @@ export function makeOffer(s: GameState, pool: readonly ModId[] = BALANCE.hero.of
 }
 
 /**
+ * Oferta se potrivește cu nava de acum: un modul nou pe care nava nu-l are și pentru care are loc,
+ * ori o întărire exact la treapta de acum plus unu. Singurul loc al regulii: o folosesc `choose` și citirea unei salvări.
+ */
+export function offerFits(s: GameState, o: Offer): Result<Offer> {
+  const m = modOf(s, o.id), now = m?.tier ?? 0
+  if (o.tier === 1 && m) return fail('modul deja pe navă')
+  if (o.tier === 1 && s.hero.mods.length >= slotsAt(s.hero.lvl)) return fail('niciun loc liber')
+  if (o.tier !== now + 1 || o.tier > MAX_TIER) return fail('treaptă nepotrivită')
+  return ok(o)
+}
+
+/**
  * Alege oferta cu indexul dat: pune modulul nou sau îi urcă treapta, apoi închide oferta.
- * Refuză, fără să atingă starea, o ofertă care nu se potrivește cu nava (ar putea veni dintr-o salvare stricată):
- * un modul nou pe care nava îl are deja sau pentru care nu are loc, ori o întărire care nu e exact treapta de acum plus unu.
+ * Refuză, fără să atingă starea, o ofertă care nu se potrivește cu nava (`offerFits`; ar putea veni dintr-o salvare stricată).
  * Blindajul ales adaugă și la viața de acum diferența de viață maximă.
  */
 export function choose(s: GameState, index: number): Result<Offer> {
   if (s.offer === null) return fail('nicio ofertă deschisă')
   const o = Number.isInteger(index) ? s.offer[index] : undefined
   if (!o) return fail('ofertă inexistentă')
+  const fits = offerFits(s, o)
+  if (!fits.ok) return fits
   const m = modOf(s, o.id), now = m?.tier ?? 0
-  if (o.tier === 1 && m) return fail('modul deja pe navă')
-  if (o.tier === 1 && s.hero.mods.length >= slotsAt(s.hero.lvl)) return fail('niciun loc liber')
-  if (o.tier !== now + 1 || o.tier > MAX_TIER) return fail('treaptă nepotrivită')
   if (m) m.tier = o.tier
   else s.hero.mods.push({ id: o.id, tier: 1, t: 0 })
   if (o.id === 'armor' && !s.hero.dead) {

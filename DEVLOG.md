@@ -580,3 +580,13 @@ Fără turele    236 s          170 s  288 s  —                  fără limit�
 - **Magnetul pus la loc, la 40 / 60 / 80 px.** Cu celelalte cifre alese, „Amestec” cu lista „utilitarele întâi” ține 268,6 s cu 40 / 60 / 80 și 266,5 s cu 50 / 75 / 100: niciun câștig. Testul Magnetului și `docs/GDD.md` sunt aduse înapoi. Tabelul nu se schimbă (66 / 306 / 199 (65,0%) / 219 (71,6%) / 278 / 235 s).
 - Proba `prefer` cu cifrele finale: armele întâi 303,7 s, corpul întâi 250,5 s (+21,2%), utilitarele întâi 268,6 s (+13,1%).
 - `npm run check`: 312 teste trec.
+
+**Task 4 — Panoul de alegere.**
+- La un nivel plătit, jocul stă și apare panoul pe mijlocul ecranului (`src/ui/choice.ts`, `#choiceVeil` în `index.html`): „Nivel n”, „Alege un modul”, locurile navei ca pătrate mici (ocupate în culoarea felului, libere punctate, lacăt la următorul care se deschide) și ofertele ca rânduri late, una sub alta: pictogramă, nume, „Armă · Nou” sau „Corp · Întărire”, cel mult două rânduri de text și trei puncte până la treapta la care ajunge. Dedesubt: „Jocul stă pe loc cât alegi.”. Culoarea felului: arma `--hero`, corpul `--shield`, utilitarul `--metal`. Pictogramele sunt cele din machetă, ca `<symbol>` în `index.html`.
+- Fundalul (canvasul și banda de sus) se vede încețoșat și întunecat: `backdrop-filter: blur(5px)` (și cu `-webkit-`) pe văl, peste un văl de 50%. Unde browserul nu are încețoșarea, vălul e de 78%: terenul se vede doar întunecat.
+- Rândurile sunt butoane legate cu `onTap` și sunt făcute din nou la fiecare deschidere: o atingere începută înainte de panou (pe canvas, cu joystickul) nu are cum să aleagă. Tastele 1, 2, 3 aleg; focusul merge pe primul rând. Escape nu închide panoul; butonul de pauză e ascuns cât e deschis; joystickul e lăsat.
+- Alegerea automată trecătoare din Task 2 a dispărut. `session.choose(i)` întoarce `false` fără partidă în curs, fără ofertă, cu un index greșit sau când simularea refuză oferta; panoul rămâne atunci deschis. În testul de viteză, experiența rămâne 0.
+- Regula „oferta se potrivește cu nava” stă acum într-un singur loc, `offerFits` (`src/sim/mods.ts`), folosit de `choose` și de citirea salvării: o salvare cu o ofertă pe care `choose` ar refuza-o e respinsă cu „altă formă”, altfel partida ar sta pe loc pentru totdeauna.
+- Pagina ascunsă cu panoul deschis: pauza salvează partida cu oferta; „Continuă” și „Continuă partida” după reîncărcare duc la același panou.
+- Proba din browser are patru verificări noi (21–24) și captura `08-alegere.png`.
+- `npm run check`: 326 de teste trec (312 înainte). `npm run smoke`: „SMOKE OK (24 verificări)”.

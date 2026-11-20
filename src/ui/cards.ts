@@ -17,6 +17,7 @@ export function createCards(doc: Document, on: {
   showPause(secs: number): void
   showOver(r: OverInfo): void
   hide(): void
+  hold(): void
 } {
   const startVeil = el(doc, 'startVeil'), pauseVeil = el(doc, 'pauseVeil'), overVeil = el(doc, 'overVeil')
   const startBtn = el(doc, 'start'), continueBtn = el(doc, 'continue'), againBtn = el(doc, 'again')
@@ -30,7 +31,7 @@ export function createCards(doc: Document, on: {
   bind(resumeBtn, on.resume)
   bind(el(doc, 'fresh'), on.fresh)
 
-  // Fără niciun cartonaș, partida e în curs: atunci, și doar atunci, butonul de pauză e la vedere.
+  // Fără niciun cartonaș și fără panoul de alegere, partida e în curs: atunci, și doar atunci, butonul de pauză e la vedere.
   // Ascuns, rămâne în așezare (invizibil, de neatins, scos din ordinea de tabulare): banda nu-și schimbă înălțimea, iar canvasul nu e realocat.
   const pauseOn = (yes: boolean): void => { pauseBtn.classList.toggle('off', !yes); pauseBtn.tabIndex = yes ? 0 : -1 }
   const veils = (): void => { startVeil.hidden = true; pauseVeil.hidden = true; overVeil.hidden = true }
@@ -63,6 +64,11 @@ export function createCards(doc: Document, on: {
     hide() {
       veils()
       pauseOn(true)
+    },
+    // Niciun cartonaș, dar nici butonul de pauză: e pe ecran panoul de alegere, care nu se închide decât alegând.
+    hold() {
+      veils()
+      pauseOn(false)
     },
   }
 }

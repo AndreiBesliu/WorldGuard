@@ -1,5 +1,6 @@
 // Salvarea partidei: starea trecută prin JSON, cu versiune, verificată la citire. Nu atinge stocarea (asta e în alt modul).
 import { MAX_TIER, MOD_IDS } from '../data/modules'
+import { offerFits } from '../sim/mods'
 import { fail, ok, type Result } from '../sim/result'
 import { createGame, type GameState } from '../sim/state'
 
@@ -38,7 +39,10 @@ export function unpackSave(text: string | null | undefined): Result<GameState> {
     (state.pads as unknown[]).every((p) => sameKeys(p, refPad) && sameKeys((p as Record<string, unknown>).paid, refPad?.paid)) &&
     (state.nodes as unknown[]).every((n) => sameKeys(n, refNode)) && goodMods((state.hero as Record<string, unknown>).mods)
   if (!inner) return fail('altă formă')
-  return ok(state as unknown as GameState)
+  // O ofertă pe care `choose` ar refuza-o ar ține partida pe loc pentru totdeauna: panoul n-ar avea ce alege.
+  const game = state as unknown as GameState
+  if (game.offer !== null && !game.offer.every((e) => offerFits(game, e).ok)) return fail('altă formă')
+  return ok(game)
 }
 
 /** `null`, sau o listă nevidă de oferte cu exact cheile `id` (un modul cunoscut) și `tier` (întreg de la 1 la treapta maximă). */

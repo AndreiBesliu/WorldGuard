@@ -64,13 +64,14 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   se calculează din timpul partidei și din stare; nu scriu nimic în stare.
 - `src/input/` — comenzile: `joystick.ts` (logica joystickului, fără DOM, testată), `bind.ts` (singurul cu DOM: pointer și taste).
 - `src/ui/` — textele (în română, într-un singur modul `strings.ts`, fixate de `strings.test.ts`), banda de sus (`hud.ts`),
-  cartonașele de start (cu „Continuă partida”), de pauză și de final (`cards.ts`), apăsarea butoanelor (`tap.ts`: la atingere, la ridicarea
+  cartonașele de start (cu „Continuă partida”), de pauză și de final (`cards.ts`), panoul de alegere de la un nivel nou al navei
+  (`choice.ts`: `choiceView` fără DOM, `createChoice` în pagină; pictogramele modulelor sunt `<symbol>` în `index.html`), apăsarea butoanelor (`tap.ts`: la atingere, la ridicarea
   degetului deasupra butonului, și pentru al doilea deget; cu mausul și tastatura, la `click`; o singură pornire pe gest), formatul ceasului (`format.ts`) și stilurile (`ui.css`; variabilele de culoare au nume pe roluri,
   fontul titlului e Exo 2).
 - `src/main.ts` — legătura dintre ele: nu ține stări, le ia din sesiune; pauza (buton, Escape, pagina ascunsă), bucla de cadre,
   ecranul aprins, înregistrarea service worker-ului (doar în build, cu `__WG_SW__`). Cu `?debug=1`, `window.__wg` are `state()`,
   `phase()`, `run(secunde)` și `drawMs(cadre)`.
-- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 20 de verificări, capturi în `smoke-out/`, plus un rând `SMOKE INFO` cu timpul de
+- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 24 de verificări, capturi în `smoke-out/`, plus un rând `SMOKE INFO` cu timpul de
   desen pe cadru cu cele 150 de nave dușmane ale testului de viteză așezate în jurul planetei, ca să fie în vedere, din `window.__wg.drawMs`;
   merge doar pe Linux și macOS), `single-file.mjs` (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`),
   `sw-template.js` și `build-sw.mjs` (service worker-ul scris de mână; după `vite build`, `build-sw.mjs` pune în el lista fișierelor din

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { MOD_IDS } from '../data/modules'
 import { STR } from './strings'
 
 describe('textele temei de spațiu', () => {
@@ -25,6 +26,21 @@ describe('textele temei de spațiu', () => {
     expect([STR.pause, STR.pauseTitle, STR.pauseSoFar]).toEqual(['Pauză', 'Pauză', 'Ai rezistat până acum'])
     expect([STR.resume, STR.fresh]).toEqual(['Continuă', 'Partidă nouă'])
     expect(STR.continueSaved('2:47')).toBe('Continuă partida · 2:47')
+  })
+  it('panoul de alegere: fiecare modul are nume și rânduri scurte', () => {
+    expect(Object.keys(STR.mods).sort()).toEqual([...MOD_IDS].sort())
+    for (const id of MOD_IDS) {
+      const m = STR.mods[id]
+      expect(m.name.length).toBeGreaterThan(0)
+      expect(m.up.length).toBeGreaterThan(0)
+      expect(m.fresh.length).toBeLessThanOrEqual(2)
+      if (id !== 'wave') expect(m.fresh.length).toBeGreaterThan(0)   // Unda e pe navă de la început: nu se oferă ca nouă
+      for (const l of [...m.fresh, m.up, STR.tierLine(3)]) expect(l.length).toBeLessThanOrEqual(28)
+    }
+    expect(MOD_IDS.map((id) => STR.mods[id].name)).toEqual(['Undă', 'Laser', 'Rachete', 'Blindaj', 'Scut', 'Reparator', 'Motor', 'Magnet', 'Releu'])
+    expect(STR.kind).toEqual({ weapon: 'Armă', body: 'Corp', utility: 'Utilitar' })
+    expect([STR.offerNew, STR.offerUp, STR.chooseTitle, STR.chooseNote]).toEqual(['Nou', 'Întărire', 'Alege un modul', 'Jocul stă pe loc cât alegi.'])
+    expect([STR.levelN(4), STR.tierLine(2)]).toEqual(['Nivel 4', 'Treapta 2 din 3'])
   })
   it('niciun text nu mai pomenește tema veche', () => {
     const all = JSON.stringify(STR, (_k, v) => (typeof v === 'function' ? v('x', 1) : v)).toLowerCase()

@@ -15,6 +15,8 @@
   --bolt: #d8fbff;
   --ink: #f1f4ff; --ink-soft: #9fa9c9; --night: #060a1f;
   --panel: rgba(6, 10, 31, .86); --veil: rgba(6, 10, 31, .55);
+  --veil-blur: rgba(6, 10, 31, .5); --veil-deep: rgba(6, 10, 31, .78);   /* vălul panoului de alegere: peste încețoșare, și fără ea */
+  --card: rgba(241, 244, 255, .07);
   --track: rgba(241, 244, 255, .16); --line: rgba(241, 244, 255, .14);
   --font-display: "Exo 2", "Rubik", system-ui, sans-serif;
   --font-ui: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -130,4 +132,54 @@ body {
 .go.alt { color: var(--hero); background: transparent; border: 1px solid var(--hero); padding: 13px 17px; }
 .go:active { transform: translateY(1px); }
 .go:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* Panoul de alegere de la un nivel nou: jocul stă, fundalul (canvasul și banda) se vede încețoșat și întunecat.
+   Încețoșarea e a paginii (backdrop-filter), nu a canvasului. Unde browserul nu o are, vălul e doar mai întunecat. */
+.icons { position: absolute; width: 0; height: 0; overflow: hidden; }
+.ico { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.veil.choice { background: var(--veil-blur); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .veil.choice { background: var(--veil-deep); }
+}
+.pick { padding: 18px 16px 16px; gap: 12px; border-radius: 22px; }
+.pick-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 12px; padding-inline: 4px; }
+.pick-title { display: flex; flex-direction: column; gap: 3px; }
+.pick-level { font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+.pick h1 { font-size: 21px; }
+.slots { display: flex; gap: 5px; padding-bottom: 2px; }
+.slot {
+  box-sizing: border-box; width: 20px; height: 20px; border-radius: 6px; border: 1px solid var(--line); background: var(--card);
+  display: grid; place-items: center; color: var(--ink-soft);
+}
+.slot::after { content: ''; width: 8px; height: 8px; border-radius: 2px; background: currentColor; }   /* ocupat: felul, în culoarea lui */
+.slot-weapon { color: var(--hero); } .slot-body { color: var(--shield); } .slot-utility { color: var(--metal); }
+.slot-free { background: transparent; border: 1px dashed var(--ink-soft); }
+.slot-free::after, .slot-locked::after { content: none; }
+.slot-locked { opacity: .7; }
+.slot-locked svg { width: 12px; height: 12px; }
+.offers { display: flex; flex-direction: column; gap: 10px; }
+.offer {
+  display: grid; grid-template-columns: 52px 1fr; gap: 12px; align-items: center; width: 100%; box-sizing: border-box;
+  padding: 11px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card);
+  font: inherit; color: var(--ink); text-align: left; cursor: pointer; touch-action: manipulation;
+}
+.offer:active { transform: translateY(1px); }
+.offer:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }   /* mai subțire decât la cartonașe: să nu pară deja ales */
+.tone-weapon { --tone: var(--hero); } .tone-body { --tone: var(--shield); } .tone-utility { --tone: var(--metal); }
+.offer-icon { width: 52px; height: 52px; border-radius: 13px; background: var(--card); display: grid; place-items: center; color: var(--tone); }
+.offer-icon svg { width: 28px; height: 28px; }
+.offer-body {
+  min-width: 0; display: grid; grid-template-columns: 1fr auto; column-gap: 8px; row-gap: 3px; align-items: end;
+}
+.offer-head { grid-column: 1 / 3; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.offer-name { font-family: var(--font-display); font-weight: 800; font-size: 17px; line-height: 1.15; }
+.offer-tag { font-size: 9.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--tone); white-space: nowrap; }
+.offer-lines {
+  display: flex; flex-direction: column; font-size: 12.5px; line-height: 1.35; color: var(--ink-soft); min-width: 0;
+  min-height: 2.7em;                                   /* loc pentru două rânduri: cele trei oferte au aceeași înălțime */
+}
+.pips { display: flex; gap: 3px; padding-bottom: 3px; }
+.pip { width: 7px; height: 7px; border-radius: 50%; background: var(--track); }
+.pip.on { background: var(--tone); }
+.pick-note { margin: 0; text-align: center; font-size: 11.5px; color: var(--ink-soft); }
 @media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }

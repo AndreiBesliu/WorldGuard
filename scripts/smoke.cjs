@@ -4,7 +4,9 @@
 // (8) „Încă o partidă”, (9) testul de viteză, apoi pauza și reluarea: (10) butonul și cartonașul de pauză, (11) „Continuă”,
 // (12) pauza la pagina ascunsă, (13) „Continuă partida” după reîncărcare, (14) „Partidă nouă” din pauză,
 // (15) finalul șterge salvarea, (16) testul de viteză nu salvează, apoi instalarea și jocul fără internet: (17) manifestul și pictogramele,
-// (18) service worker-ul și cache-ul, (19) pornirea fără rețea, apoi (20) pauza și „Continuă” atinse cu al doilea deget, cât primul ține joystickul.
+// (18) service worker-ul și cache-ul, (19) pornirea fără rețea, apoi (20) pauza și „Continuă” atinse cu al doilea deget, cât primul ține joystickul,
+// și panoul de alegere: (21) apare după plata nivelului și jocul stă, (22) un rând atins alege, (23) pauza și reîncărcarea îl păstrează,
+// (24) tasta 1 alege, iar o atingere începută în afara unui rând nu alege nimic.
 // Fiecare rulare pornește un browser cu un context nou, deci fără cache sau service worker rămase de la o rulare anterioară.
 // Nu face parte din `npm run check`: are nevoie de un Playwright instalat pe mașină.
 // Merge doar pe Linux și macOS: oprește serverul prin grupul lui de procese (`process.kill(-pid)`), pe care Windows nu îl are.
@@ -376,6 +378,107 @@ async function main() {
     check(20, 'cât un deget ține joystickul, al doilea atinge pauza (faza „paused”, cartonașul pe ecran), apoi „Continuă” (faza „playing”)',
       x20a - x20b > 5 && phase20a === 'paused' && card20 && phase20b === 'playing',
       `nava ${x20a.toFixed(1)} → ${x20b.toFixed(1)}, după pauză: fază ${phase20a}, cartonaș ${card20}; după „Continuă”: fază ${phase20b}`)
+
+    // Panoul de alegere. Nivelul se pregătește prin starea jocului: nava vie pe cercul ei, experiență și resurse destule.
+    // Cât oferta e deschisă, starea stă pe loc, deci experiența pusă la 0 atunci nu schimbă nimic: doar oprește nivelul următor.
+    const tNow = () => page.evaluate(() => window.__wg.state().t)
+    const prepLevel = () => page.evaluate(() => {
+      const s = window.__wg.state(), p = s.pads.find((q) => q.kind === 'hero')
+      s.hero.dead = false; s.hero.x = p.x; s.hero.y = p.y
+      s.hero.xp = 1000; s.crystal = 500; s.metal = 500
+      p.dwell = 1                                   // plata pornește imediat
+    })
+    const waitOffer = async () => {
+      await page.waitForFunction(() => window.__wg.state().offer !== null, null, { timeout: 5000 })
+      await page.evaluate(() => { window.__wg.state().hero.xp = 0 })
+      await page.waitForSelector('#choiceVeil:not([hidden])', { timeout: 2000 }).catch(() => {})
+      await page.waitForTimeout(200)
+    }
+    const rowNames = () => page.locator('#choiceOffers .offer-name').allInnerTexts()
+
+    // 21. după plata nivelului: panoul cu trei rânduri, butonul de pauză ascuns, timpul partidei pe loc
+    await prepLevel()
+    await waitOffer()
+    await shot('08-alegere.png')
+    const panel21 = await visible('#choiceVeil')
+    const rows21 = await page.locator('#choiceOffers button').count()
+    const pause21 = await visible('#pause')
+    const t21a = await tNow()
+    await page.waitForTimeout(1000)
+    const t21b = await tNow()
+    const offer21 = await page.evaluate(() => window.__wg.state().offer)
+    check(21, 'după plata nivelului apare panoul cu trei rânduri, butonul de pauză nu se vede, iar timpul partidei stă o secundă',
+      panel21 && rows21 === 3 && !pause21 && t21a === t21b,
+      `panou ${panel21}, rânduri ${rows21}, pauză ${pause21}, t ${t21a.toFixed(3)} → ${t21b.toFixed(3)}`)
+    failFast(21)
+
+    // 22. atingerea celui de-al doilea rând: panoul se închide, partida merge, nava are modulul ales
+    const row2 = await middle('#choiceOffers button:nth-child(2)')
+    await fingers('touchStart', [{ ...row2, id: 4 }])
+    await sleep(60)
+    await fingers('touchEnd', [])
+    await page.waitForTimeout(300)
+    const panel22 = await visible('#choiceVeil')
+    const t22a = await tNow()
+    await page.waitForTimeout(500)
+    const t22b = await tNow()
+    const s22 = await page.evaluate(() => { const s = window.__wg.state(); return { offer: s.offer, mods: s.hero.mods.map((m) => [m.id, m.tier]) } })
+    const want22 = offer21?.[1]
+    const has22 = want22 !== undefined && s22.mods.some(([id, tier]) => id === want22.id && tier === want22.tier)
+    check(22, 'atingerea celui de-al doilea rând închide panoul, timpul partidei crește din nou, iar nava are modulul ales',
+      !panel22 && s22.offer === null && t22b > t22a && has22,
+      `panou ${panel22}, ofertă ${JSON.stringify(s22.offer)}, t ${t22a.toFixed(3)} → ${t22b.toFixed(3)}, ales ${JSON.stringify(want22)}, module ${JSON.stringify(s22.mods)}`)
+    failFast(22)
+
+    // 23. cu panoul deschis: pagina ascunsă duce la pauză, „Continuă” la panou; după reîncărcare, „Continuă partida” arată aceleași trei nume
+    await prepLevel()
+    await waitOffer()
+    const names23 = await rowNames()
+    await setVisibility('hidden')
+    await page.waitForTimeout(100)
+    await setVisibility('visible')
+    await page.waitForTimeout(300)
+    const paused23 = (await visible('#pauseVeil')) && !(await visible('#choiceVeil'))
+    const saved23 = JSON.parse((await saveRaw()) ?? 'null')
+    await page.click('#resume')
+    await page.waitForTimeout(300)
+    const back23 = (await visible('#choiceVeil')) && !(await visible('#pause')) && (await page.evaluate(() => window.__wg.phase())) === 'playing'
+    await load()
+    const cont23 = await visible('#continue')
+    if (cont23) await page.click('#continue')
+    await page.waitForTimeout(400)
+    const names23b = await rowNames()
+    const panel23 = await visible('#choiceVeil')
+    check(23, 'pagina ascunsă cu panoul deschis: pauză și salvare cu oferta; „Continuă” și, după reîncărcare, „Continuă partida” arată panoul cu aceleași trei nume',
+      paused23 && saved23?.state?.offer?.length === 3 && back23 && cont23 && panel23 && names23.length === 3 && names23.join() === names23b.join(),
+      `pauză ${paused23}, oferta salvată ${JSON.stringify(saved23?.state?.offer)}, după „Continuă” ${back23}, „Continuă partida” ${cont23}, panou ${panel23}, nume ${names23.join('/')} → ${names23b.join('/')}`)
+    failFast(23)
+
+    // 24. degetul pus pe canvas înainte de panou și ridicat deasupra unui rând nu alege nimic
+    const row1 = await middle('#choiceOffers button:nth-child(1)')
+    const r24 = await middle('#choiceOffers button:nth-child(2)')
+    await page.keyboard.press('1')                 // tasta 1 alege prima ofertă și închide panoul
+    await page.waitForTimeout(300)
+    const keyClosed = !(await visible('#choiceVeil')) && (await page.evaluate(() => window.__wg.state().offer)) === null
+    await fingers('touchStart', [{ ...row1, id: 5 }])   // pe canvas: joystickul pornește, fără mișcare
+    await prepLevel()
+    await waitOffer()
+    const before24 = await page.evaluate(() => { const s = window.__wg.state(); return JSON.stringify([s.offer, s.hero.mods]) })
+    const panel24a = await visible('#choiceVeil')
+    await fingers('touchEnd', [])                  // ridicat pe loc: deasupra primului rând
+    await page.waitForTimeout(300)
+    const head24 = await middle('#choiceTitle')     // și unul care pornește pe panou, în afara rândurilor, și se ridică pe al doilea
+    await fingers('touchStart', [{ ...head24, id: 6 }])
+    await sleep(60)
+    await fingers('touchMove', [{ ...r24, id: 6 }])
+    await sleep(60)
+    await fingers('touchEnd', [])
+    await page.waitForTimeout(300)
+    const after24 = await page.evaluate(() => { const s = window.__wg.state(); return JSON.stringify([s.offer, s.hero.mods]) })
+    const panel24 = await visible('#choiceVeil')
+    check(24, 'tasta 1 alege; apoi degetul pus pe canvas și ridicat deasupra unui rând după ce a apărut panoul nu alege nimic, nici cel tras de pe titlu pe un rând',
+      keyClosed && panel24a && panel24 && after24 === before24,
+      `tasta 1 ${keyClosed}, panou ${panel24a} → ${panel24}, oferta și modulele ${after24 === before24 ? 'neschimbate' : `schimbate: ${before24} → ${after24}`}`)
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))

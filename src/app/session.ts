@@ -3,7 +3,7 @@
 import { BALANCE } from '../data/balance'
 import { spawnFoe } from '../sim/foes'
 import { heroMaxHp } from '../sim/hero'
-import { choose } from '../sim/mods'
+import { choose as chooseOffer } from '../sim/mods'
 import { createGame, type GameState, type Input } from '../sim/state'
 import { step } from '../sim/step'
 
@@ -24,6 +24,8 @@ export interface Session {
   resume(saved: GameState): void
   pause(): boolean
   unpause(): boolean
+  /** Alege oferta deschisă cu indexul dat; false fără partidă în curs, fără ofertă, cu un index greșit sau dacă simularea o refuză. */
+  choose(index: number): boolean
   advance(steps: number, input: Input): OverInfo | null
 }
 
@@ -32,12 +34,13 @@ export function createSession(deps: SessionDeps, seed: number): Session {
   let stress = false
   let s: GameState = createGame(seed)
 
-  // Testul de viteză: harta rămâne plină, planeta și nava nu cad.
+  // Testul de viteză: harta rămâne plină, planeta și nava nu cad, iar experiența nu se strânge (fără niveluri, fără panou).
   function keepStressed(): void {
     while (s.foes.length < STRESS_FOES) spawnFoe(s)
     s.core.hp = BALANCE.core.hp
     s.hero.dead = false
     s.hero.hp = heroMaxHp(s)
+    s.hero.xp = 0
   }
 
   return {
@@ -69,13 +72,14 @@ export function createSession(deps: SessionDeps, seed: number): Session {
       phase = 'playing'
       return true
     },
+    choose(index) {
+      if (phase !== 'playing') return false   // pe pauză sau pe un cartonaș, panoul nu e pe ecran
+      return chooseOffer(s, index).ok
+    },
     advance(steps, input) {
       if (phase !== 'playing') return null
       for (let i = 0; i < steps; i++) {
-        // Trecător, până vine panoul de alegere (Task 4): o ofertă deschisă se alege singură, prima, înaintea pasului.
-        // Altfel jocul din browser ar sta pe loc pentru totdeauna. Se scoate odată cu venirea panoului.
-        if (s.offer !== null) choose(s, 0)
-        step(s, input)
+        step(s, input)                        // cu o ofertă deschisă pasul nu schimbă nimic: alegerea vine prin `choose`
         if (stress) keepStressed()
       }
       if (s.mode !== 'over') return null

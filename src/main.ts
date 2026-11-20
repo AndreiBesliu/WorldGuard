@@ -19,6 +19,7 @@ import { createRenderer } from './render/canvas'
 import { DT, type GameState } from './sim/state'
 import { step } from './sim/step'
 import { createCards } from './ui/cards'
+import { choiceView, createChoice } from './ui/choice'
 import { createHud } from './ui/hud'
 import { STR } from './ui/strings'
 
@@ -49,7 +50,8 @@ const wake = createWake(navigator as WakeNav)
 // Jocul fără internet, doar în build-ul publicat (`__WG_SW__ && PROD`). Sub `if`, pagina într-un singur fișier
 // (`__WG_SW__` fals) pierde la build apelul cu totul, cu adresa lui `./sw.js` cu tot.
 if (__WG_SW__) registerServiceWorker(navigator, import.meta.env.PROD)
-const input = bindInput(canvas, () => session.phase === 'playing')
+// Joystickul merge doar în joc și doar cât panoul de alegere nu e pe ecran; tastele 1–3 aleg din panou.
+const input = bindInput(canvas, () => session.phase === 'playing' && !choice.open, (i) => pick(i))
 const still = { x: 0, y: 0 }
 let saved = loadGame()
 let fps: { now: number; min: number } | null = null
@@ -68,11 +70,30 @@ function playing(): void {
   cards.hide()
   wake.on()
   redraw()
+  offerUp()                                     // o partidă reluată sau scoasă din pauză cu oferta deschisă duce direct la panou
 }
 function stopped(): void {
   input.release()
+  choice.hide()                                 // pe pauză se vede cartonașul; panoul revine la „Continuă”, oferta e în stare
   wake.off()
   redraw()
+}
+
+/** Simularea așteaptă o alegere: panoul pe ecran, o singură dată, cu joystickul lăsat și fără butonul de pauză. */
+function offerUp(): void {
+  if (session.phase !== 'playing' || choice.open) return
+  const v = choiceView(session.s)
+  if (v === null) return
+  input.release()
+  cards.hold()
+  choice.show(v)
+  redraw()
+}
+/** Oferta aleasă din panou (atingere, clic sau tastele 1–3). Dacă simularea o refuză, panoul rămâne. */
+function pick(i: number): void {
+  if (!choice.open || !session.choose(i)) return
+  choice.hide()
+  playing()
 }
 
 function begin(seed: number, stress: boolean): void {
@@ -106,10 +127,11 @@ const cards = createCards(document, {
   resume: unpause,
   fresh: () => begin(Date.now() >>> 0, false),
 })
+const choice = createChoice(document, pick)
 cards.showStart(saved === null ? null : { secs: Math.floor(saved.t) })
 
 window.addEventListener('keydown', (e) => {
-  if (e.code !== 'Escape' || e.repeat) return
+  if (e.code !== 'Escape' || e.repeat || choice.open) return   // panoul de alegere nu se închide cu Escape
   if (session.phase === 'playing') pause()
   else if (session.phase === 'paused') unpause()
 })
@@ -152,7 +174,7 @@ function frame(now: number): void {
   const frameDt = Math.min(0.1, Math.max(0, (now - last) / 1000))
   last = now
   let camDt = frameDt                           // cât timp „a trecut” pentru cameră
-  if (session.phase === 'playing') {
+  if (session.phase === 'playing' && !choice.open) {   // cu panoul deschis simularea stă: nici pași, nici desen după ce camera s-a așezat
     const r = advance(acc, frameDt)
     acc = r.acc
     const end = session.advance(r.steps, input.read())
@@ -166,10 +188,11 @@ function frame(now: number): void {
       }
     }
     if (end !== null) ended(end)
+    else offerUp()
   } else if (now > drawUntil) {
     return                                      // nimic nu se mișcă: fără desen, până la următoarea schimbare
   }
-  const live = session.phase === 'playing'
+  const live = session.phase === 'playing' && !choice.open
   renderer.frame(session.s, live ? input.read() : still, live ? input.stick : null, camDt)
   hud.sync(session.s, { hint: live && !session.s.hero.moved, fps })
 }

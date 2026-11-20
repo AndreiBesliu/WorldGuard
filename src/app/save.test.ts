@@ -267,6 +267,17 @@ describe('salvarea', () => {
     expect(why(tweak((o) => { o.state.offer[0] = null }))).toBe('altă formă')
     expect(why(tweak((o) => { o.state.hero.x = null }))).toBe('altă formă')
   })
+  it('o ofertă care nu se potrivește cu nava e respinsă: altfel partida ar sta pe loc pentru totdeauna', () => {
+    const s = busy(5); s.offer = [{ id: 'laser', tier: 1 }, { id: 'wave', tier: 2 }]   // nava: nivelul 1, 2 locuri, doar Unda
+    const good = packSave(s)
+    const tweak = (f: (o: any) => void): string => { const o = JSON.parse(good); f(o); return JSON.stringify(o) }
+    const why = (t: string): string => { const r = unpackSave(t); return r.ok ? 'ok' : r.reason }
+    expect(why(good)).toBe('ok')
+    expect(why(tweak((o) => { o.state.offer[0] = { id: 'wave', tier: 1 } }))).toBe('altă formă')    // un modul „nou” deja avut
+    expect(why(tweak((o) => { o.state.offer[1] = { id: 'wave', tier: 3 } }))).toBe('altă formă')    // întărire cu două trepte peste
+    expect(why(tweak((o) => { o.state.offer[1] = { id: 'armor', tier: 2 } }))).toBe('altă formă')   // întărirea unui modul pe care nava nu-l are
+    expect(why(tweak((o) => { o.state.hero.mods.push({ id: 'magnet', tier: 1, t: 0 }) }))).toBe('altă formă')   // Laser nou, fără loc liber
+  })
   it('modulele navei: o listă bună trece, orice altă formă e respinsă', () => {
     const s = busy(5); s.hero.mods = [{ id: 'wave', tier: 2, t: 0 }, { id: 'laser', tier: 3, t: 0.4 }]
     const good = packSave(s)
