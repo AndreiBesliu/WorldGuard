@@ -39,7 +39,7 @@ export function blockGlow(s: GameState): number {
   return t0 === -Infinity ? 0 : fade(s.t - t0, BALANCE.fx.blockLife)
 }
 
-/** Raza cercului exploziei la vârsta dată: pornește de la o treime din zonă și ajunge, încetinind, la zona întreagă. */
+/** Raza cercului exploziei la vârsta dată: pornește de la 30% din zonă (`BLAST_START`) și ajunge, încetinind, la zona întreagă. */
 export function blastReach(r: number, age: number): number {
   const k = 1 - fade(age, BALANCE.fx.blastLife)
   return r * (BLAST_START + (1 - BLAST_START) * (1 - (1 - k) * (1 - k)))

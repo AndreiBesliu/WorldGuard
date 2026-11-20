@@ -121,7 +121,25 @@ describe('modulele și tragerile navei', () => {
     expect(calls.filter((c) => c === 'shot')).toHaveLength(2)
     const at = (n: string): number => calls.indexOf(n)
     for (const n of ['beam', 'blast', 'shot']) expect(at('shield')).toBeLessThan(at(n))
+    expect(at('blast')).toBeLessThan(at('beam'))                // explozii, apoi raza laserului, apoi rachetele și razele turelelor
+    expect(calls.lastIndexOf('beam')).toBeLessThan(at('shot'))
     expect(at('hero')).toBeLessThan(at('shield'))
+  })
+  it('nava fără module, în mers, are jetul de dinainte de module: aceleași puncte, apoi corpul', () => {
+    const pts: string[] = []
+    const ctx = new Proxy({}, {
+      get: (_t, k) => (k === 'moveTo' || k === 'lineTo' ? (x: number, y: number) => { pts.push(`${k} ${x.toFixed(4)} ${y.toFixed(4)}`) } : () => undefined),
+      set: () => true,
+    }) as unknown as CanvasRenderingContext2D
+    const s = quietGame(); s.t = 1.3
+    const fl = 0.6 + 0.4 * Math.sin(s.t * 34)
+    ORBIT.hero(ctx, s, { x: 1, y: 0 })
+    const p = (k: string, x: number, y: number): string => `${k} ${x.toFixed(4)} ${y.toFixed(4)}`
+    expect(pts.slice(0, 7)).toEqual([
+      p('moveTo', -8, -4.5), p('lineTo', -13 - 9 * fl, 0), p('lineTo', -8, 4.5),
+      p('moveTo', -8, -2.2), p('lineTo', -9 - 5 * fl, 0), p('lineTo', -8, 2.2),
+      p('moveTo', 18, 0),                               // corpul navei, `SHIP`
+    ])
   })
   it('o rază sau o explozie din afara vederii nu se desenează', () => {
     const s = armedGame()

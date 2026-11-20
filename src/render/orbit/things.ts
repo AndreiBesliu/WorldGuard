@@ -169,18 +169,20 @@ function mark(ctx: CanvasRenderingContext2D, color: string, width: number): void
   ctx.lineWidth = width; ctx.strokeStyle = color; ctx.stroke()
 }
 
-/** Jetul din spate, cu vârful la `back` − `len` × pâlpâire; `w` e jumătate din lățimea lui la bază. */
-function jet(ctx: CanvasRenderingContext2D, back: number, w: number, len: number, fl: number): void {
+/** Jetul din spate, cu baza la x = `back`: flacăra (jumătate de lățime `w`, vârful la `tip`) și miezul ei (`w2`, vârful la `tip2`). */
+function jet(ctx: CanvasRenderingContext2D, back: number, w: number, tip: number, w2: number, tip2: number): void {
   const C = palette()
-  ctx.beginPath(); ctx.moveTo(back, -w); ctx.lineTo(back - len * fl, 0); ctx.lineTo(back, w); ctx.closePath(); ctx.fillStyle = C.jet; ctx.fill()
-  ctx.beginPath(); ctx.moveTo(back, -w / 2); ctx.lineTo(back - len * fl * 0.55, 0); ctx.lineTo(back, w / 2); ctx.closePath(); ctx.fillStyle = C.star; ctx.fill()
+  ctx.beginPath(); ctx.moveTo(back, -w); ctx.lineTo(tip, 0); ctx.lineTo(back, w); ctx.closePath(); ctx.fillStyle = C.jet; ctx.fill()
+  ctx.beginPath(); ctx.moveTo(back, -w2); ctx.lineTo(tip2, 0); ctx.lineTo(back, w2); ctx.closePath(); ctx.fillStyle = C.star; ctx.fill()
 }
+
+const SIDES = [-1, 1] as const   // cele două aripi
 
 /**
  * Nava ta, în coordonate locale (botul spre +x), cu formele modulelor: Motorul — o duză în coadă și un jet care arde și pe loc,
  * mai lung în mers; Blindajul — un contur alb, gros; Laserul — o țeavă în bot; Rachetele — două cutii pe aripi, cu vârful
  * portocaliu; Reparatorul — un plus în cabină; Magnetul — o potcoavă pe aripa stângă; Releul — o antenă cu unde pe aripa dreaptă.
- * Treapta: țeava, cutiile și jetul se lungesc, conturul și plusul se îngroașă, potcoava crește, antena are una, două sau trei unde.
+ * Treapta: țeava, cutiile, jetul și brațele plusului se lungesc, conturul și cele două unde ale antenei se îngroașă, potcoava crește.
  */
 function ship(ctx: CanvasRenderingContext2D, s: GameState, moving: boolean): void {
   const C = palette(), h = s.hero
@@ -188,16 +190,18 @@ function ship(ctx: CanvasRenderingContext2D, s: GameState, moving: boolean): voi
   const mender = tierOf(s, 'mender'), magnet = tierOf(s, 'magnet'), relay = tierOf(s, 'relay')
   const fl = 0.6 + 0.4 * Math.sin(s.t * 34)
   if (engine > 0) {
-    jet(ctx, -11, 4.2, moving ? 13 + 4 * engine : 4 + 2 * engine, moving ? fl : 0.85 + 0.15 * fl)
+    // Jetul navei de bază, din duză și lungit cu treapta; pe loc, o flacără scurtă.
+    if (moving) jet(ctx, -11, 4.5, -16 - (9 + 4 * engine) * fl, 2.2, -12 - (5 + 2 * engine) * fl)
+    else { const f = 0.85 + 0.15 * fl; jet(ctx, -11, 4.2, -11 - (4 + 2 * engine) * f, 2.1, -11 - (2 + engine) * f) }
     ctx.fillStyle = C.hullShade; rr(ctx, -12.5, -3, 7, 6, 2); ctx.fill()
-  } else if (moving) jet(ctx, -8, 4.5, 14, fl)
+  } else if (moving) jet(ctx, -8, 4.5, -13 - 9 * fl, 2.2, -9 - 5 * fl)   // nava de bază: aceleași puncte ca înainte de module
   poly(ctx, SHIP)
   if (armor > 0) { ctx.lineWidth = 2.6 + 1.6 * armor; ctx.lineJoin = 'round'; ctx.strokeStyle = C.hull; ctx.stroke() }
   ctx.fillStyle = s.t - h.hurtT < HURT_FLASH ? C.ink : C.hero; ctx.fill()
   ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.strokeStyle = C.heroShade; ctx.stroke()
   if (missile > 0) {
     const len = 7 + 2 * missile
-    for (const side of [-1, 1]) {
+    for (const side of SIDES) {
       const y = side * 12.3 - 2.4
       rr(ctx, -10, y, len, 4.8, 1.8); ctx.fillStyle = C.hull; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = C.hullDark; ctx.stroke()
       ctx.beginPath(); ctx.moveTo(-10 + len, y); ctx.lineTo(-6 + len, y + 2.4); ctx.lineTo(-10 + len, y + 4.8); ctx.closePath()
