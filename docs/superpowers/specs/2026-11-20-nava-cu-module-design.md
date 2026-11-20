@@ -1,6 +1,7 @@
 # World Guard: nava cu module
 
-Scris pe 2026-11-20, din discuția cu Andrei din 18–20.11.2026. E prima etapă de după v1.
+Scris pe 2026-11-20, din discuția cu Andrei din 18–20.11.2026, și aprobat de el în aceeași zi. E prima etapă de după v1.
+Planul de construcție: [`docs/superpowers/plans/2026-11-20-world-guard-nava-cu-module.md`](../plans/2026-11-20-world-guard-nava-cu-module.md).
 Machetele: [`docs/machete-nava-cu-module.html`](../../machete-nava-cu-module.html) (aceeași pagină pe care a văzut-o Andrei).
 Regulile de azi ale jocului sunt în [`docs/GDD.md`](../../GDD.md); documentul de față spune doar ce se schimbă și ce se adaugă.
 
@@ -33,9 +34,9 @@ Cererea întreagă e mai mare decât o etapă: turele de mai multe feluri, dușm
 - Nivelul singur dă doar puțină viață; puterea vine din module.
 - Ordinea etapelor: nava; apoi dușmanii și elitele; apoi turelele; apoi tipurile de nave.
 
-**Hotărât de Claude, nevăzut încă de Andrei.** Poate fi respins.
+**Propus de Claude și acceptat de Andrei odată cu documentul (20.11.2026).** I-au fost arătate ca listă de alegeri de verificat.
 
-- Cele trei oferte sunt rânduri late în panou, nu cartonașe alăturate (Andrei a văzut macheta, nu a comentat-o încă).
+- Cele trei oferte sunt rânduri late în panou, nu cartonașe alăturate.
 - Regulile după care se aleg ofertele, nivelul maxim 9, experiența în plus care se păstrează.
 - Cifrele de pornire ale modulelor și ale experienței. Sunt propuneri; se reglează cu plasa.
 - Cum se împacă Motorul cu hotărârea 10 din `docs/GDD.md` (nava se mișcă exact ca înainte): fără Motor, nava se mișcă neschimbat; cu el, mai repede, la alegerea jucătorului. Andrei a acceptat lista cu Motorul pe ea; dacă îl vrea scos, lista rămâne de opt module și nimic altceva nu se schimbă.
