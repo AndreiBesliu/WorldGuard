@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { foeHp } from '../data/balance'
+import { BALANCE, foeHp } from '../data/balance'
 import { createGame, type Foe, type GameState } from './state'
-import { hurtFoe, spawnFoe } from './foes'
+import { hurtFoe, makeFoe, spawnFoe } from './foes'
+import { hurtHero } from './hero'
 import { addFoe, heroAt, quietGame, stepFor } from './testkit'
 
 describe('dușmanii', () => {
@@ -61,6 +62,25 @@ describe('dușmanii', () => {
     hurtFoe(s, f, 999); stepFor(s, 1 / 60)
     expect([s.foes.length, s.kills]).toEqual([0, 1])
     expect(s.fx.some((x) => x.kind === 'puff')).toBe(true)
+  })
+  it('experiența: 1 pentru un dușman doborât de o turelă, 4 pentru unul greu', () => {
+    const s = quietGame(); heroAt(s, 100, 100)
+    const t = s.pads.find((p) => p.kind === 'turret')!; t.lvl = 5
+    addFoe(s, t.bx + 60, t.by, { hp: 1 })
+    stepFor(s, 1.5)
+    expect([s.kills, s.hero.xp]).toEqual([1, 1])
+    const g = makeFoe(s, t.bx + 60, t.by, true); g.hp = 1
+    stepFor(s, 1.5)
+    expect([s.kills, s.hero.xp]).toEqual([2, 5])
+  })
+  it('experiența se strânge și cu nava doborâtă; la nivelul maxim nu mai crește', () => {
+    const s = quietGame(); heroAt(s, 100, 100); hurtHero(s, 999)
+    expect(s.hero.dead).toBe(true)
+    hurtFoe(s, addFoe(s, 550, 400), 999); stepFor(s, 1 / 60)
+    expect(s.hero.xp).toBe(1)
+    const m = quietGame(); heroAt(m, 100, 100); m.hero.lvl = BALANCE.hero.maxLevel; m.hero.xp = 3
+    hurtFoe(m, addFoe(m, 550, 400), 999); stepFor(m, 1 / 60)
+    expect([m.kills, m.hero.xp]).toEqual([1, 3])
   })
   it('partida se termină când cade nucleul', () => {
     const s = quietGame(); heroAt(s, 100, 100); s.core.hp = 3; addFoe(s, 550, 686)

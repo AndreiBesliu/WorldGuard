@@ -429,3 +429,40 @@ Fără economie  266 s          245 s  312 s  —                  fără limit�
 - [ ] proba lui Andrei pe telefon pentru fazele 2 și 3 împreună: instalarea, jocul fără internet, pauza apăsată cu cealaltă mână, reluarea, ecranul aprins și cum se simte dificultatea nouă (cele două cifre schimbate sunt propuneri);
 - [ ] cele două cifre de la „Test de viteză” (cadre pe secundă și `min`), niciodată notate;
 - [ ] hotărârea lui Andrei despre ce vine după v1.
+
+## 20.11.2026 — Nava cu module
+
+Designul: `docs/superpowers/specs/2026-11-20-nava-cu-module-design.md`, aprobat de Andrei pe 20.11.2026. Planul: `docs/superpowers/plans/2026-11-20-world-guard-nava-cu-module.md`.
+
+**Task 1 — Experiența, pragul și mecanica ofertelor.**
+- `src/data/modules.ts`: cele nouă module ca date (`ModId`, `MOD_KIND`, `MOD_IDS`, `MAX_TIER = 3`, `OFFERS = 3`).
+- Starea: nava are `xp` și `mods` (pornește cu 0 și cu Unda la treapta 1), partida are `offer` (null sau ofertele deschise).
+- `src/sim/mods.ts`: `tierOf`, `slotsAt`, `xpNeed`, `heroReady`, `makeOffer`, `choose`.
+  - `makeOffer` dă cel mult trei oferte diferite, cu cel puțin una nouă și cel puțin o întărire când există. Ele vin din fluxul `oferta-<nivel>`, deci depind doar de sămânță, de nivel și de modulele navei.
+  - Cât o ofertă e deschisă, `step` nu schimbă nimic.
+- Experiența și nivelul:
+  - Un dușman doborât dă experiență navei, oricine l-a doborât și chiar cu nava doborâtă (1 pentru unul obișnuit, 4 pentru unul greu); la nivelul maxim, nimic.
+  - Cercul navei primește plată doar când pragul e atins. La nivel, pragul se scade din experiență, iar restul rămâne. O plată urcă un singur nivel.
+- În joc, singurul lucru schimbat la sfârșitul taskului e că nivelul navei cere experiență. Lista modulelor de oferit (`BALANCE.hero.offerPool`) e goală până la Task 2, deci nicio ofertă nu se deschide.
+- Salvarea: `SAVE_VERSION` 2 (o partidă salvată cu versiunea 1 nu se mai continuă). `null` e primit doar la `offer`. O ofertă salvată trebuie să fie o listă nevidă de `{ id, tier }`, cu un modul cunoscut și o treaptă 1–3; altfel „altă formă”.
+- Jucătorii automați:
+  - Categoria „navă” se sare cât pragul nu e atins.
+  - **Regula nouă a jucătorilor automați, schimbată cu bună știință față de faza 3:** pentru o purtare care cumpără nava, când nava e gata de nivel și stocul acoperă ce a rămas de plătit la cercul ei, cercul navei e ținta de plată, oricare ar fi rândul categoriilor. Plata trece și înaintea luptei (`nextPad` și `chooseGoal` din `src/bots/policy.ts`). Fără ea, „Doar navă” atingea pragul pe la secunda 45–49, lupta aproape tot restul partidei și rămânea la nivelul 1 pe 6 din 20 de semințe.
+  - Când se deschide o ofertă, rularea (`playOne`) alege prima ofertă; jucătorii automați doar citesc starea.
+  - Verificarea de sfârșit din `src/bots/bot.test.ts` („Doar navă” la nivelul 2 pe fiecare sămânță) devine „pe cel puțin 15 din 20”. Măsurat cu regula nouă: 3 semințe (6, 10, 18) rămân la nivelul 1 din lipsă de resurse, nu de timp. Cât nava e gata, stocul nu atinge niciodată prețul nivelului 2 (cel mult 24 de cristale și 8 de metal, față de 25 și 10).
+- **Propunere, până o vede Andrei:** pragurile pentru nivelurile 2–5 sunt 6, 10, 13 și 16, cifrele de pornire din design, neschimbate. Un dușman obișnuit dă 1 experiență, unul greu 4.
+- Tabelul de dinainte (`npm run balance`, raza 120): Nimic 66 s · Amestec 335 s · Doar navă 221 s (66,1%) · Fără navă 250 s (74,8%) · Fără economie 256 s.
+- Tabelul de după:
+
+```
+Raza de apărare 120
+Jucător        Mediană        Min    Max    Limită             Verdict
+Nimic          66 s           59 s   82 s   60–130 s           în limită
+Amestec        349 s          326 s  385 s  240–360 s          în limită
+Doar navă      223 s (64,0%)  183 s  250 s  ≤ 75% din Amestec  în limită
+Fără navă      250 s (71,8%)  235 s  273 s  ≤ 90% din Amestec  în limită
+Fără economie  317 s          287 s  343 s  —                  fără limită
+```
+
+  Nerotunjit: 65,6 / 348,8 / 223,2 / 250,5 / 317,4 s. „Amestec” e acum cu 11 s sub limita de 360.
+- `npm run check`: 262 de teste trec (232 înainte).

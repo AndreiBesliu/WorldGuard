@@ -2,6 +2,7 @@
 // Trebuie să supraviețuiască lui JSON.parse(JSON.stringify(s)) și să continue identic.
 import { BALANCE } from '../data/balance'
 import { CLUSTERS, HOME, LAYOUT_SEED, NODE_GAP, PADS } from '../data/layout'
+import type { ModId } from '../data/modules'
 import { createRng } from './rng'
 
 export const DT = 1 / 60
@@ -14,7 +15,9 @@ export type PadKind = BuildKind | 'repair'
 export interface Input { x: number; y: number }                    // lungime ≤ 1
 export interface ResNode { type: Res; x: number; y: number; left: number; regrowAt: number; shakeT: number; shape: number[] }
 export interface Pad { kind: PadKind; x: number; y: number; bx: number; by: number; lvl: number; paid: Record<Res, number>; dwell: number; payT: number; flip: boolean; cool: number; prodT: number; popT: number }
-export interface Hero { x: number; y: number; face: number; hp: number; lvl: number; dead: boolean; respawnT: number; strikeT: number; gatherT: number; waveT: number; waveA: number; hurtT: number; moved: boolean }
+export interface Mod { id: ModId; tier: number; t: number }      // t: ceasul modulului (0 unde nu are)
+export interface Offer { id: ModId; tier: number }               // tier 1 = modul nou; 2 sau 3 = întărire până la acea treaptă
+export interface Hero { x: number; y: number; face: number; hp: number; lvl: number; xp: number; mods: Mod[]; dead: boolean; respawnT: number; strikeT: number; gatherT: number; waveT: number; waveA: number; hurtT: number; moved: boolean }
 export interface Foe { id: number; x: number; y: number; r: number; hp: number; maxHp: number; speed: number; dmg: number; brute: boolean; atkT: number; kx: number; ky: number; a: number; hitT: number; lungeT: number }
 export interface Shot { x: number; y: number; tx: number; ty: number; a: number; targetId: number; dmg: number }   // targetId = -1 după moartea țintei
 export type Fx =
@@ -28,6 +31,7 @@ export interface GameState {
   core: { hp: number; hitT: number }
   hero: Hero; nodes: ResNode[]; pads: Pad[]; foes: Foe[]; shots: Shot[]; fx: Fx[]
   spawnT: number; spawnN: number; nextId: number
+  offer: Offer[] | null            // ofertele deschise la un nivel nou; cât nu e null, pasul stă pe loc
 }
 
 /** Așază resursele în grupurile lor, cu un flux propriu: harta nu depinde de sămânța partidei. */
@@ -57,7 +61,7 @@ export function createGame(seed: number): GameState {
     crystal: BALANCE.start.crystal, metal: BALANCE.start.metal, kills: 0,
     core: { hp: BALANCE.core.hp, hitT: NEVER },
     hero: {
-      x: HOME.x, y: HOME.y, face: 0, hp: BALANCE.hero.hp, lvl: 1, dead: false, respawnT: 0,
+      x: HOME.x, y: HOME.y, face: 0, hp: BALANCE.hero.hp, lvl: 1, xp: 0, mods: [{ id: 'wave', tier: 1, t: 0 }], dead: false, respawnT: 0,
       strikeT: NEVER, gatherT: NEVER, waveT: NEVER, waveA: 0, hurtT: NEVER, moved: false,
     },
     nodes: layNodes(),
@@ -67,5 +71,6 @@ export function createGame(seed: number): GameState {
     })),
     foes: [], shots: [], fx: [],
     spawnT: BALANCE.foe.firstAt, spawnN: 0, nextId: 0,
+    offer: null,
   }
 }

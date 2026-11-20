@@ -32,9 +32,19 @@ describe('ce cumpără, pe rând', () => {
     padOf(s, 'turret', 0).lvl = 1
     expect(nextPad(s, buy)).toBe(padOf(s, 'collector'))
     padOf(s, 'collector').lvl = 1
+    s.hero.xp = 6
     expect(nextPad(s, buy)).toBe(padOf(s, 'hero'))
-    s.hero.lvl = 2
+    s.hero.lvl = 2; s.hero.xp = 0
     expect(nextPad(s, buy)).toBe(padOf(s, 'turret', 1))
+  })
+  it('„Amestec” sare peste cercul navei sub pragul de experiență și îl alege când pragul e atins', () => {
+    const s = createGame(1), buy = pol('amestec').buy
+    padOf(s, 'turret', 0).lvl = 1
+    padOf(s, 'collector').lvl = 1   // rândul navei
+    s.hero.xp = 5
+    expect(nextPad(s, buy)).toBe(padOf(s, 'turret', 1))
+    s.hero.xp = 6
+    expect(nextPad(s, buy)).toBe(padOf(s, 'hero'))
   })
   it('la economie, mina când colectorul e mai sus; la egalitate, colectorul', () => {
     const s = createGame(1), buy = ['economy'] as const
@@ -87,6 +97,7 @@ describe('ce face la fiecare pas', () => {
   })
   it('lipsă 5 cristale și 10 metal: strânge metal, de la cel mai apropiat asteroid nevid', () => {
     const s = createGame(1), p = pol('doar-nava')   // nivelul 2 al navei: 25 cristale și 10 metal; în stoc 20 de cristale
+    s.hero.xp = 6
     s.nodes.filter((n) => n.type === 'metal').slice(0, 2).forEach((n) => { n.left = 0; n.regrowAt = 50 })
     const live = s.nodes.filter((n) => n.type === 'metal' && n.left > 0)
     const d = (n: { x: number; y: number }) => Math.hypot(n.x - s.hero.x, n.y - s.hero.y)
@@ -100,6 +111,7 @@ describe('ce face la fiecare pas', () => {
   })
   it('cu toți asteroizii goi, cel cu regrowAt cel mai mic (Review Focus 3)', () => {
     const s = createGame(1), metal = s.nodes.filter((n) => n.type === 'metal')
+    s.hero.xp = 6
     metal.forEach((n, i) => { n.left = 0; n.regrowAt = 100 + ((i * 7) % metal.length) })
     const first = metal.reduce((a, b) => (b.regrowAt < a.regrowAt ? b : a))
     expect(first.regrowAt).toBe(100)
@@ -108,9 +120,33 @@ describe('ce face la fiecare pas', () => {
   it('stoc suficient: plătește la cercul lui nextPad', () => {
     const s = createGame(1)
     expect(chooseGoal(s, pol('amestec'))).toEqual({ kind: 'pay', pad: padOf(s, 'turret', 0) })
-    const h = createGame(1); h.crystal = 15; h.metal = 0
+    const h = createGame(1); h.crystal = 15; h.metal = 0; h.hero.xp = 6
     padOf(h, 'hero').paid = { crystal: 10, metal: 10 }   // a rămas de plătit: 15 cristale
     expect(chooseGoal(h, pol('doar-nava'))).toEqual({ kind: 'pay', pad: padOf(h, 'hero') })
+  })
+  it('nava gata și plătibilă: plata la cercul navei trece înaintea luptei (R4)', () => {
+    const s = createGame(1); s.crystal = 999; s.metal = 999; s.hero.xp = 6
+    addFoe(s, CORE.x + 100, CORE.y)
+    expect(chooseGoal(s, pol('amestec'))).toEqual({ kind: 'pay', pad: padOf(s, 'hero') })
+    expect(chooseGoal(s, pol('doar-nava'))).toEqual({ kind: 'pay', pad: padOf(s, 'hero') })
+  })
+  it('nava gata fără stoc destul, sau stoc destul sub prag: luptă', () => {
+    const poor = createGame(1); poor.crystal = 0; poor.metal = 0; poor.hero.xp = 6
+    const f = addFoe(poor, CORE.x + 100, CORE.y)
+    expect(chooseGoal(poor, pol('amestec'))).toEqual({ kind: 'fight', foe: f })
+    const early = createGame(1); early.crystal = 999; early.metal = 999; early.hero.xp = 5
+    const g = addFoe(early, CORE.x + 100, CORE.y)
+    expect(chooseGoal(early, pol('amestec'))).toEqual({ kind: 'fight', foe: g })
+  })
+  it('nextPad: cercul navei când e gata și plătibilă, chiar dacă rândul e al turelelor; „Fără navă” neschimbat', () => {
+    const s = createGame(1), buy = pol('amestec').buy; s.crystal = 999; s.metal = 999
+    expect(bought(s) % buy.length).toBe(0)   // rândul turelelor
+    expect(nextPad(s, buy)).toBe(padOf(s, 'turret', 0))
+    s.hero.xp = 6
+    expect(nextPad(s, buy)).toBe(padOf(s, 'hero'))
+    expect(nextPad(s, pol('fara-nava').buy)).toBe(padOf(s, 'turret', 0))
+    addFoe(s, CORE.x + 100, CORE.y)
+    expect(chooseGoal(s, pol('fara-nava')).kind).toBe('fight')
   })
   it('„Nimic” și nava doborâtă: nimic', () => {
     const s = createGame(1)

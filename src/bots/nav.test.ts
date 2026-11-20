@@ -128,6 +128,7 @@ describe('jucătorul întreg pe lângă un cerc construit (clădirea și cercul 
     const s = calm(), pad = padOf(s, 'turret', 0)
     pad.lvl = 1
     s.crystal = 0; s.metal = 0   // „Doar navă” are nevoie de cristal: merge să strângă
+    s.hero.xp = 6                // pragul nivelului 2 e atins: cercul navei e ținta
     const crystals = s.nodes.filter((n) => n.type === 'crystal')
     const away = (n: ResNode) => Math.hypot(n.x - pad.x, n.y - pad.y)
     const node = crystals.reduce((a, n) => (away(n) < away(a) ? n : a))   // singurul cristal lăsat: cel mai apropiat de turelă
@@ -145,6 +146,7 @@ describe('jucătorul întreg pe lângă un cerc construit (clădirea și cercul 
     const s = calm(), pad = padOf(s, 'collector'), target = padOf(s, 'hero')
     pad.lvl = 1
     s.crystal = 999; s.metal = 999   // plătește direct la cercul navei
+    s.hero.xp = 6                    // pragul nivelului 2 e atins
     heroAt(s, 240, 820)
     const limit = margin(Math.hypot(target.x - s.hero.x, target.y - s.hero.y))
     const run = ride(s, createBot(ship), pad, () => Math.hypot(s.hero.x - target.x, s.hero.y - target.y) <= PAD_R * 0.4, limit + 1)

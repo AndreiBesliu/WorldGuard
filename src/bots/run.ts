@@ -1,4 +1,5 @@
 // Rularea jucătorilor automați: partide întregi, fără browser, pe semințe fixe.
+import { choose } from '../sim/mods'
 import { createGame, type GameState } from '../sim/state'
 import { step } from '../sim/step'
 import { createBot } from './bot'
@@ -13,7 +14,10 @@ export interface Row { name: BotName; label: string; times: number[]; median: nu
 export function playOne(p: Policy, seed: number, cap = RUN_CAP, guard = GUARD): GameState {
   const s = createGame(seed)
   const bot = createBot(p, guard)
-  while (s.mode === 'playing' && s.t < cap) step(s, bot(s))
+  while (s.mode === 'playing' && s.t < cap) {
+    if (s.offer !== null) choose(s, 0)   // alegerea o face rularea, nu jucătorul automat
+    else step(s, bot(s))
+  }
   return s
 }
 

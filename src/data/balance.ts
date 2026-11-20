@@ -1,6 +1,7 @@
 // Toate cifrele de echilibru ale jocului. Un număr de gameplay scris în altă parte e o greșeală.
 // Unități: secunde, pixeli de lume (lumea e 1100 × 1500), puncte de viață. Vitezele sunt în px/s.
 import type { BuildKind, Res } from '../sim/state'
+import type { ModId } from './modules'
 
 export const BALANCE = {
   core: { hp: 400 },                         // puncte de viață ale nucleului
@@ -22,6 +23,9 @@ export const BALANCE = {
     regen: 4,                                // viață recăpătată pe secundă
     respawn: 5,                              // secunde până reapare după ce cade
     maxLevel: 5,                             // nivelul maxim al eroului
+    xpToLevel: [6, 10, 13, 16],              // experiența cerută pentru nivelurile 2, 3, 4, 5
+    slots: [2, 2, 3, 3, 4, 4, 5, 5, 6],      // locurile pentru module, pe nivel, de la nivelul 1
+    offerPool: [] as ModId[],                // modulele care se pot oferi la un nivel nou (goală până vin efectele lor)
     deadzone: 0.01,                          // sub această lungime a comenzii, eroul stă pe loc
     faceLock: 0.25,                          // secunde după o undă în care privirea nu urmează mersul
     edge: 20,                                // distanța minimă dintre erou și marginea hărții, px
@@ -59,6 +63,7 @@ export const BALANCE = {
     stopHero: 2,                             // cât de departe de erou se oprește un dușman, px
     pushFloor: 0.01,                         // sub atât (unități pe secundă) împinsul se consideră stins
     firstHit: 0.4,                           // secunde până la prima lovitură după ce a ajuns
+    xp: { grunt: 1, brute: 4 },              // experiența dată navei de un dușman doborât, obișnuit sau greu
     grunt: { r: 10, speed: 46, dmg: 3 },     // dușmanul obișnuit: raza px, viteza px/s, lovitura
     brute: { r: 15, speed: 30, dmg: 9, hpTimes: 4, every: 7, after: 120 }, // bruta: raza, viteza, lovitura, de câte ori mai multă viață, la a câta apariție, după câte secunde
   },

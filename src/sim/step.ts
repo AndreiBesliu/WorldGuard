@@ -7,7 +7,7 @@ import { updateCombat } from './combat'
 import { updateFoes } from './foes'
 
 export function step(s: GameState, input: Input): void {
-  if (s.mode === 'over') return
+  if (s.mode === 'over' || s.offer !== null) return   // cât o ofertă e deschisă, jocul stă pe loc
   s.tick += 1
   s.t = s.tick * DT
   updateHero(s, input)

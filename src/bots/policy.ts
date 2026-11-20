@@ -2,6 +2,7 @@
 // Doar citesc starea. Cifrele de mai jos nu sunt cifre de joc: sunt ale jucătorilor automați.
 import { BALANCE, cost } from '../data/balance'
 import { CORE } from '../data/layout'
+import { heroReady } from '../sim/mods'
 import type { Foe, GameState, Pad, Res, ResNode } from '../sim/state'
 
 export type BotName = 'nimic' | 'amestec' | 'doar-nava' | 'fara-nava' | 'fara-economie'
@@ -39,7 +40,7 @@ function padOfKind(s: GameState, kind: Pad['kind']): Pad | null {
 
 /** Cercul de cumpărat din categorie, sau null dacă acolo totul e la maxim. */
 function pick(s: GameState, cat: Category): Pad | null {
-  if (cat === 'hero') return s.hero.lvl < BALANCE.hero.maxLevel ? padOfKind(s, 'hero') : null
+  if (cat === 'hero') return heroReady(s) ? padOfKind(s, 'hero') : null   // sub prag, cercul navei nu primește plată
   if (cat === 'turret') {
     let best: Pad | null = null
     for (const p of s.pads) if (p.kind === 'turret' && p.lvl < BALANCE.turret.maxLevel && (!best || p.lvl < best.lvl)) best = p
@@ -52,8 +53,22 @@ function pick(s: GameState, cat: Category): Pad | null {
   return mOk ? m : null
 }
 
-/** Cercul la care merg banii acum: categoria de rând, sau următoarea din listă care mai are ce cumpăra. */
+/**
+ * Cercul navei, dacă purtarea cumpără nava, nava e gata de nivel și stocul acoperă ce a rămas de plătit acolo; altfel null.
+ * Un jucător adevărat își ia nivelul imediat ce e gata: plata asta trece înaintea rândului și a luptei.
+ */
+function heroDue(s: GameState, buy: readonly Category[]): Pad | null {
+  if (!buy.includes('hero') || !heroReady(s)) return null
+  const pad = padOfKind(s, 'hero')
+  if (!pad) return null
+  const left = remaining(s, pad)
+  return s.crystal >= left.crystal && s.metal >= left.metal ? pad : null
+}
+
+/** Cercul la care merg banii acum: nava gata și plătibilă; altfel categoria de rând, sau următoarea din listă care mai are ce cumpăra. */
 export function nextPad(s: GameState, buy: readonly Category[]): Pad | null {
+  const due = heroDue(s, buy)
+  if (due) return due
   const start = buy.length > 0 ? bought(s) % buy.length : 0
   for (let i = 0; i < buy.length; i++) {
     const p = pick(s, buy[(start + i) % buy.length]!)
@@ -84,6 +99,8 @@ function nodeFor(s: GameState, type: Res): ResNode | null {
 
 export function chooseGoal(s: GameState, p: Policy, guard = GUARD): Goal {
   if (p.still || s.hero.dead) return { kind: 'none' }
+  const due = heroDue(s, p.buy)
+  if (due) return { kind: 'pay', pad: due }
   let foe: Foe | null = null, fd = guard
   for (const f of s.foes) {
     if (f.hp <= 0) continue

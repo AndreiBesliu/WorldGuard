@@ -4,6 +4,7 @@ import { CORE, WORLD } from '../data/layout'
 import { DT, EPS, NEVER, type Foe, type GameState } from './state'
 import { createRng } from './rng'
 import { hurtHero } from './hero'
+import { xpNeed } from './mods'
 
 export function makeFoe(s: GameState, x: number, y: number, brute: boolean): Foe {
   const cfg = brute ? BALANCE.foe.brute : BALANCE.foe.grunt
@@ -98,6 +99,7 @@ export function updateFoes(s: GameState): void {
   for (const f of s.foes) {
     if (f.hp > EPS) continue
     s.kills += 1
+    if (xpNeed(s.hero.lvl) !== null) s.hero.xp += f.brute ? BALANCE.foe.xp.brute : BALANCE.foe.xp.grunt   // oricine l-a doborât; la nivelul maxim, nimic
     s.fx.push({ kind: 'puff', r: f.r + BALANCE.fx.puffPad, x: f.x, y: f.y, t0: s.t })
   }
   s.foes = live

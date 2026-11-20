@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createRng } from '../sim/rng'
-import { createGame, type Fx, type GameState, type Input, type Shot } from '../sim/state'
+import { createGame, type Fx, type GameState, type Input, type Offer, type Shot } from '../sim/state'
 import { step } from '../sim/step'
 import { makeFoe, spawnFoe } from '../sim/foes'
 import { quietGame } from '../sim/testkit'
@@ -27,8 +27,8 @@ function shapeOf(root: unknown): string {
   return [...out].sort().join('\n')
 }
 
-// Forma stării pentru SAVE_VERSION 1.
-const SHAPE_V1 = `
+// Forma stării pentru SAVE_VERSION 2.
+const SHAPE_V2 = `
 core.hitT: number
 core.hp: number
 core: object
@@ -81,12 +81,18 @@ hero.gatherT: number
 hero.hp: number
 hero.hurtT: number
 hero.lvl: number
+hero.mods: array
+hero.mods[].id: string
+hero.mods[].t: number
+hero.mods[].tier: number
+hero.mods[]: object
 hero.moved: boolean
 hero.respawnT: number
 hero.strikeT: number
 hero.waveA: number
 hero.waveT: number
 hero.x: number
+hero.xp: number
 hero.y: number
 hero: object
 kills: number
@@ -103,6 +109,10 @@ nodes[].type: string
 nodes[].x: number
 nodes[].y: number
 nodes[]: object
+offer: array
+offer[].id: string
+offer[].tier: number
+offer[]: object
 pads: array
 pads[].bx: number
 pads[].by: number
@@ -200,9 +210,39 @@ describe('salvarea', () => {
       { kind: 'heroDown', x: 1, y: 2, t0: 0 },
       { kind: 'puff', r: 3, x: 1, y: 2, t0: 0 },
     ]
-    s.shots.push(shot); s.fx.push(...fx)
-    expect(SAVE_VERSION).toBe(1)
-    expect(shapeOf(s)).toBe(SHAPE_V1)
+    const offer: Offer[] = [{ id: 'laser', tier: 1 }]   // o ofertă deschisă, ca felul elementelor să intre în amprentă
+    s.shots.push(shot); s.fx.push(...fx); s.offer = offer
+    expect(SAVE_VERSION).toBe(2)
+    expect(shapeOf(s)).toBe(SHAPE_V2)
+  })
+  it('o salvare cu versiunea 1 e respinsă', () => {
+    const r = unpackSave(JSON.stringify({ v: 1, state: busy(5) }))
+    expect(r.ok ? 'ok' : r.reason).toBe('altă versiune')
+  })
+  it('oferta: null sau deschisă se salvează și se citește la fel', () => {
+    const a = busy(5)
+    expect(a.offer).toBeNull()
+    const r = unpackSave(packSave(a))
+    expect(r.ok && r.value).toEqual(a)
+    a.offer = [{ id: 'laser', tier: 1 }, { id: 'wave', tier: 2 }, { id: 'armor', tier: 1 }]
+    const o = unpackSave(packSave(a))
+    expect(o.ok && o.value.offer).toEqual(a.offer)
+  })
+  it('oferta cu altă formă e respinsă; un null în afara ofertei rămâne respins', () => {
+    const s = busy(5); s.offer = [{ id: 'laser', tier: 1 }, { id: 'wave', tier: 2 }]
+    const good = packSave(s)
+    const tweak = (f: (o: any) => void): string => { const o = JSON.parse(good); f(o); return JSON.stringify(o) }
+    const why = (t: string): string => { const r = unpackSave(t); return r.ok ? 'ok' : r.reason }
+    expect(why(good)).toBe('ok')
+    expect(why(tweak((o) => { delete o.state.offer[0].tier }))).toBe('altă formă')
+    expect(why(tweak((o) => { o.state.offer[0].id = 'cannon' }))).toBe('altă formă')
+    expect(why(tweak((o) => { o.state.offer[1].extra = 1 }))).toBe('altă formă')
+    expect(why(tweak((o) => { o.state.offer[0].tier = 4 }))).toBe('altă formă')
+    expect(why(tweak((o) => { o.state.offer[0].tier = 1.5 }))).toBe('altă formă')
+    expect(why(tweak((o) => { o.state.offer = [] }))).toBe('altă formă')      // o ofertă goală ar opri partida pentru totdeauna
+    expect(why(tweak((o) => { o.state.offer = { id: 'laser', tier: 1 } }))).toBe('altă formă')
+    expect(why(tweak((o) => { o.state.offer[0] = null }))).toBe('altă formă')
+    expect(why(tweak((o) => { o.state.hero.x = null }))).toBe('altă formă')
   })
   it('o salvare cu 150 de dușmani rămâne mică', () => {
     const s = quietGame(); s.tick = 12000; s.t = 200
