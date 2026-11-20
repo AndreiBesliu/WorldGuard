@@ -50,8 +50,8 @@ const wake = createWake(navigator as WakeNav)
 // Jocul fără internet, doar în build-ul publicat (`__WG_SW__ && PROD`). Sub `if`, pagina într-un singur fișier
 // (`__WG_SW__` fals) pierde la build apelul cu totul, cu adresa lui `./sw.js` cu tot.
 if (__WG_SW__) registerServiceWorker(navigator, import.meta.env.PROD)
-// Joystickul merge doar în joc și doar cât panoul de alegere nu e pe ecran; tastele 1–3 aleg din panou.
-const input = bindInput(canvas, () => session.phase === 'playing' && !choice.open, (i) => pick(i))
+// Joystickul merge doar în joc și doar cât panoul de alegere nu e pe ecran; tastele 1–3 aleg din panou, prin poarta lui (`choice.key`).
+const input = bindInput(canvas, () => session.phase === 'playing' && !choice.open, (i) => choice.key(i))
 const still = { x: 0, y: 0 }
 let saved = loadGame()
 let fps: { now: number; min: number } | null = null
@@ -89,7 +89,7 @@ function offerUp(): void {
   choice.show(v)
   redraw()
 }
-/** Oferta aleasă din panou (atingere, clic sau tastele 1–3). Dacă simularea o refuză, panoul rămâne. */
+/** Oferta aleasă din panou (atingere, clic sau tastele 1–3), după poarta panoului. Dacă simularea o refuză, panoul rămâne. */
 function pick(i: number): void {
   if (!choice.open || !session.choose(i)) return
   choice.hide()

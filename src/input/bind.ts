@@ -3,7 +3,15 @@ import { keysVector, MOVE_KEYS, newStick, stickDown, stickMove, stickUp, stickVe
 import type { Stick } from './joystick'
 
 /** Tastele care aleg o ofertă din panou: 1, 2, 3, de pe rândul cu cifre sau de pe tastatura numerică. */
-const PICK_KEYS: Readonly<Record<string, number>> = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 }
+const PICK_KEYS: ReadonlyMap<string, number> = new Map([['Digit1', 0], ['Digit2', 1], ['Digit3', 2], ['Numpad1', 0], ['Numpad2', 1], ['Numpad3', 2]])
+
+export interface PickKey { code: string; repeat: boolean; ctrlKey: boolean; altKey: boolean; metaKey: boolean }
+
+/** Oferta (0–2) aleasă de o tastă; null pentru altă tastă, pentru tasta ținută apăsată și pentru scurtăturile browserului. */
+export function pickIndex(e: PickKey): number | null {
+  if (e.repeat || e.ctrlKey || e.altKey || e.metaKey) return null
+  return PICK_KEYS.get(e.code) ?? null
+}
 
 /**
  * Leagă pointerul canvasului și tastele de joystick, iar tastele 1–3 de alegerea din panou (`pick` cu indexul ofertei;
@@ -33,8 +41,8 @@ export function bindInput(canvas: HTMLCanvasElement, enabled: () => boolean, pic
   canvas.addEventListener('contextmenu', (e) => e.preventDefault())
 
   window.addEventListener('keydown', (e) => {
-    const n = PICK_KEYS[e.code]
-    if (n !== undefined && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) { pick(n); return }
+    const n = pickIndex(e)
+    if (n !== null) { pick(n); return }
     if (!MOVE_KEYS.has(e.code) || e.ctrlKey || e.metaKey || e.altKey) return   // scurtăturile browserului nu mișcă eroul
     if (enabled()) e.preventDefault()
     down.add(e.code)

@@ -37,12 +37,28 @@ function el<T extends HTMLElement>(doc: Document, id: string): T {
 const icon = (id: string): string => `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${id}"/></svg>`
 
 /**
+ * Fereastra de la deschiderea panoului în care nicio apăsare nu alege, ms. Jucătorul stă pe cercul navei ca să plătească, de multe ori
+ * cu degetul ridicat; dacă îl pune pe ecran ca să plece exact când apare panoul, apăsarea ar începe pe un rând. Propunere, de văzut în joc.
+ */
+export const CHOICE_GRACE_MS = 400
+
+/**
  * Leagă panoul din pagină (`#choiceVeil`). `show` face rândurile din nou de fiecare dată, cu ascultători noi:
  * o atingere începută înainte să apară panoul nu are cum să fi apăsat pe ele, deci nu alege nimic.
+ * Focusul merge pe cartonaș, nu pe o ofertă: Enter sau Spațiu apăsate din reflex nu aleg; Tab duce la prima ofertă.
+ * Orice alegere (atingere, clic, tastele 1–3 prin `key`) trece prin `tryPick`: alege doar o apăsare ÎNCEPUTĂ după `CHOICE_GRACE_MS`.
+ * `now` e ceasul interfeței, în ms (în teste, unul fals); simularea nu are de-a face cu el.
  */
-export function createChoice(doc: Document, onPick: (index: number) => void): { show(v: ChoiceView): void; hide(): void; readonly open: boolean } {
-  const veil = el(doc, 'choiceVeil'), level = el(doc, 'choiceLevel'), slots = el(doc, 'choiceSlots'), list = el(doc, 'choiceOffers')
+export function createChoice(doc: Document, onPick: (index: number) => void, now: () => number = () => performance.now()): {
+  show(v: ChoiceView): void; hide(): void; key(index: number): void; readonly open: boolean
+} {
+  const veil = el(doc, 'choiceVeil'), card = el(doc, 'choiceCard'), level = el(doc, 'choiceLevel'), slots = el(doc, 'choiceSlots'), list = el(doc, 'choiceOffers')
   let open = false
+  let openedAt = 0
+  /** Poarta, singura: panoul deschis și apăsarea începută după fereastră. */
+  const tryPick = (index: number, startedAt: number): void => {
+    if (open && startedAt - openedAt >= CHOICE_GRACE_MS) onPick(index)
+  }
   const make = <K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text = ''): HTMLElementTagNameMap[K] => {
     const e = doc.createElement(tag)
     e.className = cls
@@ -63,7 +79,15 @@ export function createChoice(doc: Document, onPick: (index: number) => void): { 
     const body = make('span', 'offer-body')
     body.append(head, lines, pips)
     b.append(pic, body)
-    onTap(b, () => { if (open) onPick(i) })
+    // Când a început apăsarea: la `pointerdown` (deget sau maus); un clic de la tastatură n-are `pointerdown`, deci începe acum.
+    let pressedAt: number | null = null
+    b.addEventListener('pointerdown', () => { pressedAt = now() })
+    b.addEventListener('pointercancel', () => { pressedAt = null })
+    onTap(b, () => {
+      const at = pressedAt ?? now()
+      pressedAt = null
+      tryPick(i, at)
+    })
     return b
   }
   const slot = (k: ChoiceView['slots'][number]): HTMLElement => {
@@ -80,8 +104,10 @@ export function createChoice(doc: Document, onPick: (index: number) => void): { 
       list.replaceChildren(...rows)
       veil.hidden = false
       open = true
-      rows[0]?.focus({ preventScroll: true })
+      openedAt = now()
+      card.focus({ preventScroll: true })
     },
+    key(index) { tryPick(index, now()) },
     hide() {
       open = false
       veil.hidden = true

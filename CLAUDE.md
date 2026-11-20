@@ -62,10 +62,11 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   `discipline.test.ts` (fără `shadowBlur`; gradient de orice fel, decupaj și `ctx.filter` doar în `orbit/scene.ts`), `palette.test.ts`
   (culorile `#rgb` lăsate de micșorarea CSS-ului la build, aduse la `#rrggbb`) și `camera.test.ts`. `ground.ts` nu mai există. Mișcările doar de desen (continente, nori, satelit, flăcări, țeava turelei)
   se calculează din timpul partidei și din stare; nu scriu nimic în stare.
-- `src/input/` — comenzile: `joystick.ts` (logica joystickului, fără DOM, testată), `bind.ts` (singurul cu DOM: pointer și taste).
+- `src/input/` — comenzile: `joystick.ts` (logica joystickului, fără DOM, testată), `bind.ts` (singurul cu DOM: pointer și taste; `pickIndex`, fără DOM și testată, spune ce ofertă aleg tastele 1–3).
 - `src/ui/` — textele (în română, într-un singur modul `strings.ts`, fixate de `strings.test.ts`), banda de sus (`hud.ts`),
   cartonașele de start (cu „Continuă partida”), de pauză și de final (`cards.ts`), panoul de alegere de la un nivel nou al navei
-  (`choice.ts`: `choiceView` fără DOM, `createChoice` în pagină; pictogramele modulelor sunt `<symbol>` în `index.html`), apăsarea butoanelor (`tap.ts`: la atingere, la ridicarea
+  (`choice.ts`: `choiceView` fără DOM, `createChoice` în pagină; la deschidere focusul stă pe cartonaș, nu pe o ofertă, și nicio alegere nu trece
+  în primele `CHOICE_GRACE_MS` = 400 ms, propunere; pictogramele modulelor sunt `<symbol>` în `index.html`), apăsarea butoanelor (`tap.ts`: la atingere, la ridicarea
   degetului deasupra butonului, și pentru al doilea deget; cu mausul și tastatura, la `click`; o singură pornire pe gest), formatul ceasului (`format.ts`) și stilurile (`ui.css`; variabilele de culoare au nume pe roluri,
   fontul titlului e Exo 2).
 - `src/main.ts` — legătura dintre ele: nu ține stări, le ia din sesiune; pauza (buton, Escape, pagina ascunsă), bucla de cadre,

@@ -142,6 +142,7 @@ body {
   .veil.choice { background: var(--veil-deep); }
 }
 .pick { padding: 18px 16px 16px; gap: 12px; border-radius: 22px; }
+.pick:focus { outline: none; }   /* focusul de la deschidere stă pe cartonaș ca să nu fie pe o ofertă; nu are nimic de arătat */
 .pick-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 12px; padding-inline: 4px; }
 .pick-title { display: flex; flex-direction: column; gap: 3px; }
 .pick-level { font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
@@ -164,7 +165,7 @@ body {
   font: inherit; color: var(--ink); text-align: left; cursor: pointer; touch-action: manipulation;
 }
 .offer:active { transform: translateY(1px); }
-.offer:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }   /* mai subțire decât la cartonașe: să nu pară deja ales */
+.offer:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }   /* la Tab; mai subțire decât la cartonașe */
 .tone-weapon { --tone: var(--hero); } .tone-body { --tone: var(--shield); } .tone-utility { --tone: var(--metal); }
 .offer-icon { width: 52px; height: 52px; border-radius: 13px; background: var(--card); display: grid; place-items: center; color: var(--tone); }
 .offer-icon svg { width: 28px; height: 28px; }

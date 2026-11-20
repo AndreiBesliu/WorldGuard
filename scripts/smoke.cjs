@@ -5,7 +5,7 @@
 // (12) pauza la pagina ascunsă, (13) „Continuă partida” după reîncărcare, (14) „Partidă nouă” din pauză,
 // (15) finalul șterge salvarea, (16) testul de viteză nu salvează, apoi instalarea și jocul fără internet: (17) manifestul și pictogramele,
 // (18) service worker-ul și cache-ul, (19) pornirea fără rețea, apoi (20) pauza și „Continuă” atinse cu al doilea deget, cât primul ține joystickul,
-// și panoul de alegere: (21) apare după plata nivelului și jocul stă, (22) un rând atins alege, (23) pauza și reîncărcarea îl păstrează,
+// și panoul de alegere: (21) apare după plata nivelului și jocul stă, iar o atingere imediat după deschidere, Enter și Spațiu nu aleg, (22) un rând atins alege, (23) pauza și reîncărcarea îl păstrează,
 // (24) tasta 1 alege, iar o atingere începută în afara unui rând nu alege nimic.
 // Fiecare rulare pornește un browser cu un context nou, deci fără cache sau service worker rămase de la o rulare anterioară.
 // Nu face parte din `npm run check`: are nevoie de un Playwright instalat pe mașină.
@@ -388,28 +388,47 @@ async function main() {
       s.hero.xp = 1000; s.crystal = 500; s.metal = 500
       p.dwell = 1                                   // plata pornește imediat
     })
-    const waitOffer = async () => {
+    // Panoul nu primește alegeri în primele 400 ms (CHOICE_GRACE_MS); de aceea, după deschidere, se așteaptă 600 ms înainte de orice alegere.
+    const GRACE_WAIT = 600
+    const waitOffer = async (settle = true) => {
       await page.waitForFunction(() => window.__wg.state().offer !== null, null, { timeout: 5000 })
       await page.evaluate(() => { window.__wg.state().hero.xp = 0 })
       await page.waitForSelector('#choiceVeil:not([hidden])', { timeout: 2000 }).catch(() => {})
-      await page.waitForTimeout(200)
+      if (settle) await page.waitForTimeout(GRACE_WAIT)
     }
     const rowNames = () => page.locator('#choiceOffers .offer-name').allInnerTexts()
+    const offerNow = () => page.evaluate(() => JSON.stringify(window.__wg.state().offer))
 
-    // 21. după plata nivelului: panoul cu trei rânduri, butonul de pauză ascuns, timpul partidei pe loc
+    // 21. după plata nivelului: panoul cu trei rânduri, butonul de pauză ascuns, timpul partidei pe loc;
+    // o atingere pe un rând imediat după deschidere nu alege; focusul nu e pe un rând, deci Enter și Spațiu nu aleg
     await prepLevel()
-    await waitOffer()
+    await waitOffer(false)
+    const seen21 = Date.now()
+    const offer21 = await page.evaluate(() => window.__wg.state().offer)
+    const early = await middle('#choiceOffers button:nth-child(1)')
+    await fingers('touchStart', [{ ...early, id: 7 }])
+    await sleep(40)
+    await fingers('touchEnd', [])
+    const early21 = Date.now() - seen21               // cât după ce s-a văzut panoul s-a ridicat degetul
+    const focus21 = await page.evaluate(() => ({ id: document.activeElement?.id ?? '', onRow: document.activeElement?.closest('.offer') !== null }))
+    await page.waitForTimeout(GRACE_WAIT)
     await shot('08-alegere.png')
+    const keep21a = await offerNow()
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Space')
+    await page.waitForTimeout(200)
+    const keep21b = await offerNow()
     const panel21 = await visible('#choiceVeil')
     const rows21 = await page.locator('#choiceOffers button').count()
     const pause21 = await visible('#pause')
     const t21a = await tNow()
     await page.waitForTimeout(1000)
     const t21b = await tNow()
-    const offer21 = await page.evaluate(() => window.__wg.state().offer)
-    check(21, 'după plata nivelului apare panoul cu trei rânduri, butonul de pauză nu se vede, iar timpul partidei stă o secundă',
-      panel21 && rows21 === 3 && !pause21 && t21a === t21b,
-      `panou ${panel21}, rânduri ${rows21}, pauză ${pause21}, t ${t21a.toFixed(3)} → ${t21b.toFixed(3)}`)
+    check(21, 'după plata nivelului apare panoul cu trei rânduri, butonul de pauză nu se vede, timpul partidei stă o secundă; o atingere imediat după deschidere, Enter și Spațiu nu aleg nimic',
+      panel21 && rows21 === 3 && !pause21 && t21a === t21b && early21 < 300 && keep21a === JSON.stringify(offer21) &&
+        focus21.id === 'choiceCard' && !focus21.onRow && keep21b === keep21a,
+      `panou ${panel21}, rânduri ${rows21}, pauză ${pause21}, t ${t21a.toFixed(3)} → ${t21b.toFixed(3)}, atingerea timpurie la ${early21} ms, ` +
+        `oferta după ea ${keep21a === JSON.stringify(offer21) ? 'aceeași' : 'schimbată'}, focus pe #${focus21.id} (pe rând: ${focus21.onRow}), după Enter și Spațiu ${keep21b === keep21a ? 'aceeași' : 'schimbată'}`)
     failFast(21)
 
     // 22. atingerea celui de-al doilea rând: panoul se închide, partida merge, nava are modulul ales
@@ -446,7 +465,7 @@ async function main() {
     await load()
     const cont23 = await visible('#continue')
     if (cont23) await page.click('#continue')
-    await page.waitForTimeout(400)
+    await page.waitForTimeout(GRACE_WAIT)            // și fereastra de început, ca tasta 1 din verificarea 24 să poată alege
     const names23b = await rowNames()
     const panel23 = await visible('#choiceVeil')
     check(23, 'pagina ascunsă cu panoul deschis: pauză și salvare cu oferta; „Continuă” și, după reîncărcare, „Continuă partida” arată panoul cu aceleași trei nume',
@@ -454,7 +473,11 @@ async function main() {
       `pauză ${paused23}, oferta salvată ${JSON.stringify(saved23?.state?.offer)}, după „Continuă” ${back23}, „Continuă partida” ${cont23}, panou ${panel23}, nume ${names23.join('/')} → ${names23b.join('/')}`)
     failFast(23)
 
-    // 24. degetul pus pe canvas înainte de panou și ridicat deasupra unui rând nu alege nimic
+    // 24. degetul pus pe canvas înainte de panou și ridicat deasupra unui rând nu alege nimic.
+    // Ce dovedește și ce nu: degetul de pe canvas are captura pe canvas (atingerea, plus `setPointerCapture` din bind.ts), deci rândul nu
+    // primește nici `pointerdown`, nici `pointerup`; proba ar trece și cu un rând legat naiv, la `pointerup`. Garda din `onTap` („alege doar
+    // degetul care a apăsat pe rând”) o dovedește testul din src/ui/choice.test.ts. Degetul se ridică după fereastra de început (`waitOffer`
+    // așteaptă), deci nici fereastra nu e ce oprește alegerea aici.
     const row1 = await middle('#choiceOffers button:nth-child(1)')
     const r24 = await middle('#choiceOffers button:nth-child(2)')
     await page.keyboard.press('1')                 // tasta 1 alege prima ofertă și închide panoul
