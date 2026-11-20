@@ -67,4 +67,51 @@ it('o partidă reluată continuă de unde era și nu e niciodată test de vitez�
   expect([x.phase, x.stress, x.s === saved]).toEqual(['playing', false, true])
   x.advance(60, still); expect(x.s.tick).toBe(360)
 })
+it('cu o ofertă deschisă, advance nu mișcă partida: alegerea o face jucătorul', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, false); x.advance(60, still)
+  x.s.offer = [{ id: 'laser', tier: 1 }, { id: 'wave', tier: 2 }]
+  const t = x.s.t
+  expect(x.advance(30, still)).toBeNull()
+  expect([x.s.t, x.s.tick, x.s.offer?.length]).toEqual([t, 60, 2])
+})
+it('choose: false fără ofertă, fără partidă în curs sau cu un index greșit', () => {
+  const { d } = deps(); const x = createSession(d, 5)
+  x.s.offer = [{ id: 'laser', tier: 1 }]
+  expect(x.choose(0)).toBe(false)                 // încă pe cartonașul de start
+  x.start(7, false)
+  expect(x.choose(0)).toBe(false)                 // nicio ofertă deschisă
+  x.s.offer = [{ id: 'laser', tier: 1 }, { id: 'wave', tier: 2 }]
+  expect([x.choose(2), x.choose(-1), x.choose(0.5)]).toEqual([false, false, false])
+  x.pause()
+  expect(x.choose(0)).toBe(false)                 // pe pauză panoul nu e pe ecran
+  expect(x.s.offer?.length).toBe(2)
+})
+it('choose cu o ofertă deschisă o închide, pune modulul și advance merge mai departe', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, false); x.advance(60, still)
+  x.s.offer = [{ id: 'laser', tier: 1 }, { id: 'wave', tier: 2 }]
+  expect(x.choose(1)).toBe(true)
+  expect([x.s.offer, x.s.hero.mods.map((m) => [m.id, m.tier])]).toEqual([null, [['wave', 2]]])
+  x.advance(30, still); expect(x.s.tick).toBe(90)
+})
+it('choose întoarce false când simularea refuză oferta, iar oferta rămâne deschisă', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, false)
+  x.s.offer = [{ id: 'wave', tier: 1 }]           // Unda e deja pe navă
+  expect(x.choose(0)).toBe(false)
+  expect(x.s.offer).toEqual([{ id: 'wave', tier: 1 }])
+})
+it('pauza cu oferta deschisă salvează o stare cu oferta în ea', () => {
+  const { d, saved } = deps(); const x = createSession(d, 5); x.start(7, false); x.advance(60, still)
+  x.s.offer = [{ id: 'laser', tier: 1 }, { id: 'wave', tier: 2 }]
+  expect(x.pause()).toBe(true)
+  expect(JSON.parse(JSON.stringify(saved[0])).offer).toEqual([{ id: 'laser', tier: 1 }, { id: 'wave', tier: 2 }])
+})
+it('testul de viteză: experiența rămâne 0 după 200 de dușmani doborâți și nicio ofertă nu se deschide', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, true)
+  for (let i = 0; i < 3; i++) {                   // de fiecare dată toți cei 150 cad în pasul următor
+    for (const f of x.s.foes) f.hp = 0
+    x.advance(1, still)
+  }
+  expect(x.s.kills).toBeGreaterThanOrEqual(200)
+  expect([x.s.hero.xp, x.s.hero.lvl, x.s.offer]).toEqual([0, 1, null])
+})
 })

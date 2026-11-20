@@ -1,4 +1,5 @@
 // Toate textele jocului, în română. Nicio altă parte a codului nu scrie text pentru jucător.
+import { MAX_TIER, type ModId, type ModKind } from '../data/modules'
 import type { PadKind } from '../sim/state'
 
 export interface Strings {
@@ -33,6 +34,20 @@ export interface Strings {
   resume: string
   fresh: string
   continueSaved(time: string): string
+  /** Modulele navei: numele, rândurile pentru „nou” (cel mult două) și rândul pentru „întărire”. */
+  mods: Record<ModId, { name: string; fresh: string[]; up: string }>
+  kind: Record<ModKind, string>
+  offerNew: string
+  offerUp: string
+  tierLine(t: number): string
+  chooseTitle: string
+  levelN(n: number): string
+  chooseNote: string
+  /** Experiența strânsă și pragul nivelului următor, din bandă și de sub cercul navei. */
+  xpOf(a: number, b: number): string
+  /** Pragul e atins: nivelul de după cel de acum e gata de plătit. */
+  levelReady(n: number): string
+  levelMax: string
 }
 
 export const STR: Strings = {
@@ -67,4 +82,25 @@ export const STR: Strings = {
   resume: 'Continuă',
   fresh: 'Partidă nouă',
   continueSaved: (time) => `Continuă partida · ${time}`,
+  mods: {
+    wave: { name: 'Undă', fresh: [], up: 'Mai lată și mai puternică.' },   // e pe navă de la început: nu se oferă ca nouă
+    laser: { name: 'Laser', fresh: ['Un dușman, de departe.', 'Bun contra navelor grele.'], up: 'Lovește mai tare.' },
+    missile: { name: 'Rachete', fresh: ['Lente, lovesc o zonă.', 'Bune contra grupurilor.'], up: 'Explozie mai puternică.' },
+    armor: { name: 'Blindaj', fresh: ['Mai multă viață.'], up: 'Și mai multă viață.' },
+    shield: { name: 'Scut', fresh: ['Oprește o lovitură', 'la câteva secunde.'], up: 'Se reface mai repede.' },
+    mender: { name: 'Reparator', fresh: ['Te refaci mai repede.'], up: 'Te refaci și mai repede.' },
+    engine: { name: 'Motor', fresh: ['Nava merge mai repede.'], up: 'Și mai repede.' },
+    magnet: { name: 'Magnet', fresh: ['Strângi de mai departe.'], up: 'Mai departe și mai iute.' },
+    relay: { name: 'Releu', fresh: ['Turelele de lângă navă', 'trag mai repede.'], up: 'Trag și mai repede.' },
+  },
+  kind: { weapon: 'Armă', body: 'Corp', utility: 'Utilitar' },
+  offerNew: 'Nou',
+  offerUp: 'Întărire',
+  tierLine: (t) => `Treapta ${t} din ${MAX_TIER}`,
+  chooseTitle: 'Alege un modul',
+  levelN: (n) => `Nivel ${n}`,
+  chooseNote: 'Jocul stă pe loc cât alegi.',
+  xpOf: (a, b) => `experiență ${a}/${b}`,
+  levelReady: (n) => `Nivel ${n} gata`,
+  levelMax: 'Nivel maxim',
 }

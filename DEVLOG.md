@@ -265,3 +265,372 @@ Proba din browser, verificarea 7: limita de timp corectată la 0:50–2:10, fiin
 - Pentru planul 3: orice câmp nou în stare urcă `SAVE_VERSION`. Testul amprentei din `save.test.ts` („forma stării s-a schimbat: urcă SAVE_VERSION și adu amprenta la zi”) o cere singur.
 - Măsurat: `npm run check` pe un checkout fără `dist/`: 143 de teste trec; `SMOKE OK (20 verificări)`; `SMOKE INFO`: 9,59 ms pe cadru; `build-sw: 24 fișiere în cache (626866 octeți)`; `dist-single/world-guard.html`: 415 361 octeți, fără `sw.js`.
 - [ ] de adăugat la proba lui Andrei pe telefon: pauza apăsată cu cealaltă mână cât conduce nava; o versiune nouă apare abia după ce jocul e închis de tot (o reîncărcare în aceeași filă o păstrează pe cea veche); cum arată banda cu butonul de pauză.
+
+## 18.11.2026 — Faza 3
+
+**Explorarea, înainte de plan** (jucători de aruncat, în afara repo-ului; tabelul întreg e în `docs/superpowers/plans/2026-11-18-world-guard-faza-3.md`): Nimic 66 s, Amestec 368 s, Doar navă 240 s, Fără navă 329 s, Fără economie 289 s (medianele pe 20 de semințe, cu apărarea la 120 de centrul planetei; acolo cercul de reparat nu era ocolit).
+
+**Task 1 — Jucătorii automați.**
+- `src/bots/`, în afara jocului livrat (nimic din `main.ts` nu-l importă; `dist/` nu are niciun nume de purtare). `policy.ts`: cele cinci purtări (`POLICIES`, cu `label` în română), `bought`, `nextPad` (categoriile pe rând, cea fără nimic de cumpărat e sărită), `chooseGoal` (luptă cu nava dușmană cea mai apropiată de centru dacă e la mai puțin de `GUARD = 120`; altfel plătește dacă stocul acoperă ce a rămas, altfel strânge resursa care lipsește mai mult; cu nimic de cumpărat, acasă). `nav.ts`: `createNav` (drept spre țintă; după 24 de pași fără apropiere de 1 px, 30 de pași de ocolire, cu partea schimbată la fiecare blocaj; o țintă mutată cu peste 40 px șterge memoria) și `offForeignPad` (de pe orice cerc care nu e ținta de plată, inclusiv cel de reparat, iese dinspre centru). `bot.ts`: `createBot`, un `Nav` pe jucător. `run.ts`: `playOne`, `median`, `measure`, `measureAll`, `SEEDS` = 1…20, `RUN_CAP` = 900 s.
+- Jucătorii doar citesc starea (testat cu `JSON.stringify` înainte și după). Niciunul nu plătește la un cerc care nu e `nextPad` în acel pas și niciunul nu repară planeta: testat pas cu pas pe toate cele 20 de semințe și toate cele cinci purtări, într-un singur parcurs al celor 100 de partide (care verifică și ce a cumpărat fiecare la sfârșit).
+- Reparația de după recenzie: prima variantă ieșea de pe un cerc străin doar când ar fi stat pe loc, dar simularea plătește după 0,35 s petrecute în cerc, și în mers. Recenzia a găsit plăți parțiale la cercuri străine și pași în care viața planetei creștea (de pildă „Amestec”, sămânța 1, la 94 s, în turela (425, 669); „Doar navă”, sămânța 8, la 130,8 s, la reparat). Acum (`slipOff` din `nav.ts`), din primul pas numărat (`dwell > 0`) pe un cerc străin nava iese pe o diagonală: jumătate dinspre centru, jumătate de-a lungul marginii, în partea în care voia să meargă; măsurat pe cele 100 de partide, cel mai lung șir de pași numărați pe un cerc străin are 4 pași (0,067 s), iar plata ar porni abia după 21. Tot atunci: memoria mersului se șterge când distanța până la țintă sare cu mai mult de un pas al navei (reapariția acasă), iar când nava se depărtează de țintă (o navă dușmană care fuge), apropierea se măsoară de acolo; înainte, amândouă porneau ocoliri fără motiv.
+- Disciplina: `src/sim/discipline.test.ts` citește acum și fișierele din `src/bots/` (aceeași `violations`, titlurile spun folderul). Nu există un `src/bots/discipline.test.ts`: importat dintr-un fișier de test, `violations` i-ar fi înregistrat testele a doua oară.
+- Măsurat după reparație, cu un script de aruncat (`measureAll()`, raza 120, 20 de semințe):
+
+| Jucător | Mediana | Min | Max |
+| --- | --- | --- | --- |
+| Nimic | 65,6 s | 58,6 | 81,6 |
+| Amestec | 372,2 s | 347,2 | 428,3 |
+| Doar navă | 249,6 s | 230,9 | 282,9 |
+| Fără navă | 331,8 s | 306,5 | 388,1 |
+| Fără economie | 307,7 s | 272,6 | 365,1 |
+
+  „Doar navă” e la 67,0% din „Amestec”, „Fără navă” la 89,1%. Cele 100 de partide durează împreună 12,4–13,3 s (două rulări). „Amestec”, sămânța 1: prima turelă la 1,42 s, 6 cumpărături la secunda 120. Mersul (harta adevărată, fără nave dușmane) ajunge la cercuri și grupuri în 18–51% din marginea de timp a testului, iar ocolind planeta în 55%. „Doar navă” se încheie cu nava la nivelul 2 pe semințele 1–3, ca în explorare.
+- `npx vitest run src/bots src/sim/discipline.test.ts`: 70 de teste, 24,1 s; `src/bots` singur: 54 de teste, 23,0 s (aproape tot timpul e parcursul celor 100 de partide din `bot.test.ts`: 21,8 s sub Vitest, cu verificările pe fiecare pas, față de 12,4–13,3 s pentru aceleași partide în scriptul construit cu Vite). `npm run check`: 202 de teste trec (143 înainte).
+
+**Task 2 — Tabelul și comanda lui.**
+- `src/bots/limits.ts`: `LIMITS` (cele patru limite din design, ca date), `verdicts` (un verdict pe rând; limitele sunt închise; lipsa rândului „Amestec” aruncă o eroare) și `formatTable` (antet și un rând pe jucător, coloane aliniate; o mediană lipită de `RUN_CAP` se scrie „≥ 900 s”). `src/bots/table.ts` tipărește tabelul; cu `--raze` și pe cele pentru razele de apărare 80 și 160. Construit cu `vite.balance.config.ts` (build `ssr`, fără `public/`, în `dist-balance/`, ignorat de git). Testele din `limits.test.ts` merg pe rânduri făcute de mână: 10 teste, sub o secundă.
+- `npm run balance` nu iese cu cod de eroare când o limită pică: e un afișaj. Limitele ca teste care pică build-ul vin în taskul următor. Durata, măsurată cu `time`: `npm run balance` 13,1 s, `npm run balance -- --raze` 40,1 s.
+- Ieșirea întreagă a `npm run balance -- --raze` (partidele sunt deterministe; medianele pe 20 de semințe):
+
+```
+Raza de apărare 120
+Jucător        Mediană      Min    Max    Limită             Verdict
+Nimic          66 s         59 s   82 s   60–130 s           în limită
+Amestec        372 s        347 s  428 s  240–360 s          ÎN AFARA LIMITEI
+Doar navă      250 s (67%)  231 s  283 s  ≤ 75% din Amestec  în limită
+Fără navă      332 s (89%)  307 s  388 s  ≤ 90% din Amestec  în limită
+Fără economie  308 s        273 s  365 s  —                  fără limită
+
+Raza de apărare 80
+Jucător        Mediană       Min    Max    Limită             Verdict
+Nimic          66 s          59 s   82 s   60–130 s           în limită
+Amestec        331 s         229 s  370 s  240–360 s          în limită
+Doar navă      238 s (72%)   207 s  281 s  ≤ 75% din Amestec  în limită
+Fără navă      344 s (104%)  296 s  384 s  ≤ 90% din Amestec  ÎN AFARA LIMITEI
+Fără economie  299 s         185 s  329 s  —                  fără limită
+
+Raza de apărare 160
+Jucător        Mediană      Min    Max    Limită             Verdict
+Nimic          66 s         59 s   82 s   60–130 s           în limită
+Amestec        390 s        361 s  420 s  240–360 s          ÎN AFARA LIMITEI
+Doar navă      252 s (65%)  229 s  291 s  ≤ 75% din Amestec  în limită
+Fără navă      328 s (84%)  310 s  359 s  ≤ 90% din Amestec  în limită
+Fără economie  301 s         275 s  352 s  —                  fără limită
+```
+
+- Cifrele de azi (raza 120) coincid cu cele de la Task 1: „Amestec” e ÎN AFARA limitei (372 s față de 360), restul în limită. Raza 80 mută problema la „Fără navă”, raza 160 o lasă la „Amestec”, deci, propunere: cifrele jocului să se schimbe în taskul următor, nu raza jucătorilor.
+- Nimic din `src/bots/` nu ajunge în joc: după `npm run bundle`, `grep -l "fara-economie" dist/assets/*.js` nu găsește nimic. `npm run check`: 214 teste trec.
+
+**Task 3 — Reechilibrarea și plasa.**
+- Plasa: `src/bots/net.test.ts` joacă o dată cele 100 de partide (`measureAll()`, raza 120) și are câte un test pe fiecare limită din design (mesajul arată valoarea și limita), unul că `verdicts` întoarce exact cinci verdicte, câte unul pe jucător, și unul că fiecare partidă s-a încheiat înainte de 900 s. Cu cifrele de dinainte pica doar „Amestec” („Amestec: 372 s, limita 240–360 s”); fișierul durează 17–22 s.
+- `src/data/balance.test.ts`: costurile turelei, colectorului, minei (nivelurile 1 … maxim) și navei (2 … maxim) sunt întregi, cel puțin 0, cu suma peste 0; `spawnEvery(t)` e pozitiv și nu crește, `foeHp(t)` e pozitiv și nu scade, pentru t de la 0 la 600, pas 30. `src/bots/limits.test.ts`: trei cazuri care fixează că rotunjirea de afișare nu intră în comparație („Nimic” la 59,6 s se scrie „60 s” și pică; „Nimic” la 130,4 s pică; „Doar navă” la 75,4% se scrie „75%” și pică).
+- **Propunere, până o vede Andrei** — două cifre schimbate în `src/data/balance.ts`:
+  - `hero.dmgPerLevel` (lovitura navei în plus pe nivel): 6 → 10. Motivul: e singura pârghie a navei care a mișcat „Fără navă” față de „Amestec” fără să ridice „Doar navă” (viața pe nivel, vindecarea și reapariția n-au mișcat nimic, măsurat; ieftinirea nivelurilor ridica „Doar navă”).
+  - `foeHp(t)` (viața dușmanului): 14 × (1 + t / 80) → 14 × (1 + t / 45). Motivul: așază „Amestec” în bandă. Pornirea (14) rămâne; crește doar termenul în timp: un dușman are 17,1 viață la 10 s (era 15,75), 28 la 45 s (era la 80 s), 107 la 300 s (era 66,5). „Nimic” nu s-a mișcat (65,6 s).
+- Jurnalul încercărilor, pe scurt (mediane în secunde: Nimic / Amestec / Doar navă / Fără navă / Fără economie; procentele din „Amestec”): 48 de încercări, în valuri de câte patru, peste limita de 40 din brief (alegerea, încercarea 24, era deja făcută; celelalte au căutat mai multă margine și n-au găsit). Viața pe nivel 30, vindecarea 6 și reapariția 8 n-au mișcat „Amestec” deloc. Nivelurile navei mai ieftine ridică „Amestec” (412 s), dar și „Doar navă”; un nivel 3 care cere sub 25 de metal o duce pe „Doar navă” la nivelul 3 și peste 75%. Presiunea (viața dușmanilor, ritmul, nava grea) coboară „Amestec” mai repede decât „Doar navă”, care stă la nivelul 2 (măsurat pe 8 semințe) și, în încercările care mișcă presiunea dușmanilor cu `dmgPerLevel` între 8 și 12, se încheie la 205–235 s (în unele alte încercări a ținut 259–285 s); de aceea ținta de 70% cere „Amestec” de cel puțin 316 s, iar fereastra cu toate țintele e îngustă (316–330 s). Turele mai tari (pârghia 3) n-au dat o margine mai bună. Aleasă: lovitura +10 pe nivel și viața 14 × (1 + t / 45): 65,6 / 326,6 / 221,3 / 246,1 / 261,6; 67,7% / 75,4%.
+- Tabelul de dinainte și cel de după (`npm run balance`, raza 120):
+
+```
+Înainte
+Nimic          66 s         59 s   82 s   60–130 s           în limită
+Amestec        372 s        347 s  428 s  240–360 s          ÎN AFARA LIMITEI
+Doar navă      250 s (67%)  231 s  283 s  ≤ 75% din Amestec  în limită
+Fără navă      332 s (89%)  307 s  388 s  ≤ 90% din Amestec  în limită
+Fără economie  308 s        273 s  365 s  —                  fără limită
+
+După
+Nimic          66 s         59 s   82 s   60–130 s           în limită
+Amestec        327 s        278 s  371 s  240–360 s          în limită
+Doar navă      221 s (68%)  203 s  256 s  ≤ 75% din Amestec  în limită
+Fără navă      246 s (75%)  235 s  278 s  ≤ 90% din Amestec  în limită
+Fără economie  262 s        229 s  286 s  —                  fără limită
+```
+
+- După, `npm run balance -- --raze` (35,6 s), razele 80 și 160 (informație, nu țintă):
+
+```
+Raza de apărare 80
+Nimic          66 s         59 s   82 s   60–130 s           în limită
+Amestec        299 s        212 s  321 s  240–360 s          în limită
+Doar navă      216 s (72%)  189 s  281 s  ≤ 75% din Amestec  în limită
+Fără navă      249 s (83%)  231 s  271 s  ≤ 90% din Amestec  în limită
+Fără economie  252 s        205 s  294 s  —                  fără limită
+
+Raza de apărare 160
+Nimic          66 s         59 s   82 s   60–130 s           în limită
+Amestec        314 s        211 s  364 s  240–360 s          în limită
+Doar navă      234 s (75%)  213 s  266 s  ≤ 75% din Amestec  în limită
+Fără navă      250 s (80%)  231 s  275 s  ≤ 90% din Amestec  în limită
+Fără economie  263 s        235 s  298 s  —                  fără limită
+```
+
+  La raza 160, „Doar navă” e la 74,5% (măsurat cu mediana nerotunjită: 234,3 / 314,4), adică la o jumătate de punct de limita din design: o rază de apărare mai largă ar pica plasa.
+- Țintele (raza 120): toate ies. Nimic 65,6 s (ținta 62–125); Amestec 326,6 s (270–330, la 3,4 s de margine); Doar navă 67,7% (cel mult 70); Fără navă 75,4% (cel mult 85); Fără economie 261,6 s, sub „Amestec”.
+- Testele aduse la zi (doar valoarea așteptată): `balance.test.ts` (`foeHp(45)` = 28), `src/sim/foes.test.ts` (viața primului dușman, 14 × (1 + 10 / 45)), `src/sim/pads.test.ts` (lovitura la nivelul 2: 20). Din `src/sim/run.test.ts` a ieșit testul „fără niciun gest, nucleul cade după aproximativ un minut”: limita lui e acum în plasă, pe 20 de semințe. `docs/GDD.md`, „Cifrele de pornire”: rândurile „Navă” (+10 pe nivel) și „Viața dușmanului”.
+- `npm run check`: 224 de teste trec; `npm test` durează 20 s (Vitest: 19,8 s). `npm run smoke`: „SMOKE OK (20 verificări)”.
+
+**Task 4 — Documentele.**
+- `docs/GDD.md`: antetul; „Cifrele de pornire” a devenit „Cifrele jocului” (cele de după reechilibrare; cele ale prototipului sunt aici); „Plasa pentru dificultate” are acum cum sunt făcuți jucătorii automați, comanda, tabelul măsurat, razele 80 și 160, ce e fragil, limita „Doar navă” adusă la zi (cu jucători care apără era îndeplinită; peste limită era „Amestec”) și pârghia cu grupuri din părți opuse, încercată în explorare și neconstruită; „Cine a hotărât ce”, sub „Hotărât de Claude, nevăzut încă de Andrei”: purtarea jucătorilor, cele două cifre și pârghia nefolosită; „Ce a arătat prototipul” trimite la măsurătorile noi. `CLAUDE.md`: comanda `npm run balance`, `src/bots/` la „Arhitectura”, „Stare” și „Urmează”. `README.md`: starea și paragraful „Plasa pentru dificultate”.
+- Cum se simte schimbarea (propunere, până o vede Andrei în joc): spre minutul 5 un dușman are 107 viață (înainte 66,5), iar nava de nivelul 5 lovește cu 50 (înainte 34); primul minut e neschimbat.
+- Cifrele de azi, rulate din nou (`npm run balance -- --raze`; `npm run check`: 224 de teste trec): raza 120: Nimic 66 s, Amestec 327 s, Doar navă 221 s (68%), Fără navă 246 s (75%), Fără economie 262 s, toate în limită; raza 80: Amestec 299 s, Doar navă 72%, Fără navă 83%; raza 160: Amestec 314 s, Doar navă 75% (74,5% nerotunjit), Fără navă 80%.
+- **Ce e fragil:** „Amestec” e la 33 s de limita de sus (360 s). La raza de apărare 160, „Doar navă” e la 74,5%, la o jumătate de punct de limită. Tabelul depinde de cum sunt scriși jucătorii automați: toți apără la 120 de centrul planetei, niciunul nu repară.
+- Cu faza 3, lista „Scopuri pentru v1” din design e acoperită în cod; ce urmează are nevoie de hotărârea lui Andrei.
+
+**Reparațiile de după recenzia finală.**
+- Ce a găsit recenzia întregii ramuri (verdict: gata de îmbinare, cu reparații), pe scurt:
+  1. Nava se înțepenea între o clădire construită și cercul ei: ieșitul de pe un cerc străin o scotea pe raza cercului, adică în clădire. „Fără economie” pierdea 51 s pe cele 20 de partide în colțul primei turele. Cel mai lung șir de pași pe un cerc străin era 12 („Fără navă”, sămânța 14), nu 4 cum scrie mai sus la Task 1: cifra aceea era de dinaintea reechilibrării. Regula „nicio plată la un cerc străin” cădea la două din 24 de cifre vecine (lovitura navei +11 pe nivel; turela la 0,9 s).
+  2. Documentele spuneau despre „Doar navă” și despre scopul 7 mai mult decât arată plasa.
+  3. Propunerea pentru Andrei nu spunea ce face reechilibrarea cu turelele.
+- Mersul, reparat (`src/bots/nav.ts`): un cerc străin construit și clădirea lui sunt un singur obstacol, segmentul de la centrul cercului la clădire (`fromPad`). Lângă el (la 34 px de segment), nava nu mai intră spre el, ci merge de-a lungul marginii, pe o parte aleasă la primul pas și păstrată până se depărtează (`createSkirt`; fără partea păstrată, cu ținta chiar în spatele laturii, nava stătea pe loc). Ieșitul de pe cerc (`offForeignPad`, `slipOff`) pleacă și el din segment, deci în colț iese într-o parte. Cercurile fără clădire (al navei, cel de reparat) și cele neconstruite se poartă ca înainte; ținta de plată nu e niciodată obstacol.
+- Teste noi, scrise înaintea codului și văzute picând pe codul vechi: mersul cu jucătorul întreg pe lângă o turelă construită (pe codul vechi nu ajungea deloc la cristalul de dincolo) și pe lângă un colector construit (pe codul vechi călca 12 pași pe cercul colectorului), ocolitul pe aceeași parte și ieșitul din colț; în `bot.test.ts`, cel mult 10 pași la rând pe un cerc străin care numără (pe codul vechi: 12 și 11 pași la „Fără navă”).
+- Măsurat după reparație: cel mai lung șir pe un cerc străin are 2 pași, pe toate cele 80 de partide ale jucătorilor care se mișcă și în toate cele 24 de schimbări mici de cifre ale recenziei; regula „nicio plată la un cerc străin, niciun reparat” ține în toate 24, inclusiv cele două care cădeau. Timpul pierdut în colț: 0 s la toți (înainte 51 s la „Fără economie”, 5 s la „Amestec”, 1 s la „Fără navă”).
+- Mărunțișuri: tabelul scrie partea din „Amestec” cu o zecimală (de pildă „75,4%”); `net.test.ts` cere `toBe(true)`; `src/sim/discipline.test.ts` verifică acum că nimic din `src/` din afara `src/bots/` nu importă din el; comentariile de la lovitura turelei din `balance.ts` spuneau „raza” (nicio cifră schimbată).
+- Tabelul de după (`npm run balance -- --raze`; cu el, tabelele de mai sus din această intrare sunt istorie):
+
+```
+Raza de apărare 120
+Jucător        Mediană        Min    Max    Limită             Verdict
+Nimic          66 s           59 s   82 s   60–130 s           în limită
+Amestec        335 s          297 s  357 s  240–360 s          în limită
+Doar navă      221 s (66,1%)  203 s  256 s  ≤ 75% din Amestec  în limită
+Fără navă      250 s (74,8%)  235 s  273 s  ≤ 90% din Amestec  în limită
+Fără economie  256 s          231 s  293 s  —                  fără limită
+
+Raza de apărare 80
+Jucător        Mediană        Min    Max    Limită             Verdict
+Nimic          66 s           59 s   82 s   60–130 s           în limită
+Amestec        299 s          270 s  324 s  240–360 s          în limită
+Doar navă      216 s (72,3%)  189 s  281 s  ≤ 75% din Amestec  în limită
+Fără navă      246 s (82,4%)  223 s  267 s  ≤ 90% din Amestec  în limită
+Fără economie  255 s          220 s  303 s  —                  fără limită
+
+Raza de apărare 160
+Jucător        Mediană        Min    Max    Limită             Verdict
+Nimic          66 s           59 s   82 s   60–130 s           în limită
+Amestec        317 s          288 s  371 s  240–360 s          în limită
+Doar navă      234 s (73,9%)  213 s  266 s  ≤ 75% din Amestec  în limită
+Fără navă      251 s (79,2%)  227 s  267 s  ≤ 90% din Amestec  în limită
+Fără economie  266 s          245 s  312 s  —                  fără limită
+```
+
+  Nerotunjit, la raza 120: 65,6 / 334,7 / 221,3 / 250,5 / 255,8 s. „Amestec” iese puțin peste ținta de rezervă a planului (330 s); limita din design (360 s) ține. `src/data/balance.ts` n-a fost atins în afara celor două comentarii.
+- Ce măsoară plasa și ce nu (remăsurat după repararea mersului; amănuntele în `docs/GDD.md`, „Ce e fragil”): „Doar navă” cumpără o singură dată (nivelul 2, la secunda 18, în 19 din 20 de partide); în ultima treime toți luptă în 88–95% din pași, iar „Amestec” termină cu 117–164 de cristale necheltuite; raza 120 dă cel mai mic procent pentru „Doar navă” dintre 11 raze între 80 și 200; o purtare la fel de rezonabilă (nava plecată la peste 200 de planetă se întoarce abia la două nave dușmane) dă 76,7%, peste limită. Scopul 7 din design e deci păzit pentru acești cinci jucători automați, nu acoperit în general.
+- Ce face reechilibrarea cu turelele (propunere pentru Andrei): în „Amestec”, nava dă 71,6% din toată lovitura (înainte 61,1%); o turelă de nivelul 1 are nevoie de 18 trageri (14,4 s) pentru un dușman de la minutul 5 (înainte 12, adică 9,6 s); „doar turele” ține 79% din „Amestec” (înainte 90%), „fără turele” 82% (înainte 79%). Direcția e spre anti-scopul „Devine joc de acțiune”, iar plasa nu are un rând care s-o vadă.
+- „Primul minut e neschimbat”, scris mai sus, e prea tare: „Nimic” e identic pe toate cele 20 de semințe, dar la secunda 60 un dușman are 32,7 viață în loc de 24,5, deci nava de nivelul 1 are nevoie de 4 lovituri în loc de 3.
+- `npm run check`: 232 de teste trec; `npm test` durează 23,4 s. `npm run smoke`: „SMOKE OK (20 verificări)”.
+- De știut pentru Andrei:
+  - Îmbinarea în `main` publică jocul, deci cele două cifre noi ajung pe telefonul lui.
+  - Recordul din telefon rămâne cel făcut cu cifrele mai ușoare (cheia `wg.v1.record` nu se schimbă), iar „Amestec” ține acum cu 12% mai puțin.
+  - Trecerea în fugă prin centrul unui cerc durează 0,34 s, iar plata pornește la 0,35 s: e regula din faza 1, dar e la limită față de anti-scopul „Cheltui fără să vrei”. Propunere pentru mai târziu.
+  - Propunere pentru mai târziu: două rânduri doar tipărite în tabel, „Doar navă, cu nivelul 3 din prima secundă” (plafonul navei) și „Fără turele”, ca tabelul să arate ce nu vede azi.
+
+**Rămâne:**
+- [ ] proba lui Andrei pe telefon pentru fazele 2 și 3 împreună: instalarea, jocul fără internet, pauza apăsată cu cealaltă mână, reluarea, ecranul aprins și cum se simte dificultatea nouă (cele două cifre schimbate sunt propuneri);
+- [ ] cele două cifre de la „Test de viteză” (cadre pe secundă și `min`), niciodată notate;
+- [ ] hotărârea lui Andrei despre ce vine după v1.
+
+## 20.11.2026 — Nava cu module
+
+Designul: `docs/superpowers/specs/2026-11-20-nava-cu-module-design.md`, aprobat de Andrei pe 20.11.2026. Planul: `docs/superpowers/plans/2026-11-20-world-guard-nava-cu-module.md`.
+
+**Task 1 — Experiența, pragul și mecanica ofertelor.**
+- `src/data/modules.ts`: cele nouă module ca date (`ModId`, `MOD_KIND`, `MOD_IDS`, `MAX_TIER = 3`, `OFFERS = 3`).
+- Starea: nava are `xp` și `mods` (pornește cu 0 și cu Unda la treapta 1), partida are `offer` (null sau ofertele deschise).
+- `src/sim/mods.ts`: `tierOf`, `slotsAt`, `xpNeed`, `heroReady`, `makeOffer`, `choose`.
+  - `makeOffer` dă cel mult trei oferte diferite, cu cel puțin una nouă și cel puțin o întărire când există. Ele vin din fluxul `oferta-<nivel>`, deci depind doar de sămânță, de nivel și de modulele navei.
+  - Cât o ofertă e deschisă, `step` nu schimbă nimic.
+- Experiența și nivelul:
+  - Un dușman doborât dă experiență navei, oricine l-a doborât și chiar cu nava doborâtă (1 pentru unul obișnuit, 4 pentru unul greu); la nivelul maxim, nimic.
+  - Cercul navei primește plată doar când pragul e atins. La nivel, pragul se scade din experiență, iar restul rămâne. O plată urcă un singur nivel.
+- În joc, singurul lucru schimbat la sfârșitul taskului e că nivelul navei cere experiență. Lista modulelor de oferit (`BALANCE.hero.offerPool`) e goală până la Task 2, deci nicio ofertă nu se deschide.
+- Salvarea: `SAVE_VERSION` 2 (o partidă salvată cu versiunea 1 nu se mai continuă). `null` e primit doar la `offer`. O ofertă salvată trebuie să fie o listă nevidă de `{ id, tier }`, cu un modul cunoscut și o treaptă 1–3; altfel „altă formă”.
+- Jucătorii automați:
+  - Categoria „navă” se sare cât pragul nu e atins.
+  - **Regula nouă a jucătorilor automați, schimbată cu bună știință față de faza 3:** pentru o purtare care cumpără nava, când nava e gata de nivel și stocul acoperă ce a rămas de plătit la cercul ei, cercul navei e ținta de plată, oricare ar fi rândul categoriilor. Plata trece și înaintea luptei (`nextPad` și `chooseGoal` din `src/bots/policy.ts`). Fără ea, „Doar navă” atingea pragul pe la secunda 45–49, lupta aproape tot restul partidei și rămânea la nivelul 1 pe 6 din 20 de semințe.
+  - Când se deschide o ofertă, rularea (`playOne`) alege prima ofertă; jucătorii automați doar citesc starea.
+  - Verificarea de sfârșit din `src/bots/bot.test.ts` („Doar navă” la nivelul 2 pe fiecare sămânță) devine „pe cel puțin 15 din 20”. Măsurat cu regula nouă: 3 semințe (6, 10, 18) rămân la nivelul 1 din lipsă de resurse, nu de timp. Cât nava e gata, stocul nu atinge niciodată prețul nivelului 2 (cel mult 24 de cristale și 8 de metal, față de 25 și 10).
+- **Propunere, până o vede Andrei:** pragurile pentru nivelurile 2–5 sunt 6, 10, 13 și 16, cifrele de pornire din design, neschimbate. Un dușman obișnuit dă 1 experiență, unul greu 4.
+- Tabelul de dinainte (`npm run balance`, raza 120): Nimic 66 s · Amestec 335 s · Doar navă 221 s (66,1%) · Fără navă 250 s (74,8%) · Fără economie 256 s.
+- Tabelul de după:
+
+```
+Raza de apărare 120
+Jucător        Mediană        Min    Max    Limită             Verdict
+Nimic          66 s           59 s   82 s   60–130 s           în limită
+Amestec        349 s          326 s  385 s  240–360 s          în limită
+Doar navă      223 s (64,0%)  183 s  250 s  ≤ 75% din Amestec  în limită
+Fără navă      250 s (71,8%)  235 s  273 s  ≤ 90% din Amestec  în limită
+Fără economie  317 s          287 s  343 s  —                  fără limită
+```
+
+  Nerotunjit: 65,6 / 348,8 / 223,2 / 250,5 / 317,4 s. „Amestec” e acum cu 11 s sub limita de 360.
+- `npm run check`: 262 de teste trec (232 înainte).
+
+**Task 2 — Cele nouă module.**
+- Modulele au efecte. Cifrele lor stau în `MODS` (`src/data/modules.ts`), pe trepte; lista de oferit (`BALANCE.hero.offerPool`) are acum toate nouă modulele, deci fiecare nivel plătit deschide o ofertă.
+  - Unda: lovitura 10 / 16 / 24, arcul 1,25 / 1,6 / 2,0 rad; raza, ritmul și împinsul neschimbate. La treapta 1 face exact ce făcea nava de nivelul 1 (test pe cinci dușmani).
+  - Laserul (rază 170, o tragere la 0,9 s) lovește pe loc cel mai apropiat dușman și lasă efectul `beam`. Rachetele (rază 200, una la 2,4 s, 240 px/s) lovesc la sosire toți dușmanii din zona de 50 și lasă `blast`; cu ținta doborâtă în zbor, explodează la ultimul punct știut. Razele turelelor rămân `bolt`, fără zonă (`Shot.kind`, `Shot.blast`).
+  - Blindajul adaugă viață maximă (și la viața de acum, când e ales). Scutul încărcat oprește o lovitură întreagă (efectul `block`) și se reface. Reparatorul înlocuiește așteptarea și ritmul refacerii. Motorul înmulțește viteza. Magnetul înlocuiește distanța de strâns și scurtează timpul între bucăți. Releul împarte timpul dintre trageri al turelelor cu corpul la cel mult 220 de nava vie.
+  - Nava doborâtă nu trage cu nicio armă, iar ceasurile armelor ei nu curg. Ceasul scutului curge și atunci. Ordinea în pas: unda, laserul, rachetele, turelele.
+  - Efectele noi trăiesc 0,12 s (`beam`), 0,3 s (`blast`) și 0,25 s (`block`) (`BALANCE.fx`); desenul lor vine la Task 6. Până atunci desenul le sare, fără să scrie vreun text.
+- Nivelul navei merge până la 9 (pragurile 6, 10, 13, 16, 20, 24, 28, 34); un nivel dă 10 viață (era 20) și nu mai dă lovitură: `BALANCE.hero.dmg` și `dmgPerLevel` nu mai există.
+- `choose` refuză, cu motiv și fără să atingă starea, o ofertă care nu se potrivește cu nava (modul nou deja pe navă, fără loc liber, treaptă care nu e cea de acum plus unu). Salvarea verifică și modulele navei.
+- Trecător, până la panoul de alegere (Task 4): în aplicație, o ofertă deschisă se alege singură, prima.
+- Jucătorii automați aleg oferta după o listă de preferințe, aceeași pentru toate purtările: Laser, Blindaj, Releu, Undă, Rachete, Scut, Reparator, Motor, Magnet (`pickOffer`). Testele care rulează jucătorii automați pas cu pas aleg și ele oferta, ca rularea.
+- **Propuneri, până le vede Andrei în joc:** cifrele modulelor din design și listele de preferințe, neschimbate; pragurile nivelurilor 6–9 (20, 24, 28, 34), din design. Plasa a trecut cu cifrele de pornire, fără vreo încercare de reglaj, deci reglajul rămâne pentru Task 3.
+- Tabelul de după (`npm run balance`, raza 120):
+
+```
+Raza de apărare 120
+Jucător        Mediană        Min    Max    Limită             Verdict
+Nimic          66 s           59 s   82 s   60–130 s           în limită
+Amestec        300 s          242 s  348 s  240–360 s          în limită
+Doar navă      192 s (64,0%)  179 s  226 s  ≤ 75% din Amestec  în limită
+Fără navă      250 s (83,6%)  235 s  273 s  ≤ 90% din Amestec  în limită
+Fără economie  279 s          232 s  316 s  —                  fără limită
+```
+
+  Nerotunjit: 65,6 / 299,7 / 191,9 / 250,5 / 278,9 s. „Fără navă” s-a apropiat de limita lui (83,6% din 90%), fiindcă „Amestec” a scăzut cu 49 s.
+- La sfârșitul partidei, mediana pe 20 de semințe: „Amestec” ajunge la nivelul 4 (designul țintește 6–8 într-o partidă bună), „Doar navă” la nivelul 2. Se reglează la Task 3.
+- `npm run check`: 296 de teste trec (262 înainte). `npm run smoke`: 20 de verificări.
+
+**Task 3 — Reglajul și tabelul: oprit, așteaptă o hotărâre despre jucătorii automați.**
+- În cod (commit-ul acesta, doar teste, nicio cifră schimbată):
+  - `src/sim/run.test.ts`: testul de viteză cu cele trei arme la treapta 3 așază acum cei 150 de dușmani lângă navă (inele între 30 și 165 px, viață mare, nava cu viață mare), deci armele trag tot timpul. În cei 600 de pași s-au tras, măsurat, 23 de unde, 12 raze de laser și 5 explozii de rachetă; testul cere cel puțin cât dau ritmurile lor în 10 s (22, 11 și 4). Limita de 1 ms pe pas rămâne și se măsoară doar pe `step`.
+  - Efectele îmbătrânite: teste noi pentru `blast` (`combat.test.ts`) și `block` (`hero.test.ts`), ca cel pentru `beam`.
+  - `src/data/balance.test.ts`: treptele fiecărui modul sunt strict mai bune de la una la alta, pe cifra lor principală (12 liste).
+- **Ce oprește taskul.** Rândul nou „Fără turele” (`buy: ['economy', 'hero']`), cu cifrele de azi neschimbate, pică testul de partidă întreagă din `src/bots/bot.test.ts` („nicio plată la un cerc care nu e ținta în acel pas”): sămânța 16, la 41,93 s, nava plătește nivelul 2 al colectorului; un dușman doborât duce experiența la 6, nava devine gata de nivel, stocul (36 cristale, 11 metal) acoperă prețul, iar regula din Task 1 („nivelul gata se plătește înaintea luptei și a rândului”) mută ținta pe cercul navei cât nava încă stă pe colector; urmează 3 plăți la colector în afara țintei (41,97–42,03 s). Aceeași potrivire apare la „Amestec” sau „Fără turele” la toate cele 9 seturi de cifre de reglaj trecute prin acest test, inclusiv unul cu prețul navei de azi. Purtarea e înghețată pentru acest task, deci n-am atins-o: hotărârea e a celui care conduce.
+- **Propunerea de reglaj, neaplicată** (încercarea 31 din 31; măsurată cu purtarea de azi, în copii de lucru): prețul navei la nivelul n cristale 15 + 5 × (n − 2), metal 5 × (n − 2) (azi 25 + 15 × (n − 2) și 10 + 15 × (n − 2)); viața dușmanului 14 × (1 + t / 35) (azi t / 45); pragurile 6, 9, 11, 13, 20, 24, 28, 34 (azi 6, 10, 13, 16, …); Unda 10 / 14 / 19 (azi 10 / 16 / 24); Laserul 14 / 19 / 24 (azi 14 / 22 / 32); Releul 1,3 / 1,55 / 1,8 (azi 1,2 / 1,35 / 1,5); Magnetul 50 / 75 / 100 px (azi 40 / 60 / 80). Cu ea: Nimic 65,6 s · Amestec 292,0 s · Doar navă 190,6 s (65,3%) · Fără navă 222,0 s (76,0%) · Fără economie 267,1 s · Fără turele 216,0 s; la „Amestec” nivelul 7 la sfârșit, nivelul 2 la 46,9 s, nivelul 5 la 144,8 s. Toate țintele ies; testul de mai sus pică („Amestec”, semințele 2 și 3; „Fără turele”, 10 și 16).
+- Proba cu trei liste `prefer` pe propunere („Amestec”): armele întâi 295,1 s, corpul întâi 258,9 s, utilitarele întâi 272,5 s; cea mai mare diferență, 14,0%. Modulele de corp nu valorează nimic pentru jucătorii automați: cu Blindaj, Scut și Reparator mult mai tari, „corpul întâi” iese la fel la secundă (pe semințele 1–5 nava e lovită de 13–27 de ori într-o partidă și nu cade niciodată).
+- Jurnalul încercărilor și amănuntele: raportul taskului, `.superpowers/sdd/2026-11-20-world-guard-nava-cu-module/task-3-report.md`.
+- `npm run check`: 299 de teste trec. `npm run smoke`: „SMOKE OK (20 verificări)”.
+
+**Rămâne:**
+- [ ] hotărârea despre regula „nivelul gata se plătește întâi”, care mută ținta în mijlocul unei plăți la alt cerc; apoi rândul „Fără turele”, coloanele de nivel (gata, în afara commit-ului) și reglajul.
+
+**Task 3, după hotărârea celui care conduce (R7) — regula nouă a jucătorilor automați, rândul nou și reglajul.**
+- **Regula nouă a jucătorilor automați, „jucătorul automat își termină plata începută”** (`heldPad` în `src/bots/policy.ts`, prima regulă din `nextPad`): dacă nava vie stă pe un cerc de cumpărat (nu cel de reparat) pe care plata curge (`dwell` la prag, nava în `PAD_R`), cercul mai are ceva de plătit pentru nivelul următor și stocul mai poate plăti măcar o unitate din ce a rămas, acel cerc rămâne ținta. Altfel, regulile de până acum, în ordine: nivelul gata și plătibil al navei, apoi rândul categoriilor. În `chooseGoal`, cu o plată ținută la alt cerc decât al navei, nivelul gata o așteaptă, iar lupta trece înaintea ei, ca înainte; plata nivelului navei trece, ca înainte, înaintea luptei.
+  - Prima mea variantă oprea și plata nivelului navei în fața luptei: „Amestec” cădea de la 299,7 la 266,0 s, pe aproape toate semințele (sămânța 3: la 60,17 s, în mijlocul plății nivelului 2, nava pleca să lupte). Reparată; testul „ținută la o turelă, plata cedează în fața luptei; ținută la cercul navei gata, nu” o fixează.
+  - Cu cifrele de dinainte de reglaj, tabelul e identic cu cel de la Task 2 la cele cinci purtări vechi (66 / 300 / 192 / 250 / 279 s), iar parcursul din `bot.test.ts` trece pe toate cele 20 de semințe × șase purtări.
+  - Teste noi în `src/bots/policy.test.ts`, văzute picând întâi (trei din ele) pe regula veche: nava devine gata la mijlocul plății unei turele, iar ținta rămâne turela până la sfârșitul nivelului; plata ținută se oprește când stocul nu mai poate plăti nimic; nava trece pragul fără să fie plătibilă, iar ținta rămâne cercul plătit; cu `dwell` sub prag nu se ține nimic; cercul de reparat nu e ținut niciodată.
+- **Rândul „Fără turele”** (`buy: ['economy', 'hero']`, ultimul, fără limită) și trei coloane de informație: nivelul navei la sfârșit și secundele nivelurilor 2 și 5 (mediane; „—” dacă pe cel puțin jumătate din semințe nivelul n-a fost atins). `playTimed` în `src/bots/run.ts`; `Row` capătă `level`, `lvl2At`, `lvl5At`.
+- Tabelul de dinainte (regula nouă, cifrele de dinainte de reglaj, `npm run balance`):
+
+```
+Jucător        Mediană        Min    Max    Limită             Verdict      Nivel  Nivel 2  Nivel 5
+Nimic          66 s           59 s   82 s   60–130 s           în limită    1      —        —
+Amestec        300 s          242 s  348 s  240–360 s          în limită    4      61 s     —
+Doar navă      192 s (64,0%)  179 s  226 s  ≤ 75% din Amestec  în limită    2      93 s     —
+Fără navă      250 s (83,6%)  235 s  273 s  ≤ 90% din Amestec  în limită    1      —        —
+Fără economie  279 s          232 s  316 s  —                  fără limită  3      61 s     —
+Fără turele    214 s          173 s  267 s  —                  fără limită  4      49 s     —
+```
+
+- **Propuneri, până le vede Andrei în joc** (înainte → după, motivul):
+  - prețul navei la nivelul n: cristale 25 + 15 × (n − 2) → 15 + 5 × (n − 2); metal 10 + 15 × (n − 2) → 5 × (n − 2). La „Amestec”, după nivelul 2, experiența era gata cu mult înaintea plății (nivelul 4 gata la 116,6 s, plătit la 232,2 s): ritmul nivelurilor îl țineau resursele. Metalul 0 la nivelul 2 aduce nivelul 2 de pe la 53 s pe la 45–48 s.
+  - pragurile nivelurilor 3–5: 10, 13, 16 → 9, 11, 13 (restul neschimbate). Cu prețul mic, nivelul 5 era legat de experiență, plătit pe la 165 s, la marginea țintei de 170; acum la 145 s.
+  - viața dușmanului: 14 × (1 + t / 45) → 14 × (1 + t / 33). Nava mai ieftină ducea „Amestec” la 349,5 s, peste ținta de 335.
+  - Releul: × 1,2 / 1,35 / 1,5 → × 1,3 / 1,55 / 1,8; Magnetul: 40 / 60 / 80 → 50 / 75 / 100 px. Ridică lista „utilitarele întâi” (Magnetul singur: 269,4 → 272,9 s, măsurat în încercări); Releul se vede și în „Amestec”.
+  - Armele au rămas cum le-a dat designul (Unda 10 / 16 / 24, Laserul 14 / 22 / 32, Rachetele 12 / 18 / 26), ca să crească vizibil de la o treaptă la alta. O variantă cu armele slăbite (Unda 10 / 14 / 19, Laserul 14 / 19 / 24) scădea diferența dintre liste sub 15%, dar numai prin arme mai slabe; n-am ales-o.
+  - Încercate și puse la loc, fiindcă n-au avut efect: Blindaj, Scut, Reparator mai tari; Motorul mai tare; Rachetele mai slabe.
+- Tabelul de după (`npm run balance -- --raze`, 45,6 s):
+
+```
+Raza de apărare 120
+Jucător        Mediană        Min    Max    Limită             Verdict      Nivel  Nivel 2  Nivel 5
+Nimic          66 s           59 s   82 s   60–130 s           în limită    1      —        —
+Amestec        306 s          249 s  350 s  240–360 s          în limită    7      48 s     145 s
+Doar navă      199 s (65,0%)  173 s  223 s  ≤ 75% din Amestec  în limită    2      47 s     —
+Fără navă      219 s (71,6%)  198 s  235 s  ≤ 90% din Amestec  în limită    1      —        —
+Fără economie  278 s          203 s  309 s  —                  fără limită  4      45 s     —
+Fără turele    235 s          176 s  279 s  —                  fără limită  7      48 s     140 s
+
+Raza de apărare 80
+Nimic          66 s           59 s   82 s   60–130 s           în limită    1      —        —
+Amestec        290 s          236 s  313 s  240–360 s          în limită    7      48 s     143 s
+Doar navă      188 s (65,0%)  169 s  227 s  ≤ 75% din Amestec  în limită    2      48 s     —
+Fără navă      215 s (74,2%)  191 s  231 s  ≤ 90% din Amestec  în limită    1      —        —
+Fără economie  268 s          201 s  304 s  —                  fără limită  5      45 s     156 s
+Fără turele    225 s          166 s  251 s  —                  fără limită  6,5    48 s     141 s
+
+Raza de apărare 160
+Nimic          66 s           59 s   82 s   60–130 s           în limită    1      —        —
+Amestec        300 s          260 s  339 s  240–360 s          în limită    7      45 s     152 s
+Doar navă      193 s (64,2%)  169 s  232 s  ≤ 75% din Amestec  în limită    2      47 s     —
+Fără navă      221 s (73,5%)  193 s  234 s  ≤ 90% din Amestec  în limită    1      —        —
+Fără economie  275 s          208 s  307 s  —                  fără limită  4      45 s     —
+Fără turele    236 s          170 s  288 s  —                  fără limită  7      47 s     141 s
+```
+
+  Nerotunjit, la raza 120: 65,6 / 305,9 / 198,8 / 219,0 / 277,6 / 234,7 s; la „Amestec”, nivelul 2 la 47,9 s, nivelul 5 la 145,3 s.
+- Țintele (raza 120): toate ies. Nimic 65,6 s (62–125); Amestec 305,9 s (270–335); Doar navă 65,0% (cel mult 70); Fără navă 71,6% (cel mult 85); Fără economie 277,6 s și Fără turele 234,7 s, sub „Amestec”; la „Amestec”, nivelul 7 la sfârșit (6–8), nivelul 2 la 47,9 s (25–60), nivelul 5 la 145,3 s (90–170).
+- **Proba cu trei liste `prefer`** („Amestec”, cifrele de după): armele întâi (laser, missile, wave, armor, shield, mender, relay, engine, magnet) 303,7 s; corpul întâi (armor, shield, mender, laser, missile, wave, relay, engine, magnet) 250,5 s; utilitarele întâi (relay, engine, magnet, laser, missile, wave, armor, shield, mender) 266,5 s; lista din cod 305,9 s. **Armele bat corpul cu 21,2% și utilitarele cu 14,0%:** peste pragul de 15% din brief, raportat ca atare. Lista din cod a rămas cea de dinainte.
+- **Pentru Andrei: modulele de corp nu valorează nimic pentru jucătorii automați.** Pe semințele 1–5, cu lista din cod, nava e lovită de 20–39 de ori într-o partidă de 262–350 s și nu e doborâtă niciodată; cu „corpul întâi”, de 10–40 de ori, tot fără nicio cădere. Cu Blindaj, Scut și Reparator mult mai tari (40 / 80 / 130 viață; 5 / 3,5 / 2 s; 1,5 / 1 / 0,5 s și 8 / 12 / 16 pe secundă), „corpul întâi” urcă doar de la 250,5 la 252,8 s. Jucătorii luptă lângă planetă, iar unda îi împinge pe dușmani; ce le lipsește e lovitura, nu viața. Purtarea n-am schimbat-o ca să repar asta.
+- Regula de mers la cifre vecine: parcursul din `bot.test.ts` (toate semințele × șase purtări) trece pe setul ales și pe 9 seturi vecine (viața t / 32 și t / 34; prețul navei cu metal 6 și 4 pe nivel, cu cristale 20 la nivelul 2; pragurile 6, 10, 12, 14, …; Releul 1,25 / 1,5 / 1,75; ritmul 5 / (1 + t / 85); fără Magnetul nou). Două seturi pică altă regulă a lui, „cel mult 10 pași pe un cerc străin”: viața t / 35 și Releul 1,25 / 1,5 / 1,75 cu t / 35. În ambele, „Fără turele”, sămânța 17, la 113,92 s, nava stă 11 pași pe cercul navei în drum spre mină, la câteva pași după ce și-a plătit acolo nivelul; nu plătește nimic acolo (plata ar porni după 21 de pași). E o margine a mersului, nu a regulii noi; de aceea am ales t / 33.
+- Testele aduse la zi (doar valoarea așteptată): `balance.test.ts` (prețul navei, `foeHp(33)` = 28), `foes.test.ts`, `mods.test.ts` (pragurile), `pads.test.ts` (prețul nivelurilor 2 și 3), `combat.test.ts` (Releul: 48 / 37 / 31 / 27 de pași), `hero.test.ts` (Magnetul). În `policy.test.ts`, două teste cereau „lipsește metal la nivelul 2”, iar nivelul 2 nu mai cere metal. „Lipsă 5 cristale și 10 metal” trece la nivelul 4 (25 cristale și 10 metal, cu 20 de cristale în stoc), deci are aceleași lipsuri ca înainte. „Cu toți asteroizii goi” trece la nivelul 3. `docs/GDD.md`, „Cifrele jocului”: prețul navei, pragurile, viața dușmanului, Releul și Magnetul.
+- Jurnalul încercărilor, pe scurt: 31 de încercări înainte de hotărâre și încă 18 seturi de cifre după (setul ales, vecinii lui), plus probele `prefer`; amănuntele sunt în raportul taskului.
+- `npm run check`: 310 teste trec; `npm test` durează cam 32 s. `npm run smoke`: „SMOKE OK (20 verificări)”, 9,73 ms pe cadru la desenul cu 150 de nave.
+- [x] hotărârea despre plata începută: luată (R7) și pusă în cod în acest commit.
+
+**Task 3, reparațiile după recenzie (R8).**
+- `policy.test.ts`: „lipsă 5 cristale și 10 metal” are din nou lipsurile 5 și 10 (nava la nivelul 4). Am adăugat „lipsă 10 cristale și 5 metal: strânge cristal”. Fără el, comparația `missM > missC` putea deveni `missM > 0` fără ca vreun test să pice: am verificat, testul refăcut trece și cu greșeala. Cu greșeala, testul nou pică; iar cu `missC > 0 ? 'crystal' : 'metal'`, pică testul refăcut.
+- Plata ținută (`heldPad`) ține doar un cerc dintr-o categorie pe care purtarea o cumpără: turela pentru `turret`, colectorul și mina pentru `economy`, cercul navei pentru `hero`. Testul nou a picat întâi pe codul de dinainte. Tabelul nu s-a mișcat.
+- `bot.test.ts`: la sfârșitul partidei, „Fără turele” are toate turelele la nivelul 0.
+- **Magnetul pus la loc, la 40 / 60 / 80 px.** Cu celelalte cifre alese, „Amestec” cu lista „utilitarele întâi” ține 268,6 s cu 40 / 60 / 80 și 266,5 s cu 50 / 75 / 100: niciun câștig. Testul Magnetului și `docs/GDD.md` sunt aduse înapoi. Tabelul nu se schimbă (66 / 306 / 199 (65,0%) / 219 (71,6%) / 278 / 235 s).
+- Proba `prefer` cu cifrele finale: armele întâi 303,7 s, corpul întâi 250,5 s (+21,2%), utilitarele întâi 268,6 s (+13,1%).
+- `npm run check`: 312 teste trec.
+
+**Task 4 — Panoul de alegere.**
+- La un nivel plătit, jocul stă și apare panoul pe mijlocul ecranului (`src/ui/choice.ts`, `#choiceVeil` în `index.html`): „Nivel n”, „Alege un modul”, locurile navei ca pătrate mici (ocupate în culoarea felului, libere punctate, lacăt la următorul care se deschide) și ofertele ca rânduri late, una sub alta: pictogramă, nume, „Armă · Nou” sau „Corp · Întărire”, cel mult două rânduri de text și trei puncte până la treapta la care ajunge. Dedesubt: „Jocul stă pe loc cât alegi.”. Culoarea felului: arma `--hero`, corpul `--shield`, utilitarul `--metal`. Pictogramele sunt cele din machetă, ca `<symbol>` în `index.html`.
+- Fundalul (canvasul și banda de sus) se vede încețoșat și întunecat: `backdrop-filter: blur(5px)` (și cu `-webkit-`) pe văl, peste un văl de 50%. Unde browserul nu are încețoșarea, vălul e de 78%: fundalul se vede doar întunecat.
+- Rândurile sunt butoane legate cu `onTap` și sunt făcute din nou la fiecare deschidere: o atingere începută înainte de panou (pe canvas, cu joystickul) nu are cum să aleagă. Tastele 1, 2, 3 aleg; focusul merge pe primul rând. Escape nu închide panoul; butonul de pauză e ascuns cât e deschis; joystickul e lăsat.
+- Alegerea automată trecătoare din Task 2 a dispărut. `session.choose(i)` întoarce `false` fără partidă în curs, fără ofertă, cu un index greșit sau când simularea refuză oferta; panoul rămâne atunci deschis. În testul de viteză, experiența rămâne 0.
+- Regula „oferta se potrivește cu nava” stă acum într-un singur loc, `offerFits` (`src/sim/mods.ts`), folosit de `choose` și de citirea salvării: o salvare cu o ofertă pe care `choose` ar refuza-o e respinsă cu „altă formă”, altfel partida ar sta pe loc pentru totdeauna.
+- Pagina ascunsă cu panoul deschis: pauza salvează partida cu oferta; „Continuă” și „Continuă partida” după reîncărcare duc la același panou.
+- Proba din browser are patru verificări noi (21–24) și captura `08-alegere.png`.
+- `npm run check`: 326 de teste trec (312 înainte). `npm run smoke`: „SMOKE OK (24 verificări)”.
+
+**Task 4, finisajul după recenzie (R10) — ca jucătorul să nu aleagă fără să vrea.**
+- Focusul de la deschidere stă pe cartonașul panoului (`#choiceCard`, `tabindex="-1"`, fără contur), nu pe prima ofertă, cum era până acum. Pe telefon focusul pus din cod rămânea `:focus-visible`, iar inelul alb făcea prima ofertă să pară aleasă deja; un Enter sau Spațiu apăsat din reflex o alegea. Acum Tab duce la prima ofertă, unde conturul se vede; tastele 1–3 merg ca înainte.
+- **Propunere:** panoul nu primește alegeri în primele 400 ms de la deschidere (`CHOICE_GRACE_MS` în `src/ui/choice.ts`). Jucătorul care stă pe cercul navei ca să plătească pune des degetul pe ecran ca să plece exact când apare panoul; apăsarea aceea ar începe pe un rând. Poarta e una singură (`tryPick`) și prin ea trec atingerea, clicul (și cel de la tastatură) și tastele 1–3. Contează când a ÎNCEPUT apăsarea: una pornită înăuntrul ferestrei nu alege nici dacă degetul se ridică după. Ceasul e al interfeței (`performance.now`, dat ca parametru, ca testele să-l conducă); simularea n-a fost atinsă.
+- Tastele 1–3: maparea e acum o funcție fără DOM, `pickIndex` (`src/input/bind.ts`), testată în `bind.test.ts` (tasta ținută și Ctrl, Alt sau Meta nu aleg).
+- Proba din browser: verificarea 21 face o atingere pe un rând imediat după deschidere (la 188 ms, măsurat cu poarta scoasă, când alegea) și apasă Enter și Spațiu; nimic nu e ales. Verificările 21–24 așteaptă fereastra înainte să aleagă. Comentariul verificării 24 spune ce dovedește și ce nu.
+- `npm run check`: 336 de teste trec (326 înainte). `npm run smoke`: „SMOKE OK (24 verificări)”.
+
+**Task 5 — Banda de sus și cercul navei.**
+- Banda are un al treilea rând (`#ship`): nivelul într-un inel care se umple cu experiența spre pragul următor, locurile navei și, la dreapta, „experiență 14/40”. Cu pragul atins, inelul e plin, în culoarea navei, iar textul e „Nivel 4 gata”; la nivelul maxim, „Nivel maxim”. Ce arată rândul iese dintr-o funcție fără DOM, `shipRow` (`src/ui/hud.ts`); DOM-ul se atinge doar când o valoare s-a schimbat.
+- Locurile, aceleași în bandă și în panoul de alegere: `src/ui/slots.ts` (`shipSlots` fără DOM, `slotElement` pentru pagină). Un loc ocupat arată acum pictograma modulului, în culoarea felului (în panou era un pătrat de culoare); `ChoiceView['slots']` poartă `{ kind, id }`. La 20 px pe ecran (pictograma de 14 px) pictogramele se citesc, inclusiv la 360 px lățime, cu 6 locuri.
+- Cercul navei pe canvas, trei stări (`heroPadView` în `src/sim/mods.ts`, lângă `heroReady`): cât experiența nu ajunge, sub nume scrie „experiență 14/40” în locul prețului (înainte scria, greșit, „nivel maxim”, și cercul era stins); gata, cercul e aprins (inel plin și umplere în culoarea navei, fără gradient și fără `shadowBlur`) și arată prețul; la nivelul maxim, „Navă · nivel maxim”.
+- Înălțimea benzii: aceeași în start, joc, pauză, panou deschis și final; în testul de viteză e mai înaltă exact cu rândul „TEST · fps”, ca înainte de etapă (rândul fps nu ține loc în afara testului). Măsurat la 360 px lățime: 122 px în start și în joc, 138 px în testul de viteză. Verificarea 26 măsoară în pixeli, cere faza fiecărei măsurători (`window.__wg.phase()` și cartonașul sau panoul vizibil), cere cele cinci înălțimi egale (sub 0,5 px) și testul mai înalt cu cel mult rândul fps plus distanța dintre rânduri, măsurate în pagină; în testul de viteză rândul navei arată „experiență 0/…”.
+- Culoarea inelului de experiență e o **propunere**: alb cât se umple, galben (`--hero`) la „gata” și la nivelul maxim. Macheta aleasă de Andrei îl avea galben tot timpul.
+- Texte noi, doar în `src/ui/strings.ts`: `STR.xpOf`, `STR.levelReady`, `STR.levelMax`.
+- Proba din browser: verificările 25 (rândul navei, „Nivel 2 gata”) și 26 (înălțimea benzii); capturile `03-joc.png`, `08-alegere.png` și `09-banda-gata.png`. `npm run smoke`: „SMOKE OK (26 verificări)”.
+
+**Task 6 — Modulele și tragerile pe canvas.**
+- Fiecare modul adaugă navei o formă (`src/render/orbit/things.ts`, în `hero`): Laserul o țeavă albă în bot, cu vârful albastru; Rachetele două cutii albe pe aripi, cu vârful portocaliu; Blindajul un contur alb, gros, în jurul corpului; Scutul un inel subțire în jurul navei cât e încărcat; Reparatorul un plus albastru în cabină; Motorul o duză în coadă și un jet care arde și pe loc, mai lung în mers; Magnetul o potcoavă pe aripa stângă; Releul un punct între două unde pe aripa dreaptă. Unda nu are formă: e arma de la început. Treapta, fără text: țeava, cutiile, jetul și brațele plusului se lungesc, conturul, inelul și cele două unde ale Releului se îngroașă, potcoava crește. Nava fără Motor are în mers exact jetul de dinainte (fixat de un test în `world.test.ts`); Motorul îl mută la duză și îl lungește. Formele și mărimile sunt **propuneri**.
+- Tragerile: raza laserului e o linie de la marginea navei la țintă, cu halou, care se stinge în `BALANCE.fx.beamLife` (0,12 s); racheta e un corp mic, alb, cu vârf și jet portocaliu; explozia e un disc portocaliu străveziu și un inel galben care cresc de la 30% din zonă până la zona întreagă și se sting în `blastLife`; când Scutul oprește o lovitură, inelul clipește alb și se lărgește puțin, în `blockLife`. Duratele erau deja în `BALANCE.fx`, iar curățarea efectelor bătrâne și testele ei existau din Taskurile 2 și 3 (`combat.test.ts`: „raza de lumină dispare din efecte după durata ei”).
+- `Skin` capătă `beam(ctx, fx, age)` și `blast(ctx, fx, age)`; `shot` desenează racheta după `sh.kind`. `world.ts` le cheamă în stratul razelor, peste inelul planetei: exploziile, raza laserului, apoi rachetele și razele turelelor (racheta se vede peste raza care țintește aceeași navă). Ce citește desenul din stare stă în `derive.ts`: `fade`, `shieldReady`, `blockGlow`, `blastReach`. Fără culori noi: totul vine din variabilele CSS existente.
+- Pictograma Rachetelor din `index.html` (bandă și panou) e redesenată: o rachetă subțire, culcată pe diagonală, cu două aripioare și o flacără, în locul formei drepte care la 14 px semăna cu un clopoțel.
+- Proba din browser rămâne la 26 de verificări. Rândul `SMOKE INFO` e acum două: aceeași rulare, aceleași 150 de nave în jurul planetei, nava fără module și apoi cu toate cele nouă module la treapta 3 (stare forțată: pe navă încap șase), cu armele trăgând din simulare și cu numărul razelor, rachetelor și exploziilor din cadru tipărit alături. Patru rulări cu codul din commit: 8,83 / 9,32; 11,05 / 9,63; 10,03 / 10,11; 10,07 / 9,91 ms pe cadru (fără / cu module), deci între −13% și +6%. Cu o formă mai veche a desenului, aceeași măsurătoare a dat o dată +24% (8,87 / 10,96) și altă dată −6%: diferența e în zgomotul mașinii, nu în desenul modulelor.
+- Capturi noi: `10-nava-module.png` (mărită: nava legitimă cu Unda, Laser, Rachete, Blindaj, Motor și Magnet la treptele 1 și 3, și celelalte trei, Scut, Reparator și Releu, la treptele 1 și 3), `11-explozie.png` (explozie, rază de laser și rachetă în zbor, trase de simulare), `12-nava-la-scara.png` (aceleași nave la scara jocului), `13-banda-rachete.png` și `14-panou-rachete.png` (pictograma nouă).
+- `npm run check`: 353 de teste trec (345 înainte). `npm run smoke`: „SMOKE OK (26 verificări)”.
+
+**Task 6, finisajul după recenzie.**
+- Jetul navei fără Motor e iar cel de dinainte de module (vârfurile `-13 − 9·fl` și `-9 − 5·fl`); testul nou din `world.test.ts` fixează punctele căii. Cu Motorul, jetul pornește de la duză și se lungește cu treapta.
+- `world.test.ts` fixează și ordinea din stratul razelor: explozii, raza laserului, rachete. Comentariile lui `ship` și `blastReach` spun ce face codul. `ship` nu mai face un tablou nou pe cadru.
+- `npm run check`: 354 de teste trec. `npm run smoke`: „SMOKE OK (26 verificări)”; `SMOKE INFO` 9,17 / 9,50 ms pe cadru (fără / cu module).
+
+**Încheierea etapei (Task 7 — documentele).**
+- **Ce s-a livrat în etapă** (în cod pe ramură, în pull request-ul #15, ciornă, neîmbinat, care ține și faza 3; jocul publicat pe GitHub Pages are fazele 1, tema și 2): experiența navei înainte de nivel; cercul navei cu trei stări; panoul de alegere cu trei oferte, jocul stând pe loc cât alegi, cu fundal încețoșat; nouă module la trei trepte (Undă, Laser, Rachete, Blindaj, Scut, Reparator, Motor, Magnet, Releu) și locuri de la 2 la 6, până la nivelul 9; rândul navei în banda de sus; formele modulelor, raza laserului, racheta și explozia pe canvas; salvarea versiunea 2 cu oferta deschisă; jucători automați care aleg module, plătesc nivelul navei și își termină plata, plus purtarea „Fără turele” și coloanele de nivel din tabel; proba din browser la 26 de verificări. Documentele de azi: `docs/GDD.md`, `CLAUDE.md`, `README.md`.
+- **Cifrele de la încheiere**, rulate pe codul din commit: `npm run check` — 36 de fișiere de test, 354 de teste trec; `npm run smoke` — „SMOKE OK (26 verificări)”, desenul cu 150 de nave în jurul planetei în jur de 9–10 ms pe cadru (9,90 ms nava fără module; 8,87 ms nava cu toate cele nouă module la treapta 3, trăgând; mașina are zgomot de cam ±10%); `npm run balance`, raza 120: Nimic 66 s · Amestec 306 s · Doar navă 199 s (65,0%) · Fără navă 219 s (71,6%) · Fără economie 278 s · Fără turele 235 s; „Amestec” la nivelul 7, nivelul 2 la 48 s și nivelul 5 la 145 s. Tabelul întreg e în `docs/GDD.md`, la „Plasa pentru dificultate”.
+- **Ce din intrările de pe parcurs e propunere, nu fapt hotărât** (intrările vechi nu se rescriu; lista completă e și în `docs/GDD.md`, la „Cine a hotărât ce”): toate cifrele (pragurile de experiență, experiența pe dușman, prețul nivelului, cifrele celor nouă module, viața dușmanului 14 × (1 + t / 33)); cele 400 ms în care panoul nu primește alegeri și focusul pe cartonaș în loc de prima ofertă; inelul de experiență alb cât se umple și galben la „gata” (macheta îl avea galben tot timpul); înălțimea benzii (122 px la 360 px lățime, 138 px în testul de viteză); formele modulelor pe navă și culoarea exploziei; **ceasul Scutului care curge și cu nava doborâtă** (intrarea Taskului 2 îl scrie ca fapt; e o propunere); regulile noi ale jucătorilor automați (nivelul navei plătit întâi când e gata și sunt bani, plata începută se termină). Hotărâte de Andrei sunt doar cele din spec: experiență înainte de nivel, cartonaș din trei, pauză la alegere cu panou pe mijloc și fundal încețoșat, totul în banda de sus, locuri 2→6 și direcția etapelor următoare.
+- **Ce nu vede plasa:** Blindajul, Scutul și Reparatorul nu valorează aproape nimic pentru jucătorii automați (nava lor e lovită rar și nu cade); proba „Amestec” cu trei liste de preferințe: armele întâi 303,7 s, utilitarele întâi 268,6 s, corpul întâi 250,5 s. „Doar navă” rămâne la nivelul 2. Releul se citește slab la scara jocului, iar la treapta 3 unele forme de pe navă se ating.
+- **Îndreptări din recenzii, făcute acum:** `docs/GDD.md` — rândul „Navă (eroul)” adus la cifrele din `src/data/balance.ts`, tabelul purtărilor cu „Fără turele”, zgomotul tabelului pe altă mașină „sub un punct”; `CLAUDE.md` — `mods.ts` în lista de la `src/sim/` și „în primul minut” devenit „spre secunda 60”.
+- **Etapele următoare din spec** (dușmani de mai multe feluri și elite cu obiecte de adoptat; turele de mai multe feluri; tipuri de nave) nu sunt promise și cer fiecare designul ei, cu Andrei.
+- [ ] proba lui Andrei pe telefon pentru fazele 2 și 3 și nava cu module împreună: instalarea, jocul fără internet, pauza apăsată cu cealaltă mână, reluarea, ecranul aprins, cum se simte dificultatea nouă, panoul de alegere (și cele 400 ms), banda mai înaltă, formele modulelor la scara jocului;
+- [ ] cele două cifre de la „Test de viteză” (cadre pe secundă și `min`), niciodată notate: pentru tema nouă și pentru nava cu toate modulele trăgând;
+- [ ] hotărârea lui Andrei asupra propunerilor etapei: cifrele, cele 400 ms și focusul panoului, culoarea inelului de experiență, înălțimea benzii, formele modulelor, ceasul Scutului, regulile jucătorilor automați;
+- [ ] de arătat lui Andrei: etichetele din lume se văd prin banda de sus (problemă veche, mai deasă cu banda mai înaltă); arcul de plată de pe cercul navei aprins are puțin contrast; Releul se citește slab și la treapta 3 unele forme de pe navă se ating (țeava Laserului și inelul Scutului, potcoava Magnetului și cutia Rachetei);
+- [ ] hotărârea lui Andrei despre ce vine după nava cu module: dușmani de mai multe feluri și elite cu obiecte de adoptat; turele de mai multe feluri; tipuri de nave;
+- [x] hotărârea despre regula „nivelul gata se plătește întâi”, care mută ținta în mijlocul unei plăți la alt cerc; apoi rândul „Fără turele”, coloanele de nivel (gata, în afara commit-ului) și reglajul: luată (R7); rândul, coloanele și reglajul sunt în cod din Task 3.

@@ -4,6 +4,7 @@ import { BALANCE, cost } from '../data/balance'
 import { PAD_R } from '../data/layout'
 import { DT, EPS, type BuildKind, type GameState, type Pad, type Res } from './state'
 import { heroMaxHp } from './hero'
+import { heroReady, makeOffer, xpNeed } from './mods'
 
 const RES: readonly Res[] = ['crystal', 'metal']
 
@@ -16,9 +17,10 @@ function maxLevelOf(kind: BuildKind): number {
   return BALANCE[kind].maxLevel
 }
 
-/** Costul nivelului următor; null la „repair” și la nivel maxim. */
+/** Costul nivelului următor; null la „repair”, la nivel maxim și la cercul navei cât pragul de experiență nu e atins. */
 export function nextCost(s: GameState, p: Pad): Record<Res, number> | null {
   if (p.kind === 'repair') return null
+  if (p.kind === 'hero' && !heroReady(s)) return null
   const lvl = levelOf(s, p)
   if (lvl >= maxLevelOf(p.kind)) return null
   return cost(p.kind, lvl + 1)
@@ -30,10 +32,12 @@ function finishLevel(s: GameState, p: Pad, kind: BuildKind): void {
   p.popT = s.t
   let lvl: number
   if (kind === 'hero') {
+    s.hero.xp -= xpNeed(s.hero.lvl) ?? 0   // pragul se scade; ce e peste el rămâne pentru nivelul următor
     s.hero.lvl += 1
     s.hero.hp = heroMaxHp(s)
     lvl = s.hero.lvl
     s.fx.push({ kind: 'level', what: kind, lvl, x: p.x, y: p.y, t0: s.t })
+    s.offer = makeOffer(s)
     return
   }
   p.lvl += 1

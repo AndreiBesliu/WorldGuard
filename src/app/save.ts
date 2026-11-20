@@ -1,8 +1,10 @@
 // Salvarea partidei: starea trecută prin JSON, cu versiune, verificată la citire. Nu atinge stocarea (asta e în alt modul).
+import { MAX_TIER, MOD_IDS } from '../data/modules'
+import { offerFits } from '../sim/mods'
 import { fail, ok, type Result } from '../sim/result'
 import { createGame, type GameState } from '../sim/state'
 
-export const SAVE_VERSION = 1
+export const SAVE_VERSION = 2
 
 export function packSave(s: GameState): string {
   return JSON.stringify({ v: SAVE_VERSION, state: s })
@@ -26,16 +28,42 @@ export function unpackSave(text: string | null | undefined): Result<GameState> {
   if (state.mode !== 'playing') return fail('partidă terminată')
   const ref = createGame(0) as unknown as Record<string, unknown>
   const len = (r: Record<string, unknown>, k: string): number => (Array.isArray(r[k]) ? (r[k] as unknown[]).length : -1)
-  if (!sameKeys(state, ref) || len(state, 'nodes') !== len(ref, 'nodes') || len(state, 'pads') !== len(ref, 'pads') || hasNull(state)) {
+  // `offer` e singurul loc unde `null` e o valoare bună („nicio ofertă deschisă”); se verifică aparte.
+  const { offer, ...rest } = state
+  if (!sameKeys(state, ref) || len(state, 'nodes') !== len(ref, 'nodes') || len(state, 'pads') !== len(ref, 'pads') || hasNull(rest) || !goodOffer(offer)) {
     return fail('altă formă')
   }
   // Un nivel mai jos: nava, planeta, fiecare cerc (cu ce s-a plătit în el) și fiecare nod au cheile din partida nouă.
   const refPad = (ref.pads as Record<string, unknown>[])[0], refNode = (ref.nodes as Record<string, unknown>[])[0]
   const inner = sameKeys(state.hero, ref.hero) && sameKeys(state.core, ref.core) &&
     (state.pads as unknown[]).every((p) => sameKeys(p, refPad) && sameKeys((p as Record<string, unknown>).paid, refPad?.paid)) &&
-    (state.nodes as unknown[]).every((n) => sameKeys(n, refNode))
+    (state.nodes as unknown[]).every((n) => sameKeys(n, refNode)) && goodMods((state.hero as Record<string, unknown>).mods)
   if (!inner) return fail('altă formă')
-  return ok(state as unknown as GameState)
+  // O ofertă pe care `choose` ar refuza-o ar ține partida pe loc pentru totdeauna: panoul n-ar avea ce alege.
+  const game = state as unknown as GameState
+  if (game.offer !== null && !game.offer.every((e) => offerFits(game, e).ok)) return fail('altă formă')
+  return ok(game)
+}
+
+/** `null`, sau o listă nevidă de oferte cu exact cheile `id` (un modul cunoscut) și `tier` (întreg de la 1 la treapta maximă). */
+function goodOffer(v: unknown): boolean {
+  if (v === null) return true
+  if (!Array.isArray(v) || v.length === 0) return false   // o listă goală ar ține partida pe loc pentru totdeauna
+  return v.every((e) => sameKeys(e, { id: 0, tier: 0 }) &&
+    (MOD_IDS as readonly unknown[]).includes(e.id) && Number.isInteger(e.tier) && e.tier >= 1 && e.tier <= MAX_TIER)
+}
+
+/**
+ * Modulele navei: o listă în care fiecare element are exact cheile `id` (un modul cunoscut), `tier` (întreg de la 1 la treapta
+ * maximă) și `t` (număr finit), fără un modul de două ori și cu Unda printre ele.
+ */
+function goodMods(v: unknown): boolean {
+  if (!Array.isArray(v)) return false
+  const good = v.every((e) => sameKeys(e, { id: 0, tier: 0, t: 0 }) &&
+    (MOD_IDS as readonly unknown[]).includes(e.id) && Number.isInteger(e.tier) && e.tier >= 1 && e.tier <= MAX_TIER &&
+    typeof e.t === 'number' && Number.isFinite(e.t))
+  const ids = v.map((e: { id: unknown }) => e?.id)
+  return good && new Set(ids).size === ids.length && ids.includes('wave')
 }
 
 /** Amândouă sunt obiecte (nu liste) cu exact aceleași chei. */

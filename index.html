@@ -9,6 +9,19 @@
     <title>World Guard</title>
   </head>
   <body>
+    <!-- Pictogramele modulelor (din docs/machete-nava-cu-module.html), folosite prin <use href="#i-…">. -->
+    <svg class="icons" width="0" height="0" aria-hidden="true" focusable="false">
+      <symbol id="i-wave" viewBox="0 0 24 24"><g class="ico"><path d="M4 14a6 6 0 0 1 6 6"/><path d="M4 9a11 11 0 0 1 11 11"/><path d="M4 4a16 16 0 0 1 16 16"/></g></symbol>
+      <symbol id="i-laser" viewBox="0 0 24 24"><g class="ico"><path d="M3 21 15 9"/><circle cx="17" cy="7" r="2.5"/><path d="M17 1.5v2M22.5 7h-2M21 3l-1.4 1.4"/></g></symbol>
+      <symbol id="i-missile" viewBox="0 0 24 24"><g class="ico" transform="rotate(45 12 12)"><path d="M12 2.5c2.2 1.9 3.2 4.7 3.2 8.2V16H8.8v-5.3c0-3.5 1-6.3 3.2-8.2z"/><path d="M8.8 12.3 6.2 15.6V18l2.6-2M15.2 12.3l2.6 3.3V18l-2.6-2M12 18.8v2.7"/></g></symbol>
+      <symbol id="i-armor" viewBox="0 0 24 24"><g class="ico"><path d="M12 3 5 6v5.5c0 4.3 2.9 7.6 7 9.5 4.1-1.9 7-5.2 7-9.5V6z"/></g></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><g class="ico"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.5"/></g></symbol>
+      <symbol id="i-mender" viewBox="0 0 24 24"><g class="ico"><path d="M12 5v14M5 12h14"/></g></symbol>
+      <symbol id="i-engine" viewBox="0 0 24 24"><g class="ico"><path d="M5 6l6 6-6 6M13 6l6 6-6 6"/></g></symbol>
+      <symbol id="i-magnet" viewBox="0 0 24 24"><g class="ico"><path d="M6 4v8a6 6 0 0 0 12 0V4h-4v8a2 2 0 0 1-4 0V4z"/></g></symbol>
+      <symbol id="i-relay" viewBox="0 0 24 24"><g class="ico"><path d="M12 21V11M8 21h8"/><circle cx="12" cy="8.5" r="2"/><path d="M7 13a7 7 0 0 1 0-9M17 13a7 7 0 0 0 0-9"/></g></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><g class="ico"><rect x="6" y="11" width="12" height="9" rx="2"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3"/></g></symbol>
+    </svg>
     <div class="stage" id="stage">
       <canvas id="field" data-str-aria="fieldLabel"></canvas>
 
@@ -22,6 +35,14 @@
             <span data-str="core"></span>
             <div class="meter" id="meter"><i id="coreFill"></i></div>
             <b id="coreHp"></b>
+          </div>
+          <div class="ship" id="ship">
+            <div class="level">
+              <svg class="ring" viewBox="0 0 36 36" aria-hidden="true"><circle class="ring-track" cx="18" cy="18" r="15"/><circle class="ring-fill" id="xpRing" cx="18" cy="18" r="15" pathLength="100"/></svg>
+              <b id="level"></b>
+            </div>
+            <div class="slots" id="shipSlots"></div>
+            <span class="xp" id="xpText"></span>
           </div>
         </div>
       </div>
@@ -49,6 +70,20 @@
           <div class="result"><span data-str="pauseSoFar"></span><b id="pauseTime"></b></div>
           <button class="go" id="resume" type="button" data-str="resume"></button>
           <button class="go alt" id="fresh" type="button" data-str="fresh"></button>
+        </div>
+      </div>
+
+      <div class="veil choice" id="choiceVeil" hidden>
+        <div class="card pick" id="choiceCard" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="choiceTitle">
+          <div class="pick-head">
+            <div class="pick-title">
+              <span class="pick-level" id="choiceLevel"></span>
+              <h1 id="choiceTitle" data-str="chooseTitle"></h1>
+            </div>
+            <div class="slots" id="choiceSlots"></div>
+          </div>
+          <div class="offers" id="choiceOffers"></div>
+          <p class="pick-note" data-str="chooseNote"></p>
         </div>
       </div>
 
