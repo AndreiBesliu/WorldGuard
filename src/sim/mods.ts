@@ -1,14 +1,19 @@
 // Modulele navei ca date: experiența și pragul nivelului, locurile, ofertele de la un nivel nou și alegerea uneia.
 // Ce face fiecare modul în luptă nu stă aici.
 import { BALANCE } from '../data/balance'
-import { MAX_TIER, OFFERS, type ModId } from '../data/modules'
+import { atTier, MAX_TIER, MODS, OFFERS, type ModId } from '../data/modules'
 import { fail, ok, type Result } from './result'
 import { createRng } from './rng'
-import type { GameState, Offer } from './state'
+import type { GameState, Mod, Offer } from './state'
+
+/** Modulul de pe navă, cu ceasul lui; undefined dacă nava nu îl are. */
+export function modOf(s: GameState, id: ModId): Mod | undefined {
+  return s.hero.mods.find((m) => m.id === id)
+}
 
 /** Treapta modulului pe navă; 0 dacă nava nu îl are. */
 export function tierOf(s: GameState, id: ModId): number {
-  return s.hero.mods.find((m) => m.id === id)?.tier ?? 0
+  return modOf(s, id)?.tier ?? 0
 }
 
 /** Câte module încap pe navă la nivelul dat. */
@@ -55,14 +60,25 @@ export function makeOffer(s: GameState, pool: readonly ModId[] = BALANCE.hero.of
   return out
 }
 
-/** Alege oferta cu indexul dat: pune modulul nou sau îi urcă treapta, apoi închide oferta. */
+/**
+ * Alege oferta cu indexul dat: pune modulul nou sau îi urcă treapta, apoi închide oferta.
+ * Refuză, fără să atingă starea, o ofertă care nu se potrivește cu nava (ar putea veni dintr-o salvare stricată):
+ * un modul nou pe care nava îl are deja sau pentru care nu are loc, ori o întărire care nu e exact treapta de acum plus unu.
+ * Blindajul ales adaugă și la viața de acum diferența de viață maximă.
+ */
 export function choose(s: GameState, index: number): Result<Offer> {
   if (s.offer === null) return fail('nicio ofertă deschisă')
   const o = Number.isInteger(index) ? s.offer[index] : undefined
   if (!o) return fail('ofertă inexistentă')
-  const m = s.hero.mods.find((x) => x.id === o.id)
+  const m = modOf(s, o.id), now = m?.tier ?? 0
+  if (o.tier === 1 && m) return fail('modul deja pe navă')
+  if (o.tier === 1 && s.hero.mods.length >= slotsAt(s.hero.lvl)) return fail('niciun loc liber')
+  if (o.tier !== now + 1 || o.tier > MAX_TIER) return fail('treaptă nepotrivită')
   if (m) m.tier = o.tier
   else s.hero.mods.push({ id: o.id, tier: 1, t: 0 })
+  if (o.id === 'armor' && !s.hero.dead) {
+    s.hero.hp += atTier(MODS.armor.hp, o.tier) - (now > 0 ? atTier(MODS.armor.hp, now) : 0)
+  }
   s.offer = null
   return ok({ id: o.id, tier: o.tier })
 }

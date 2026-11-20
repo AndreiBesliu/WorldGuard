@@ -5,9 +5,11 @@ import { CLUSTERS, HOME, PAD_R } from '../data/layout'
 import { createGame, type GameState, type Pad, type ResNode } from '../sim/state'
 import { step } from '../sim/step'
 import { heroAt, padOf } from '../sim/testkit'
-import { createBot, type Bot } from './bot'
+import { choose } from '../sim/mods'
+import { createBot } from './bot'
 import { createNav, createSkirt, offForeignPad, slipOff, type Nav } from './nav'
-import { POLICIES } from './policy'
+import { POLICIES, type Policy } from './policy'
+import { playStep } from './run'
 
 function calm(): GameState {
   const s = createGame(1)
@@ -21,6 +23,7 @@ function drive(s: GameState, nav: Nav, x: number, y: number, stop: number, limit
   while (s.t - t0 < limit) {
     const input = nav.toward(s, x, y, stop)
     if (input.x === 0 && input.y === 0) return s.t - t0
+    if (s.offer !== null) { choose(s, 0); continue }   // o ofertă deschisă ar ține ceasul pe loc
     step(s, input)
   }
   return Infinity
@@ -105,11 +108,12 @@ describe('mersul', () => {
  * cel mai scurt drum făcut de navă într-o fereastră de `WINDOW` pași (aproape zero: a rămas pe loc) și câți pași a numărat
  * cercul `pad` (nava a călcat pe el).
  */
-function ride(s: GameState, bot: Bot, pad: Pad, done: () => boolean, limit: number): { t: number; still: number; on: number } {
-  const t0 = s.t, xs: number[] = [], ys: number[] = []
+function ride(s: GameState, p: Policy, pad: Pad, done: () => boolean, limit: number): { t: number; still: number; on: number } {
+  const t0 = s.t, xs: number[] = [], ys: number[] = [], bot = createBot(p)
   let still = Infinity, on = 0
   while (!done()) {
     if (s.t - t0 >= limit) return { t: Infinity, still, on }
+    if (s.offer !== null) { playStep(s, p, bot); continue }   // o ofertă deschisă se alege, ca în playOne
     step(s, bot(s))
     if (pad.dwell > 0) on++
     xs.push(s.hero.x); ys.push(s.hero.y)
@@ -136,7 +140,7 @@ describe('jucătorul întreg pe lângă un cerc construit (clădirea și cercul 
     heroAt(s, 500, 640)
     expect(node.x).toBeLessThan(pad.x - PAD_R)   // ținta e de cealaltă parte a cercului
     const limit = margin(Math.hypot(node.x - s.hero.x, node.y - s.hero.y))
-    const run = ride(s, createBot(ship), pad, () => s.crystal > 0, limit + 1)
+    const run = ride(s, ship, pad, () => s.crystal > 0, limit + 1)
     expect(run.t).toBeLessThanOrEqual(limit)
     expect(run.still).toBeGreaterThanOrEqual(MOVING)
     expect(run.on).toBe(0)
@@ -149,7 +153,7 @@ describe('jucătorul întreg pe lângă un cerc construit (clădirea și cercul 
     s.hero.xp = 6                    // pragul nivelului 2 e atins
     heroAt(s, 240, 820)
     const limit = margin(Math.hypot(target.x - s.hero.x, target.y - s.hero.y))
-    const run = ride(s, createBot(ship), pad, () => Math.hypot(s.hero.x - target.x, s.hero.y - target.y) <= PAD_R * 0.4, limit + 1)
+    const run = ride(s, ship, pad, () => Math.hypot(s.hero.x - target.x, s.hero.y - target.y) <= PAD_R * 0.4, limit + 1)
     expect(run.t).toBeLessThanOrEqual(limit)
     expect(run.still).toBeGreaterThanOrEqual(MOVING)
     expect(run.on).toBe(0)

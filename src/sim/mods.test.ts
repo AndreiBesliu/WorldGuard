@@ -19,9 +19,9 @@ describe('experiența, pragurile și locurile', () => {
   it('slotsAt pentru nivelurile 1–9', () => {
     expect([1, 2, 3, 4, 5, 6, 7, 8, 9].map(slotsAt)).toEqual([2, 2, 3, 3, 4, 4, 5, 5, 6])
   })
-  it('xpNeed: 6 la nivelul 1, null la nivelul maxim', () => {
-    expect(xpNeed(1)).toBe(6)
-    expect(xpNeed(5)).toBeNull()
+  it('xpNeed: 6 la nivelul 1, 34 la nivelul 8, null la nivelul 9 (maxim)', () => {
+    expect([1, 2, 3, 4, 5, 6, 7, 8].map(xpNeed)).toEqual([6, 10, 13, 16, 20, 24, 28, 34])
+    expect(xpNeed(9)).toBeNull()
   })
   it('heroReady: fals la 5 experiență, adevărat la 6', () => {
     const s = createGame(1)
@@ -75,8 +75,8 @@ describe('ofertele', () => {
     const s = ship(3, 2)
     expect(makeOffer(s, ['laser', 'armor'])!.some((x) => x.id === 'wave')).toBe(false)
   })
-  it('implicit, lista din BALANCE (goală deocamdată): null', () => {
-    expect(makeOffer(ship(3, 2))).toBeNull()
+  it('implicit, lista din BALANCE: toate cele nouă module', () => {
+    for (let seed = 1; seed <= 20; seed++) expect(makeOffer(ship(seed, 2))).toEqual(makeOffer(ship(seed, 2), MOD_IDS))
   })
 })
 
@@ -101,6 +101,49 @@ describe('choose', () => {
     expect(choose(s, 3)).toEqual({ ok: false, reason: 'ofertă inexistentă' })
     expect(choose(s, -1)).toEqual({ ok: false, reason: 'ofertă inexistentă' })
     expect(JSON.stringify(s)).toBe(open)
+  })
+})
+
+describe('choose refuză o ofertă care nu se potrivește cu nava', () => {
+  const why = (s: GameState, offer: { id: ModId; tier: number }[]): string => {
+    s.offer = offer
+    const before = JSON.stringify(s), r = choose(s, 0)
+    if (!r.ok) expect(JSON.stringify(s)).toBe(before)   // refuzul nu atinge starea
+    return r.ok ? 'ok' : r.reason
+  }
+  it('un modul nou pe care nava îl are deja', () => {
+    expect(why(ship(3, 3), [{ id: 'wave', tier: 1 }])).toBe('modul deja pe navă')
+  })
+  it('un modul nou fără loc liber', () => {
+    expect(why(ship(3, 2, [['wave', 1], ['laser', 1]]), [{ id: 'armor', tier: 1 }])).toBe('niciun loc liber')
+  })
+  it('o întărire care nu e treapta de acum plus unu', () => {
+    expect(why(ship(3, 3), [{ id: 'wave', tier: 3 }])).toBe('treaptă nepotrivită')
+    expect(why(ship(3, 3, [['wave', 2]]), [{ id: 'wave', tier: 2 }])).toBe('treaptă nepotrivită')
+    expect(why(ship(3, 3), [{ id: 'laser', tier: 2 }])).toBe('treaptă nepotrivită')
+  })
+  it('ofertele făcute de makeOffer trec mereu, oricare ar fi alegerea', () => {
+    const bad: string[] = []
+    for (let seed = 1; seed <= 20; seed++) {
+      for (let lvl = 2; lvl <= 9; lvl++) {
+        const mods: [ModId, number][] = MOD_IDS.slice(0, slotsAt(lvl) - (seed % 2)).map((id, i) => [id, 1 + ((i + seed) % MAX_TIER)])
+        const s = ship(seed, lvl, mods), o = makeOffer(s)
+        if (o === null) continue
+        for (let i = 0; i < o.length; i++) {
+          const c: GameState = JSON.parse(JSON.stringify(s)); c.offer = o
+          const r = choose(c, i)
+          if (!r.ok) bad.push(`s${seed} n${lvl} #${i}: ${r.reason}`)
+        }
+      }
+    }
+    expect(bad).toEqual([])
+  })
+  it('Blindajul ales: viața de acum crește cu diferența (30, apoi încă 30)', () => {
+    const s = ship(3, 3); s.hero.hp = 40
+    s.offer = [{ id: 'armor', tier: 1 }]; choose(s, 0)
+    expect(s.hero.hp).toBe(70)
+    s.offer = [{ id: 'armor', tier: 2 }]; choose(s, 0)
+    expect(s.hero.hp).toBe(100)
   })
 })
 

@@ -3,6 +3,7 @@
 import { BALANCE } from '../data/balance'
 import { spawnFoe } from '../sim/foes'
 import { heroMaxHp } from '../sim/hero'
+import { choose } from '../sim/mods'
 import { createGame, type GameState, type Input } from '../sim/state'
 import { step } from '../sim/step'
 
@@ -71,6 +72,9 @@ export function createSession(deps: SessionDeps, seed: number): Session {
     advance(steps, input) {
       if (phase !== 'playing') return null
       for (let i = 0; i < steps; i++) {
+        // Trecător, până vine panoul de alegere (Task 4): o ofertă deschisă se alege singură, prima, înaintea pasului.
+        // Altfel jocul din browser ar sta pe loc pentru totdeauna. Se scoate odată cu venirea panoului.
+        if (s.offer !== null) choose(s, 0)
         step(s, input)
         if (stress) keepStressed()
       }

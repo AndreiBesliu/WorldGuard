@@ -67,4 +67,10 @@ it('o partidă reluată continuă de unde era și nu e niciodată test de vitez�
   expect([x.phase, x.stress, x.s === saved]).toEqual(['playing', false, true])
   x.advance(60, still); expect(x.s.tick).toBe(360)
 })
+it('cu o ofertă deschisă, advance o închide alegând prima și partida merge mai departe', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, false); x.advance(60, still)
+  x.s.offer = [{ id: 'laser', tier: 1 }, { id: 'wave', tier: 2 }]
+  x.advance(30, still)
+  expect([x.s.offer, x.s.tick, x.s.hero.mods.map((m) => m.id)]).toEqual([null, 90, ['wave', 'laser']])
+})
 })

@@ -1,6 +1,7 @@
 // „Orbită”: ce se desenează de multe ori pe cadru (resurse, clădiri, nave, raze) și semnele mici.
 // Doar forme pline și linii: fără gradient, fără decupaj, fără umbră estompată.
 import { BALANCE } from '../../data/balance'
+import { heroArc } from '../../sim/hero'
 import type { Foe, GameState, Input, Pad, PadKind, Res, ResNode, Shot } from '../../sim/state'
 import { regrown, turretAim } from '../derive'
 import { blob, disc, poly, rr, seg, TAU, type Pt } from '../draw'
@@ -173,9 +174,9 @@ export function hero(ctx: CanvasRenderingContext2D, s: GameState, input: Input):
   ctx.restore()
   const sa = s.t - h.waveT
   if (sa < WAVE) {
-    const ga = ctx.globalAlpha
+    const ga = ctx.globalAlpha, arc = heroArc(s)
     ctx.globalAlpha = ga * (1 - sa / WAVE)
-    ctx.beginPath(); ctx.arc(h.x, h.y, BALANCE.hero.reach * 0.8, h.waveA - BALANCE.hero.arc + sa * 5, h.waveA + BALANCE.hero.arc)
+    ctx.beginPath(); ctx.arc(h.x, h.y, BALANCE.hero.reach * 0.8, h.waveA - arc + sa * 5, h.waveA + arc)
     ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.strokeStyle = C.bolt; ctx.stroke(); ctx.globalAlpha = ga
   }
 }

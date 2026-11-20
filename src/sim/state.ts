@@ -19,12 +19,16 @@ export interface Mod { id: ModId; tier: number; t: number }      // t: ceasul mo
 export interface Offer { id: ModId; tier: number }               // tier 1 = modul nou; 2 sau 3 = întărire până la acea treaptă
 export interface Hero { x: number; y: number; face: number; hp: number; lvl: number; xp: number; mods: Mod[]; dead: boolean; respawnT: number; strikeT: number; gatherT: number; waveT: number; waveA: number; hurtT: number; moved: boolean }
 export interface Foe { id: number; x: number; y: number; r: number; hp: number; maxHp: number; speed: number; dmg: number; brute: boolean; atkT: number; kx: number; ky: number; a: number; hitT: number; lungeT: number }
-export interface Shot { x: number; y: number; tx: number; ty: number; a: number; targetId: number; dmg: number }   // targetId = -1 după moartea țintei
+// targetId = -1 după moartea țintei. `bolt`: raza unei turele, lovește doar ținta. `missile`: racheta navei, lovește tot ce e în `blast`.
+export interface Shot { x: number; y: number; tx: number; ty: number; a: number; targetId: number; dmg: number; kind: 'bolt' | 'missile'; blast: number }
 export type Fx =
   | { kind: 'gain'; res: Res; x: number; y: number; t0: number }
   | { kind: 'level'; what: BuildKind; lvl: number; x: number; y: number; t0: number }
   | { kind: 'heroDown'; x: number; y: number; t0: number }
   | { kind: 'puff'; r: number; x: number; y: number; t0: number }
+  | { kind: 'beam'; x: number; y: number; tx: number; ty: number; t0: number }   // raza laserului, de la navă la țintă
+  | { kind: 'blast'; r: number; x: number; y: number; t0: number }              // explozia unei rachete, cu zona ei
+  | { kind: 'block'; x: number; y: number; t0: number }                         // scutul a oprit o lovitură
 export interface GameState {
   seed: number; mode: 'playing' | 'over'; tick: number; t: number   // t = tick * DT
   crystal: number; metal: number; kills: number

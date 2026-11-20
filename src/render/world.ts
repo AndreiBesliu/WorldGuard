@@ -99,6 +99,7 @@ function drawFx(ctx: CanvasRenderingContext2D, s: GameState, v: Visible): void {
   for (const f of s.fx) {
     if (!seen(v, f.x, f.y)) continue
     const age = s.t - f.t0
+    if (f.kind === 'beam' || f.kind === 'blast' || f.kind === 'block') continue   // desenul lor vine odată cu desenul modulelor
     if (f.kind === 'puff') {
       ctx.globalAlpha = 1 - age / BALANCE.fx.puffLife
       ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.5 + age / BALANCE.fx.puffLife), 0, TAU)

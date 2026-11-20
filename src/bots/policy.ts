@@ -2,21 +2,36 @@
 // Doar citesc starea. Cifrele de mai jos nu sunt cifre de joc: sunt ale jucătorilor automați.
 import { BALANCE, cost } from '../data/balance'
 import { CORE } from '../data/layout'
+import type { ModId } from '../data/modules'
 import { heroReady } from '../sim/mods'
 import type { Foe, GameState, Pad, Res, ResNode } from '../sim/state'
 
 export type BotName = 'nimic' | 'amestec' | 'doar-nava' | 'fara-nava' | 'fara-economie'
 export type Category = 'turret' | 'economy' | 'hero'
-export interface Policy { name: BotName; label: string; still: boolean; buy: readonly Category[] }
+// `prefer`: modulele în ordinea în care le alege la un nivel nou (vezi `pickOffer`).
+export interface Policy { name: BotName; label: string; still: boolean; buy: readonly Category[]; prefer: readonly ModId[] }
+
+/** Lista de preferințe a modulelor, de pornire, aceeași pentru toate purtările. */
+const PREFER: readonly ModId[] = ['laser', 'armor', 'relay', 'wave', 'missile', 'shield', 'mender', 'engine', 'magnet']
 
 /** În ordinea tabelului din design. */
 export const POLICIES: readonly Policy[] = [
-  { name: 'nimic', label: 'Nimic', still: true, buy: [] },
-  { name: 'amestec', label: 'Amestec', still: false, buy: ['turret', 'economy', 'hero'] },
-  { name: 'doar-nava', label: 'Doar navă', still: false, buy: ['hero'] },
-  { name: 'fara-nava', label: 'Fără navă', still: false, buy: ['turret', 'economy'] },
-  { name: 'fara-economie', label: 'Fără economie', still: false, buy: ['turret', 'hero'] },
+  { name: 'nimic', label: 'Nimic', still: true, buy: [], prefer: PREFER },
+  { name: 'amestec', label: 'Amestec', still: false, buy: ['turret', 'economy', 'hero'], prefer: PREFER },
+  { name: 'doar-nava', label: 'Doar navă', still: false, buy: ['hero'], prefer: PREFER },
+  { name: 'fara-nava', label: 'Fără navă', still: false, buy: ['turret', 'economy'], prefer: PREFER },
+  { name: 'fara-economie', label: 'Fără economie', still: false, buy: ['turret', 'hero'], prefer: PREFER },
 ]
+
+/** Indexul ofertei alese: prima ofertă cu modulul cel mai sus pe `p.prefer`; 0 dacă niciuna nu e pe listă. Doar citește. */
+export function pickOffer(s: GameState, p: Policy): number {
+  const offer = s.offer ?? []
+  for (const id of p.prefer) {
+    const i = offer.findIndex((o) => o.id === id)
+    if (i >= 0) return i
+  }
+  return 0
+}
 
 export const GUARD = 120   // raza de apărare în jurul centrului planetei, px: o navă dușmană mai aproape lasă totul în urmă
 

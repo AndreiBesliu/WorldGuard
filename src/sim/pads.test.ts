@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { heroAt, padOf, quietGame, stepFor } from './testkit'
 import { heroDamage, hurtHero } from './hero'
+import { choose, makeOffer } from './mods'
 import { nextCost } from './pads'
 import { step } from './step'
 import type { GameState, Pad } from './state'
@@ -45,9 +46,9 @@ describe('cercurile', () => {
     const s = quietGame(); s.crystal = 500; s.metal = 500; const p = padOf(s, 'turret'); p.lvl = 5; on(s, p)
     stepFor(s, 2); expect([s.crystal, s.metal, nextCost(s, p)]).toEqual([500, 500, null])
   })
-  it('nivelul eroului dă viață și undă mai tare', () => {
+  it('nivelul navei dă 10 viață și umple viața, dar nu face Unda mai tare', () => {
     const s = quietGame(); s.crystal = 25; s.metal = 10; s.hero.hp = 12; s.hero.xp = 6; on(s, padOf(s, 'hero'))
-    stepFor(s, 2); expect([s.hero.lvl, s.hero.hp, heroDamage(s)]).toEqual([2, 80, 20])
+    stepFor(s, 2); expect([s.hero.lvl, s.hero.hp, heroDamage(s)]).toEqual([2, 70, 10])
   })
   it('sub pragul de experiență, zece secunde pe cercul navei nu plătesc nimic (Review Focus 4)', () => {
     const s = quietGame(); s.crystal = 500; s.metal = 500; s.hero.xp = 5; const p = padOf(s, 'hero'); on(s, p)
@@ -58,12 +59,14 @@ describe('cercurile', () => {
     const s = quietGame(); s.crystal = 500; s.metal = 500; s.hero.xp = 6; const p = padOf(s, 'hero'); on(s, p)
     stepFor(s, 2)
     expect([s.hero.lvl, s.hero.xp, s.crystal, s.metal]).toEqual([2, 0, 475, 490])
-    expect(s.offer).toBeNull()   // lista de oferit e goală deocamdată
+    expect(s.offer).toEqual(makeOffer(s))   // nivelul plătit deschide oferta
+    expect(s.offer).toHaveLength(3)
   })
   it('experiența de prisos trece mai departe, dar o plată urcă un singur nivel', () => {
     const s = quietGame(); s.crystal = 500; s.metal = 500; s.hero.xp = 20; const p = padOf(s, 'hero'); on(s, p)
     while (s.hero.lvl === 1) step(s, { x: 0, y: 0 })
-    expect([s.hero.lvl, s.hero.xp, s.offer]).toEqual([2, 14, null])
+    expect([s.hero.lvl, s.hero.xp, s.offer?.length]).toEqual([2, 14, 3])
+    expect(choose(s, 0).ok).toBe(true)
     expect(nextCost(s, p)).toEqual({ crystal: 40, metal: 25 })   // pragul nivelului 3 (10) e atins: cercul rămâne gata
     stepFor(s, 0.1); expect(s.hero.lvl).toBe(2)                   // pauza de după nivel, fără al doilea nivel
     stepFor(s, 1.2); expect(p.paid.crystal + p.paid.metal).toBeGreaterThan(0)

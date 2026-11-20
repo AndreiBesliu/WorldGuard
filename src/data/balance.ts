@@ -1,7 +1,7 @@
 // Toate cifrele de echilibru ale jocului. Un număr de gameplay scris în altă parte e o greșeală.
 // Unități: secunde, pixeli de lume (lumea e 1100 × 1500), puncte de viață. Vitezele sunt în px/s.
 import type { BuildKind, Res } from '../sim/state'
-import type { ModId } from './modules'
+import { MOD_IDS } from './modules'
 
 export const BALANCE = {
   core: { hp: 400 },                         // puncte de viață ale nucleului
@@ -10,22 +10,19 @@ export const BALANCE = {
     r: 13,                                   // raza eroului, px
     speed: 165,                              // viteza de mers, px/s
     hp: 60,                                  // viață la nivelul 1
-    hpPerLevel: 20,                          // viață în plus la fiecare nivel
-    dmg: 10,                                 // puterea loviturii (undei) la nivelul 1
-    dmgPerLevel: 10,                         // putere în plus a loviturii (undei) la fiecare nivel
-    reach: 58,                               // bătaia undei, px
+    hpPerLevel: 10,                          // viață în plus la fiecare nivel (lovitura vine din arme, nu din nivel)
+    reach: 58,                               // bătaia undei, px (lovitura și arcul ei, pe trepte, în MODS.wave)
     strikeEvery: 0.45,                       // secunde între două unde
-    arc: 1.25,                               // deschiderea arcului undei, radiani
     push: 140,                               // impulsul dat unui dușman obișnuit, px/s
     pushBrute: 60,                           // impulsul dat unui bruta, px/s
     pushDamping: 7,                          // cât de repede se stinge impulsul, 1/s
-    regenWait: 3,                            // secunde fără lovituri primite până începe vindecarea
-    regen: 4,                                // viață recăpătată pe secundă
+    regenWait: 3,                            // secunde fără lovituri primite până începe vindecarea (fără Reparator)
+    regen: 4,                                // viață recăpătată pe secundă (fără Reparator)
     respawn: 5,                              // secunde până reapare după ce cade
-    maxLevel: 5,                             // nivelul maxim al eroului
-    xpToLevel: [6, 10, 13, 16],              // experiența cerută pentru nivelurile 2, 3, 4, 5
+    maxLevel: 9,                             // nivelul maxim al eroului
+    xpToLevel: [6, 10, 13, 16, 20, 24, 28, 34], // experiența cerută pentru nivelurile 2–9
     slots: [2, 2, 3, 3, 4, 4, 5, 5, 6],      // locurile pentru module, pe nivel, de la nivelul 1
-    offerPool: [] as ModId[],                // modulele care se pot oferi la un nivel nou (goală până vin efectele lor)
+    offerPool: MOD_IDS,                      // modulele care se pot oferi la un nivel nou: toate
     deadzone: 0.01,                          // sub această lungime a comenzii, eroul stă pe loc
     faceLock: 0.25,                          // secunde după o undă în care privirea nu urmează mersul
     edge: 20,                                // distanța minimă dintre erou și marginea hărții, px
@@ -68,7 +65,10 @@ export const BALANCE = {
     brute: { r: 15, speed: 30, dmg: 9, hpTimes: 4, every: 7, after: 120 }, // bruta: raza, viteza, lovitura, de câte ori mai multă viață, la a câta apariție, după câte secunde
   },
   stick: { r: 48, dead: 0.14, full: 0.7 },   // joystick: raza în pixeli de ecran; sub 14% din cursă eroul stă; la 70% din cursă are viteza maximă
-  fx: { textLife: 0.9, puffLife: 0.3, puffPad: 6 }, // cât trăiesc textele plutitoare și norișorii, secunde; cât adaugă norișorul unui dușman la raza lui, px
+  fx: {
+    textLife: 0.9, puffLife: 0.3, puffPad: 6, // cât trăiesc textele plutitoare și norișorii, secunde; cât adaugă norișorul unui dușman la raza lui, px
+    beamLife: 0.12, blastLife: 0.3, blockLife: 0.25, // cât trăiesc raza laserului, explozia rachetei și semnul scutului, secunde
+  },
 } as const
 
 // Costul de a AJUNGE la nivelul dat (nu cel de a-l păstra).
@@ -77,7 +77,7 @@ const MINE_COST = [{ crystal: 35, metal: 0 }, { crystal: 45, metal: 20 }, { crys
 
 export function cost(kind: BuildKind, level: number): Record<Res, number> {
   if (kind === 'turret') return { crystal: 20 + 15 * (level - 1), metal: 15 * (level - 1) }    // cristal 20 + 15(n−1), metal 15(n−1)
-  if (kind === 'hero') return { crystal: 25 + 15 * (level - 2), metal: 10 + 15 * (level - 2) } // nivelurile 2–5
+  if (kind === 'hero') return { crystal: 25 + 15 * (level - 2), metal: 10 + 15 * (level - 2) } // nivelurile 2–9
   const table = kind === 'collector' ? COLLECTOR_COST : MINE_COST
   const row = table[level - 1]
   if (!row) throw new Error(`nivel fără cost: ${kind} ${level}`)

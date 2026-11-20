@@ -48,8 +48,8 @@ function richGame(): GameState {
   padOf(s, 'mine').prodT = s.t - 0.1
   const grunt = addFoe(s, 560, 690, { hp: 5, hitT: s.t - 0.02, lungeT: s.t - 0.1 })
   addFoe(s, 540, 820, { brute: true, r: BALANCE.foe.brute.r, hp: 30, maxHp: 60 })
-  s.shots.push({ x: 500, y: 700, tx: 560, ty: 690, a: 0.4, targetId: grunt.id, dmg: 6 })
-  s.shots.push({ x: 520, y: 720, tx: 600, ty: 700, a: -0.2, targetId: -1, dmg: 6 })
+  s.shots.push({ x: 500, y: 700, tx: 560, ty: 690, a: 0.4, targetId: grunt.id, dmg: 6, kind: 'bolt', blast: 0 })
+  s.shots.push({ x: 520, y: 720, tx: 600, ty: 700, a: -0.2, targetId: -1, dmg: 6, kind: 'bolt', blast: 0 })
   s.fx.push(
     { kind: 'gain', res: 'crystal', x: 400, y: 600, t0: s.t - 0.2 },
     { kind: 'gain', res: 'metal', x: 640, y: 600, t0: s.t - 0.3 },
@@ -78,7 +78,7 @@ describe('ordinea straturilor', () => {
     addNode(s, 'crystal', 500, 700)
     padOf(s, 'turret', 0).lvl = 1
     addFoe(s, 560, 690); addFoe(s, 540, 820)          // una deasupra nucleului pe ecran, una dedesubt
-    s.shots.push({ x: 500, y: 700, tx: 560, ty: 690, a: 0, targetId: -1, dmg: 1 })
+    s.shots.push({ x: 500, y: 700, tx: 560, ty: 690, a: 0, targetId: -1, dmg: 1, kind: 'bolt', blast: 0 })
     const { skin, calls } = recorder()
     drawWorld(fakeCtx(), s, { x: 0, y: 0 }, { l: 0, t: 0, r: 1100, b: 1500 }, skin)
     const first = (n: string): number => calls.indexOf(n), last = (n: string): number => calls.lastIndexOf(n)
@@ -109,6 +109,33 @@ describe('desenul doar citește starea', () => {
     const s = richGame(), before = JSON.stringify(s)
     expect(() => drawWorld(fakeCtxWithGradients(), s, { x: 0.6, y: -0.3 }, all, ORBIT)).not.toThrow()
     expect(JSON.stringify(s)).toBe(before)
+  })
+  it('efectele și razele noi (rază de lumină, explozie, scut, rachetă) nu aruncă și nu scriu niciun text în plus', () => {
+    const texts = (s: GameState): unknown[] => {
+      const out: unknown[] = []
+      const ctx = new Proxy({}, {
+        get: (_t, k) => {
+          if (k === 'measureText') return () => ({ width: 10 })
+          if (k === 'createRadialGradient' || k === 'createLinearGradient') return () => ({ addColorStop: (): void => undefined })
+          if (k === 'fillText') return (t: unknown) => { out.push(t) }
+          return () => undefined
+        },
+        set: () => true,
+      }) as unknown as CanvasRenderingContext2D
+      const before = JSON.stringify(s)
+      expect(() => drawWorld(ctx, s, { x: 0, y: 0 }, all, ORBIT)).not.toThrow()
+      expect(JSON.stringify(s)).toBe(before)
+      return out
+    }
+    const s = quietGame(); s.t = 60; s.tick = 3600
+    const plain = texts(s)
+    s.shots.push({ x: 500, y: 700, tx: 560, ty: 690, a: 0, targetId: -1, dmg: 12, kind: 'missile', blast: 50 })
+    s.fx.push(
+      { kind: 'beam', x: 500, y: 700, tx: 560, ty: 690, t0: s.t - 0.05 },
+      { kind: 'blast', r: 50, x: 560, y: 690, t0: s.t - 0.1 },
+      { kind: 'block', x: 500, y: 700, t0: s.t - 0.1 },
+    )
+    expect(texts(s)).toEqual(plain)
   })
   it('la fel cu nava ta doborâtă, cât așteaptă să reapară', () => {
     const s = richGame()

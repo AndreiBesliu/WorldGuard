@@ -11,6 +11,11 @@ describe('balans', () => {
     expect(cost('hero', 2)).toEqual({ crystal: 25, metal: 10 })
     expect(cost('hero', 5)).toEqual({ crystal: 70, metal: 55 })
   })
+  it('nava: un prag de experiență pentru fiecare nivel de după primul, un număr de locuri pentru fiecare nivel', () => {
+    expect(BALANCE.hero.maxLevel).toBe(9)
+    expect(BALANCE.hero.xpToLevel.length).toBe(BALANCE.hero.maxLevel - 1)
+    expect(BALANCE.hero.slots.length).toBe(BALANCE.hero.maxLevel)
+  })
   it('curbele din spec', () => {
     expect([turretDamage(1), turretDamage(5)]).toEqual([6, 26])
     expect([spawnEvery(0), spawnEvery(90), spawnEvery(1e6)]).toEqual([5, 2.5, 0.6])

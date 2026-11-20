@@ -466,3 +466,31 @@ Fără economie  317 s          287 s  343 s  —                  fără limit�
 
   Nerotunjit: 65,6 / 348,8 / 223,2 / 250,5 / 317,4 s. „Amestec” e acum cu 11 s sub limita de 360.
 - `npm run check`: 262 de teste trec (232 înainte).
+
+**Task 2 — Cele nouă module.**
+- Modulele au efecte. Cifrele lor stau în `MODS` (`src/data/modules.ts`), pe trepte; lista de oferit (`BALANCE.hero.offerPool`) are acum toate nouă modulele, deci fiecare nivel plătit deschide o ofertă.
+  - Unda: lovitura 10 / 16 / 24, arcul 1,25 / 1,6 / 2,0 rad; raza, ritmul și împinsul neschimbate. La treapta 1 face exact ce făcea nava de nivelul 1 (test pe cinci dușmani).
+  - Laserul (rază 170, o tragere la 0,9 s) lovește pe loc cel mai apropiat dușman și lasă efectul `beam`. Rachetele (rază 200, una la 2,4 s, 240 px/s) lovesc la sosire toți dușmanii din zona de 50 și lasă `blast`; cu ținta doborâtă în zbor, explodează la ultimul punct știut. Razele turelelor rămân `bolt`, fără zonă (`Shot.kind`, `Shot.blast`).
+  - Blindajul adaugă viață maximă (și la viața de acum, când e ales). Scutul încărcat oprește o lovitură întreagă (efectul `block`) și se reface. Reparatorul înlocuiește așteptarea și ritmul refacerii. Motorul înmulțește viteza. Magnetul înlocuiește distanța de strâns și scurtează timpul între bucăți. Releul împarte timpul dintre trageri al turelelor cu corpul la cel mult 220 de nava vie.
+  - Nava doborâtă nu trage cu nicio armă, iar ceasurile armelor ei nu curg. Ceasul scutului curge și atunci. Ordinea în pas: unda, laserul, rachetele, turelele.
+  - Efectele noi trăiesc 0,12 s (`beam`), 0,3 s (`blast`) și 0,25 s (`block`) (`BALANCE.fx`); desenul lor vine la Task 6. Până atunci desenul le sare, fără să scrie vreun text.
+- Nivelul navei merge până la 9 (pragurile 6, 10, 13, 16, 20, 24, 28, 34); un nivel dă 10 viață (era 20) și nu mai dă lovitură: `BALANCE.hero.dmg` și `dmgPerLevel` nu mai există.
+- `choose` refuză, cu motiv și fără să atingă starea, o ofertă care nu se potrivește cu nava (modul nou deja pe navă, fără loc liber, treaptă care nu e cea de acum plus unu). Salvarea verifică și modulele navei.
+- Trecător, până la panoul de alegere (Task 4): în aplicație, o ofertă deschisă se alege singură, prima.
+- Jucătorii automați aleg oferta după o listă de preferințe, aceeași pentru toate purtările: Laser, Blindaj, Releu, Undă, Rachete, Scut, Reparator, Motor, Magnet (`pickOffer`). Testele care rulează jucătorii automați pas cu pas aleg și ele oferta, ca rularea.
+- **Propuneri, până le vede Andrei în joc:** cifrele modulelor din design și listele de preferințe, neschimbate; pragurile nivelurilor 6–9 (20, 24, 28, 34), din design. Plasa a trecut cu cifrele de pornire, fără vreo încercare de reglaj, deci reglajul rămâne pentru Task 3.
+- Tabelul de după (`npm run balance`, raza 120):
+
+```
+Raza de apărare 120
+Jucător        Mediană        Min    Max    Limită             Verdict
+Nimic          66 s           59 s   82 s   60–130 s           în limită
+Amestec        300 s          242 s  348 s  240–360 s          în limită
+Doar navă      192 s (64,0%)  179 s  226 s  ≤ 75% din Amestec  în limită
+Fără navă      250 s (83,6%)  235 s  273 s  ≤ 90% din Amestec  în limită
+Fără economie  279 s          232 s  316 s  —                  fără limită
+```
+
+  Nerotunjit: 65,6 / 299,7 / 191,9 / 250,5 / 278,9 s. „Fără navă” s-a apropiat de limita lui (83,6% din 90%), fiindcă „Amestec” a scăzut cu 49 s.
+- La sfârșitul partidei, mediana pe 20 de semințe: „Amestec” ajunge la nivelul 4 (designul țintește 6–8 într-o partidă bună), „Doar navă” la nivelul 2. Se reglează la Task 3.
+- `npm run check`: 296 de teste trec (262 înainte). `npm run smoke`: 20 de verificări.
