@@ -58,7 +58,7 @@ describe('cercurile', () => {
   it('cu pragul atins, nivelul se plătește și pragul se scade din experiență', () => {
     const s = quietGame(); s.crystal = 500; s.metal = 500; s.hero.xp = 6; const p = padOf(s, 'hero'); on(s, p)
     stepFor(s, 2)
-    expect([s.hero.lvl, s.hero.xp, s.crystal, s.metal]).toEqual([2, 0, 475, 490])
+    expect([s.hero.lvl, s.hero.xp, s.crystal, s.metal]).toEqual([2, 0, 485, 500])
     expect(s.offer).toEqual(makeOffer(s))   // nivelul plătit deschide oferta
     expect(s.offer).toHaveLength(3)
   })
@@ -67,7 +67,7 @@ describe('cercurile', () => {
     while (s.hero.lvl === 1) step(s, { x: 0, y: 0 })
     expect([s.hero.lvl, s.hero.xp, s.offer?.length]).toEqual([2, 14, 3])
     expect(choose(s, 0).ok).toBe(true)
-    expect(nextCost(s, p)).toEqual({ crystal: 40, metal: 25 })   // pragul nivelului 3 (10) e atins: cercul rămâne gata
+    expect(nextCost(s, p)).toEqual({ crystal: 20, metal: 5 })    // pragul nivelului 3 (9) e atins: cercul rămâne gata
     stepFor(s, 0.1); expect(s.hero.lvl).toBe(2)                   // pauza de după nivel, fără al doilea nivel
     stepFor(s, 1.2); expect(p.paid.crystal + p.paid.metal).toBeGreaterThan(0)
   })

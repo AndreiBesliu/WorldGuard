@@ -45,20 +45,29 @@ export function verdicts(rows: readonly Row[]): Verdict[] {
         return { ...base, ok: share <= LIMITS.faraNava,
           limit: `≤ ${pct(LIMITS.faraNava)} din Amestec`, value: `${value} (${share1(share)})` }
       case 'fara-economie':
+      case 'fara-turele':
         return { ...base, ok: null, limit: '—', value }
     }
   })
 }
 
+/** Secunda la care nava a atins un nivel; „—” dacă mediana e marginea testului (pe cel puțin jumătate din semințe, neatins). */
+const reachedAt = (x: number) => (x >= RUN_CAP ? '—' : `${Math.round(x)} s`)
+/** Nivelul navei: întreg, sau cu o zecimală când mediana cade între două niveluri. */
+const lvlText = (x: number) => String(x).replace('.', ',')
+
 const verdictText = (ok: boolean | null) => (ok === null ? 'fără limită' : ok ? 'în limită' : 'ÎN AFARA LIMITEI')
 
-/** Antet și un rând pe jucător, coloanele aliniate cu spații. */
+/**
+ * Antet și un rând pe jucător, coloanele aliniate cu spații. Ultimele trei coloane sunt doar informație:
+ * nivelul navei la sfârșit și secundele la care a atins nivelurile 2 și 5 (medianele).
+ */
 export function formatTable(rows: readonly Row[]): string {
-  const cells: string[][] = [['Jucător', 'Mediană', 'Min', 'Max', 'Limită', 'Verdict']]
+  const cells: string[][] = [['Jucător', 'Mediană', 'Min', 'Max', 'Limită', 'Verdict', 'Nivel', 'Nivel 2', 'Nivel 5']]
   const vs = verdicts(rows)
   rows.forEach((r, i) => {
     const v = vs[i]!
-    cells.push([r.label, v.value, secs(r.min), secs(r.max), v.limit, verdictText(v.ok)])
+    cells.push([r.label, v.value, secs(r.min), secs(r.max), v.limit, verdictText(v.ok), lvlText(r.level), reachedAt(r.lvl2At), reachedAt(r.lvl5At)])
   })
   const widths = cells[0]!.map((_, c) => Math.max(...cells.map((row) => [...row[c]!].length)))
   return cells

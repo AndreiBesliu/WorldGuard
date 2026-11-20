@@ -134,8 +134,8 @@ describe('modulele utilitare', () => {
       expect(s.hero.x - 700).toBeCloseTo(165 * times[tier - 1]!, 6)
     }
   })
-  it('Magnetul: strânge de la 40 / 60 / 80 și nu de la un pixel mai departe', () => {
-    const reach = [40, 60, 80]
+  it('Magnetul: strânge de la 50 / 75 / 100 și nu de la un pixel mai departe', () => {
+    const reach = [50, 75, 100]
     for (const tier of TIERS) {
       for (const extra of [0, 1]) {
         const s = quietGame(); addNode(s, 'crystal', 300, 300); fit(s, 'magnet', tier)

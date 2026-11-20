@@ -196,12 +196,14 @@ Sunt cifrele de după reechilibrarea din 18.11.2026 (două s-au schimbat față 
 | Cost turelă, nivelul n | cristale 20 + 15 × (n − 1); metal 15 × (n − 1) |
 | Colector, nivelurile 1–3 | un cristal la 1,6 / 1,0 / 0,7 s; cost 25 cristale / 40 cristale + 15 metal / 60 cristale + 35 metal |
 | Mină, nivelurile 1–3 | un metal la 2,4 / 1,5 / 1,0 s; cost 35 cristale / 45 cristale + 20 metal / 60 cristale + 40 metal |
-| Cost navă, nivelul n (2–5) | cristale 25 + 15 × (n − 2); metal 10 + 15 × (n − 2) |
+| Cost navă, nivelul n (2–9) | cristale 15 + 5 × (n − 2); metal 5 × (n − 2) (propunere din 20.11.2026; înainte 25 + 15 × (n − 2) și 10 + 15 × (n − 2)) |
+| Experiența cerută, nivelurile 2–9 | 6, 9, 11, 13, 20, 24, 28, 34 (propunere din 20.11.2026; înainte 6, 10, 13, 16, 20, 24, 28, 34) |
 | Reparat | 1 metal dă 5 viață planetei; 10 metal pe secundă |
 | Plată | o bucată la 0,035 s |
 | Primul dușman | la 10 s |
 | Ritmul dușmanilor | unul la fiecare max(0,6; 5 / (1 + t / 90)) secunde |
-| Viața dușmanului | 14 × (1 + t / 45) |
+| Viața dușmanului | 14 × (1 + t / 33) (propunere din 20.11.2026; înainte t / 45) |
+| Releu, Magnet | Releul împarte timpul dintre trageri la 1,3 / 1,55 / 1,8; Magnetul strânge de la 50 / 75 / 100 px (propuneri din 20.11.2026; înainte 1,2 / 1,35 / 1,5 și 40 / 60 / 80) |
 | Dușman obișnuit (navă invadatoare) | raza 10; viteză 46/s; 3 viață pe lovitură; lovește planeta o dată pe secundă, nava ta la 0,8 s |
 | Dușman greu (navă grea) | fiecare al 7-lea, după 120 s; viață × 4; raza 15; viteză 30/s; 9 viață pe lovitură |
 

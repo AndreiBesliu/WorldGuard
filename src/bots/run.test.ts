@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { DT } from '../sim/state'
+import { createGame, DT } from '../sim/state'
+import { createBot } from './bot'
 import { POLICIES, type BotName, type Policy } from './policy'
-import { measure, median, playOne, RUN_CAP, SEEDS } from './run'
+import { measure, median, playOne, playStep, playTimed, RUN_CAP, SEEDS } from './run'
 
 const pol = (name: BotName): Policy => POLICIES.find((p) => p.name === name)!
 
@@ -32,5 +33,27 @@ describe('rularea', () => {
     expect(row.times[0]).toBe(playOne(pol('nimic'), SEEDS[0]!).t)
     expect(row.min).toBeLessThanOrEqual(row.median)
     expect(row.median).toBeLessThanOrEqual(row.max)
+  })
+  it('`measure` întoarce mediana nivelului navei la sfârșit și a secundelor la care a atins nivelurile 2 și 5', () => {
+    // „Nimic” nu cumpără nimic: nava rămâne la nivelul 1, iar nivelurile neatinse se scriu ca marginea testului.
+    const still = measure(pol('nimic'))
+    expect([still.level, still.lvl2At, still.lvl5At]).toEqual([1, RUN_CAP, RUN_CAP])
+    // „Doar navă”: nivelul de la sfârșit și secunda nivelului 2, pe fiecare sămânță, din partida însăși.
+    const row = measure(pol('doar-nava'))
+    const games = SEEDS.map((seed) => playOne(pol('doar-nava'), seed))
+    expect(row.level).toBe(median(games.map((s) => s.hero.lvl)))
+    expect(row.level).toBeGreaterThanOrEqual(2)
+    expect(row.lvl2At).toBeGreaterThan(0)
+    expect(row.lvl2At).toBeLessThan(RUN_CAP)
+    expect(row.lvl2At).toBeLessThanOrEqual(row.lvl5At)
+    const reached = games.filter((s) => s.hero.lvl >= 2).length
+    expect(reached).toBeGreaterThanOrEqual(10)   // altfel mediana secundei nivelului 2 ar fi marginea testului
+  }, 60_000)
+  it('secunda nivelului 2 e chiar pasul în care nava a urcat', () => {
+    const p = pol('doar-nava')
+    const s = createGame(SEEDS[0]!), bot = createBot(p)
+    let at = RUN_CAP
+    while (s.mode === 'playing' && s.t < RUN_CAP && at === RUN_CAP) { playStep(s, p, bot); if (s.hero.lvl >= 2) at = s.t }
+    expect(playTimed(p, SEEDS[0]!).lvl2At).toBe(at)
   })
 })

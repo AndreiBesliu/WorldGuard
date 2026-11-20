@@ -1,12 +1,13 @@
 // Purtările jucătorilor automați: ce cumpără, pe rând, și ce urmăresc la fiecare pas.
 // Doar citesc starea. Cifrele de mai jos nu sunt cifre de joc: sunt ale jucătorilor automați.
 import { BALANCE, cost } from '../data/balance'
-import { CORE } from '../data/layout'
+import { CORE, PAD_R } from '../data/layout'
 import type { ModId } from '../data/modules'
 import { heroReady } from '../sim/mods'
+import { nextCost } from '../sim/pads'
 import type { Foe, GameState, Pad, Res, ResNode } from '../sim/state'
 
-export type BotName = 'nimic' | 'amestec' | 'doar-nava' | 'fara-nava' | 'fara-economie'
+export type BotName = 'nimic' | 'amestec' | 'doar-nava' | 'fara-nava' | 'fara-economie' | 'fara-turele'
 export type Category = 'turret' | 'economy' | 'hero'
 // `prefer`: modulele în ordinea în care le alege la un nivel nou (vezi `pickOffer`).
 export interface Policy { name: BotName; label: string; still: boolean; buy: readonly Category[]; prefer: readonly ModId[] }
@@ -21,6 +22,7 @@ export const POLICIES: readonly Policy[] = [
   { name: 'doar-nava', label: 'Doar navă', still: false, buy: ['hero'], prefer: PREFER },
   { name: 'fara-nava', label: 'Fără navă', still: false, buy: ['turret', 'economy'], prefer: PREFER },
   { name: 'fara-economie', label: 'Fără economie', still: false, buy: ['turret', 'hero'], prefer: PREFER },
+  { name: 'fara-turele', label: 'Fără turele', still: false, buy: ['economy', 'hero'], prefer: PREFER },   // doar tipărit, fără limită
 ]
 
 /** Indexul ofertei alese: prima ofertă cu modulul cel mai sus pe `p.prefer`; 0 dacă niciuna nu e pe listă. Doar citește. */
@@ -80,8 +82,30 @@ function heroDue(s: GameState, buy: readonly Category[]): Pad | null {
   return s.crystal >= left.crystal && s.metal >= left.metal ? pad : null
 }
 
-/** Cercul la care merg banii acum: nava gata și plătibilă; altfel categoria de rând, sau următoarea din listă care mai are ce cumpăra. */
+/**
+ * Cercul pe care plata curge chiar acum (nava vie în el, `dwell` la prag), dacă mai are ceva de plătit pentru nivelul
+ * următor și stocul mai poate plăti măcar o unitate din ce a rămas; altfel null. Cercul de reparat nu e ținut niciodată.
+ * Plata începută se termină: ținta nu se mută de sub ea (R7).
+ */
+function heldPad(s: GameState): Pad | null {
+  if (s.hero.dead) return null
+  for (const p of s.pads) {
+    if (p.kind === 'repair' || p.dwell < BALANCE.pay.dwell) continue
+    if (Math.hypot(s.hero.x - p.x, s.hero.y - p.y) > PAD_R) continue
+    if (!nextCost(s, p)) continue
+    const left = remaining(s, p)
+    if ((left.crystal > 0 && s.crystal >= 1) || (left.metal > 0 && s.metal >= 1)) return p
+  }
+  return null
+}
+
+/**
+ * Cercul la care merg banii acum: plata care curge; altfel nava gata și plătibilă; altfel categoria de rând,
+ * sau următoarea din listă care mai are ce cumpăra.
+ */
 export function nextPad(s: GameState, buy: readonly Category[]): Pad | null {
+  const held = heldPad(s)
+  if (held) return held
   const due = heroDue(s, buy)
   if (due) return due
   const start = buy.length > 0 ? bought(s) % buy.length : 0
@@ -114,7 +138,9 @@ function nodeFor(s: GameState, type: Res): ResNode | null {
 
 export function chooseGoal(s: GameState, p: Policy, guard = GUARD): Goal {
   if (p.still || s.hero.dead) return { kind: 'none' }
-  const due = heroDue(s, p.buy)
+  // Cu o plată care curge la alt cerc, nivelul gata o așteaptă; plata nivelului însuși trece, ca înainte, înaintea luptei.
+  const held = heldPad(s)
+  const due = held && held.kind !== 'hero' ? null : heroDue(s, p.buy)
   if (due) return { kind: 'pay', pad: due }
   let foe: Foe | null = null, fd = guard
   for (const f of s.foes) {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BALANCE } from '../data/balance'
 import { CORE } from '../data/layout'
-import { createGame, type GameState } from '../sim/state'
+import { createGame, type GameState, type Pad } from '../sim/state'
 import { addFoe, padOf } from '../sim/testkit'
 import { bought, chooseGoal, GUARD, nextPad, POLICIES, type BotName, type Policy } from './policy'
 
@@ -13,14 +13,22 @@ function turretsMaxed(s: GameState, heroLvl: number): void {
   s.hero.lvl = heroLvl
 }
 
+/** Nava pe centrul cercului, cu plata care curge (`dwell` la prag). */
+function onPad(s: GameState, p: Pad): Pad {
+  s.hero.x = p.x; s.hero.y = p.y
+  p.dwell = BALANCE.pay.dwell
+  return p
+}
+
 describe('purtările', () => {
-  it('sunt cele cinci din design, în ordinea tabelului', () => {
+  it('sunt cele cinci din design, în ordinea tabelului, plus „Fără turele”, doar tipărit', () => {
     expect(POLICIES.map((p) => [p.name, p.label, p.still, p.buy])).toEqual([
       ['nimic', 'Nimic', true, []],
       ['amestec', 'Amestec', false, ['turret', 'economy', 'hero']],
       ['doar-nava', 'Doar navă', false, ['hero']],
       ['fara-nava', 'Fără navă', false, ['turret', 'economy']],
       ['fara-economie', 'Fără economie', false, ['turret', 'hero']],
+      ['fara-turele', 'Fără turele', false, ['economy', 'hero']],
     ])
   })
 })
@@ -63,6 +71,53 @@ describe('ce cumpără, pe rând', () => {
     expect(nextPad(s, buy)).toBeNull()
     expect(nextPad(s, [])).toBeNull()
   })
+  it('plata care curge se termină: nava devine gata la mijlocul plății unei turele, ținta rămâne turela (R7)', () => {
+    const s = createGame(1), buy = pol('amestec').buy, t = onPad(s, padOf(s, 'turret', 0))
+    s.crystal = 30; s.metal = 30
+    t.paid = { crystal: 5, metal: 0 }
+    expect(nextPad(s, buy)).toBe(t)
+    s.hero.xp = 6                                   // gata și plătibilă: fără plata care curge, ținta ar fi nava
+    expect(nextPad(s, buy)).toBe(t)
+    expect(chooseGoal(s, pol('amestec'))).toEqual({ kind: 'pay', pad: t })
+    t.lvl = 1; t.paid = { crystal: 0, metal: 0 }; t.dwell = -BALANCE.pay.restAfterLevel   // nivelul turelei s-a încheiat, ca în `finishLevel`
+    expect(nextPad(s, buy)).toBe(padOf(s, 'hero'))
+  })
+  it('plata care curge se oprește când stocul nu mai poate plăti nimic din ce a rămas (R7)', () => {
+    const s = createGame(1), buy = pol('amestec').buy, t = onPad(s, padOf(s, 'turret', 0))
+    t.paid = { crystal: 5, metal: 0 }; s.hero.xp = 6
+    s.crystal = 25; s.metal = 10
+    expect(nextPad(s, buy)).toBe(t)
+    t.lvl = 1; t.paid = { crystal: 0, metal: 15 }; s.crystal = 0   // nivelul 2: rămân 35 de cristale, stocul n-are niciunul
+    expect(nextPad(s, buy)).toBe(padOf(s, 'collector'))             // fără plata ținută: rândul, adică economia
+  })
+  it('plata care curge nu se mută nici când nava trece pragul fără să fie plătibilă (R7)', () => {
+    const s = createGame(1), buy = pol('amestec').buy
+    padOf(s, 'turret', 0).lvl = 1; padOf(s, 'collector').lvl = 1   // rândul navei, nava nu e gata: turela a doua
+    const t = onPad(s, padOf(s, 'turret', 1)); t.paid = { crystal: 3, metal: 0 }; s.crystal = 10; s.metal = 0
+    expect(nextPad(s, buy)).toBe(t)
+    s.hero.xp = 6                                    // gata, dar stocul nu acoperă nivelul: rândul ar trece la navă
+    expect(nextPad(s, buy)).toBe(t)
+    t.dwell = 0                                      // a ieșit din cerc
+    expect(nextPad(s, buy)).toBe(padOf(s, 'hero'))
+  })
+  it('ținută la o turelă, plata cedează în fața luptei; ținută la cercul navei gata, nu (R7)', () => {
+    const s = createGame(1), t = onPad(s, padOf(s, 'turret', 0)); s.crystal = 30; s.metal = 30
+    const f = addFoe(s, CORE.x + 100, CORE.y)
+    expect(chooseGoal(s, pol('amestec'))).toEqual({ kind: 'fight', foe: f })
+    t.dwell = 0
+    const h = onPad(s, padOf(s, 'hero')); s.hero.xp = 6
+    expect(chooseGoal(s, pol('amestec'))).toEqual({ kind: 'pay', pad: h })
+  })
+  it('nava doar trece peste cerc (`dwell` sub prag): plata nu e ținută', () => {
+    const s = createGame(1), buy = pol('amestec').buy, t = onPad(s, padOf(s, 'turret', 0))
+    t.dwell = BALANCE.pay.dwell - 1 / 60; s.crystal = 30; s.metal = 30; s.hero.xp = 6
+    expect(nextPad(s, buy)).toBe(padOf(s, 'hero'))
+  })
+  it('cercul de reparat nu e ținut niciodată', () => {
+    const s = createGame(1), buy = pol('amestec').buy
+    onPad(s, padOf(s, 'repair')); s.metal = 30; s.core.hp = 100
+    expect(nextPad(s, buy)).toBe(padOf(s, 'turret', 0))
+  })
   it('bought: nava 3, turele 2-1-0-0, colector 1, mină 0 fac 6', () => {
     const s = createGame(1)
     s.hero.lvl = 3
@@ -95,9 +150,9 @@ describe('ce face la fiecare pas', () => {
     addFoe(s, CORE.x + 100, CORE.y)
     expect(chooseGoal(s, pol('amestec'), 80).kind).not.toBe('fight')
   })
-  it('lipsă 5 cristale și 10 metal: strânge metal, de la cel mai apropiat asteroid nevid', () => {
-    const s = createGame(1), p = pol('doar-nava')   // nivelul 2 al navei: 25 cristale și 10 metal; în stoc 20 de cristale
-    s.hero.xp = 6
+  it('lipsă 5 metal: strânge metal, de la cel mai apropiat asteroid nevid', () => {
+    const s = createGame(1), p = pol('doar-nava')   // nivelul 3 al navei: 20 cristale și 5 metal; în stoc 20 de cristale
+    s.hero.lvl = 2; s.hero.xp = 9
     s.nodes.filter((n) => n.type === 'metal').slice(0, 2).forEach((n) => { n.left = 0; n.regrowAt = 50 })
     const live = s.nodes.filter((n) => n.type === 'metal' && n.left > 0)
     const d = (n: { x: number; y: number }) => Math.hypot(n.x - s.hero.x, n.y - s.hero.y)
@@ -111,7 +166,7 @@ describe('ce face la fiecare pas', () => {
   })
   it('cu toți asteroizii goi, cel cu regrowAt cel mai mic (Review Focus 3)', () => {
     const s = createGame(1), metal = s.nodes.filter((n) => n.type === 'metal')
-    s.hero.xp = 6
+    s.hero.lvl = 2; s.hero.xp = 9                    // nivelul 3: 20 cristale și 5 metal; în stoc 20 cristale, lipsește metalul
     metal.forEach((n, i) => { n.left = 0; n.regrowAt = 100 + ((i * 7) % metal.length) })
     const first = metal.reduce((a, b) => (b.regrowAt < a.regrowAt ? b : a))
     expect(first.regrowAt).toBe(100)

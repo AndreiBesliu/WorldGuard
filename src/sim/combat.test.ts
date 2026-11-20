@@ -201,8 +201,8 @@ describe('Releul', () => {
     }
     return fired[1]! - fired[0]!
   }
-  it('o turelă la 200 de navă trage cu timpul dintre trageri împărțit la 1,2 / 1,35 / 1,5', () => {
-    expect([0, 1, 2, 3].map((t) => gap(t, 200))).toEqual([48, 40, 36, 32])   // 0,8 s; 0,667 s; 0,593 s; 0,533 s
+  it('o turelă la 200 de navă trage cu timpul dintre trageri împărțit la 1,3 / 1,55 / 1,8', () => {
+    expect([0, 1, 2, 3].map((t) => gap(t, 200))).toEqual([48, 37, 31, 27])   // 0,8 s; 0,615 s; 0,516 s; 0,444 s
   })
   it('una la 240 de navă, sau cu nava doborâtă, nu', () => {
     expect(gap(3, 240)).toBe(48)

@@ -41,12 +41,12 @@ export const MODS = {
   },
   engine: { speed: [1.12, 1.22, 1.3] },       // viteza navei se înmulțește cu atât
   magnet: {
-    reach: [40, 60, 80],                      // distanța de strâns, de la marginea navei la marginea resursei, px
+    reach: [50, 75, 100],                     // distanța de strâns, de la marginea navei la marginea resursei, px
     every: [0.8, 0.65, 0.5],                  // timpul între două bucăți se înmulțește cu atât
   },
   relay: {
     range: 220,                               // turelele cu corpul la cel mult atât de nava vie, px
-    every: [1.2, 1.35, 1.5],                  // timpul între două trageri ale lor se împarte la atât
+    every: [1.3, 1.55, 1.8],                  // timpul între două trageri ale lor se împarte la atât
   },
 } as const
 

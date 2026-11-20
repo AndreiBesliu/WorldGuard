@@ -9,8 +9,9 @@ describe('balans', () => {
     expect(cost('turret', 5)).toEqual({ crystal: 80, metal: 60 })
     expect([1, 2, 3].map((l) => cost('collector', l))).toEqual([{ crystal: 25, metal: 0 }, { crystal: 40, metal: 15 }, { crystal: 60, metal: 35 }])
     expect([1, 2, 3].map((l) => cost('mine', l))).toEqual([{ crystal: 35, metal: 0 }, { crystal: 45, metal: 20 }, { crystal: 60, metal: 40 }])
-    expect(cost('hero', 2)).toEqual({ crystal: 25, metal: 10 })
-    expect(cost('hero', 5)).toEqual({ crystal: 70, metal: 55 })
+    expect(cost('hero', 2)).toEqual({ crystal: 15, metal: 0 })
+    expect(cost('hero', 5)).toEqual({ crystal: 30, metal: 15 })
+    expect(cost('hero', 9)).toEqual({ crystal: 50, metal: 35 })
   })
   it('nava: un prag de experiență pentru fiecare nivel de după primul, un număr de locuri pentru fiecare nivel', () => {
     expect(BALANCE.hero.maxLevel).toBe(9)
@@ -20,7 +21,7 @@ describe('balans', () => {
   it('curbele din spec', () => {
     expect([turretDamage(1), turretDamage(5)]).toEqual([6, 26])
     expect([spawnEvery(0), spawnEvery(90), spawnEvery(1e6)]).toEqual([5, 2.5, 0.6])
-    expect([foeHp(0), foeHp(45)]).toEqual([14, 28])
+    expect([foeHp(0), foeHp(33)]).toEqual([14, 28])
   })
   it('costurile: numere întregi, cel puțin 0, cu suma mai mare ca 0, pe fiecare nivel', () => {
     const levels: [Parameters<typeof cost>[0], number, number][] = [

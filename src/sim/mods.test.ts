@@ -20,7 +20,7 @@ describe('experiența, pragurile și locurile', () => {
     expect([1, 2, 3, 4, 5, 6, 7, 8, 9].map(slotsAt)).toEqual([2, 2, 3, 3, 4, 4, 5, 5, 6])
   })
   it('xpNeed: 6 la nivelul 1, 34 la nivelul 8, null la nivelul 9 (maxim)', () => {
-    expect([1, 2, 3, 4, 5, 6, 7, 8].map(xpNeed)).toEqual([6, 10, 13, 16, 20, 24, 28, 34])
+    expect([1, 2, 3, 4, 5, 6, 7, 8].map(xpNeed)).toEqual([6, 9, 11, 13, 20, 24, 28, 34])
     expect(xpNeed(9)).toBeNull()
   })
   it('heroReady: fals la 5 experiență, adevărat la 6', () => {

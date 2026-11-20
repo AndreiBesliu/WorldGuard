@@ -12,7 +12,7 @@ describe('dușmanii', () => {
     const s = idle(1, 10.1)
     expect(s.foes).toHaveLength(1)
     expect(s.foes[0]).toMatchObject({ r: 10, speed: 46, dmg: 3, brute: false })
-    expect(s.foes[0]!.maxHp).toBeCloseTo(14 * (1 + 10 / 45), 1)
+    expect(s.foes[0]!.maxHp).toBeCloseTo(14 * (1 + 10 / 33), 1)
   })
   it('dușmanii apar pe marginea hărții, pe toate cele patru laturi', () => {
     const s = quietGame()

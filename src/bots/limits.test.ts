@@ -3,22 +3,22 @@ import { POLICIES, type BotName } from './policy'
 import { formatTable, verdicts } from './limits'
 import { RUN_CAP, type Row } from './run'
 
-const DEFAULTS: Record<BotName, number> = { nimic: 90, amestec: 300, 'doar-nava': 200, 'fara-nava': 250, 'fara-economie': 280 }
+const DEFAULTS: Record<BotName, number> = { nimic: 90, amestec: 300, 'doar-nava': 200, 'fara-nava': 250, 'fara-economie': 280, 'fara-turele': 260 }
 
 /** Rânduri făcute de mână: doar mediana contează pentru verdict. */
 function rows(over: Partial<Record<BotName, number>> = {}, without?: BotName): Row[] {
   return POLICIES.filter((p) => p.name !== without).map((p) => {
     const m = over[p.name] ?? DEFAULTS[p.name]
-    return { name: p.name, label: p.label, times: [m], median: m, min: m, max: m }
+    return { name: p.name, label: p.label, times: [m], median: m, min: m, max: m, level: 1, lvl2At: RUN_CAP, lvl5At: RUN_CAP }
   })
 }
 const okOf = (rs: Row[], name: BotName) => verdicts(rs).find((v) => v.name === name)!.ok
 
 describe('verdictele', () => {
-  it('toate în limită: patru da și unul fără limită', () => {
+  it('toate în limită: patru da și două fără limită', () => {
     const v = verdicts(rows())
-    expect(v).toHaveLength(5)
-    expect(v.map((x) => x.ok)).toEqual([true, true, true, true, null])
+    expect(v).toHaveLength(6)
+    expect(v.map((x) => x.ok)).toEqual([true, true, true, true, null, null])
     expect(v.map((x) => x.name)).toEqual(POLICIES.map((p) => p.name))
   })
   it('„Nimic”: limitele 60 și 130 sunt închise', () => {
@@ -60,6 +60,12 @@ describe('verdictele', () => {
     const v = verdicts(rows({ amestec: 300, 'doar-nava': 226.2 })).find((x) => x.name === 'doar-nava')!
     expect([v.value, v.ok]).toEqual(['226 s (75,4%)', false])
   })
+  it('„Fără turele” e ultimul rând și nu are limită, oricât ar ține', () => {
+    for (const m of [10, 300, 900]) {
+      const v = verdicts(rows({ 'fara-turele': m })).at(-1)!
+      expect([v.name, v.ok, v.limit]).toEqual(['fara-turele', null, '—'])
+    }
+  })
   it('fără rândul „Amestec” aruncă o eroare cu mesaj', () => {
     expect(() => verdicts(rows({}, 'amestec'))).toThrow(/Amestec/)
   })
@@ -77,6 +83,14 @@ describe('tabelul', () => {
     const t = formatTable(rows({ amestec: 400 }))
     expect(t).toContain('ÎN AFARA LIMITEI')
     expect(formatTable(rows())).not.toContain('ÎN AFARA LIMITEI')
+  })
+  it('tipărește „Fără turele”, nivelul navei la sfârșit și secundele nivelurilor 2 și 5', () => {
+    const rs = rows().map((r) => (r.name === 'amestec' ? { ...r, level: 4.5, lvl2At: 41.25, lvl5At: 152.6 } : r))
+    const lines = formatTable(rs).split('\n')
+    expect(lines[0]).toMatch(/Nivel\s+Nivel 2\s+Nivel 5$/)
+    const mix = lines.find((l) => l.startsWith('Amestec'))!
+    expect(mix).toMatch(/4,5\s+41 s\s+153 s$/)
+    expect(lines.at(-1)).toMatch(/^Fără turele\s+260 s .*fără limită\s+1\s+—\s+—$/)
   })
   it('o mediană egală cu marginea testului se scrie „≥ 900”', () => {
     expect(RUN_CAP).toBe(900)

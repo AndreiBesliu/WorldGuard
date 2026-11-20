@@ -16,8 +16,8 @@ beforeAll(() => {
 const verdictOf = (name: BotName) => vs.find((v) => v.name === name)!
 
 describe('plasa pentru dificultate', { timeout: 120_000 }, () => {
-  it('un verdict pe jucător, câte cinci', () => {
-    expect(vs).toHaveLength(5)
+  it('un verdict pe jucător, câte șase, în ordinea din `POLICIES`', () => {
+    expect(vs).toHaveLength(6)
     expect(vs.map((v) => v.name)).toEqual(POLICIES.map((p) => p.name))
   })
   for (const name of ['nimic', 'amestec', 'doar-nava', 'fara-nava'] as const) {

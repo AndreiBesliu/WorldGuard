@@ -20,7 +20,7 @@ export const BALANCE = {
     regen: 4,                                // viață recăpătată pe secundă (fără Reparator)
     respawn: 5,                              // secunde până reapare după ce cade
     maxLevel: 9,                             // nivelul maxim al eroului
-    xpToLevel: [6, 10, 13, 16, 20, 24, 28, 34], // experiența cerută pentru nivelurile 2–9
+    xpToLevel: [6, 9, 11, 13, 20, 24, 28, 34],  // experiența cerută pentru nivelurile 2–9
     slots: [2, 2, 3, 3, 4, 4, 5, 5, 6],      // locurile pentru module, pe nivel, de la nivelul 1
     offerPool: MOD_IDS,                      // modulele care se pot oferi la un nivel nou: toate
     deadzone: 0.01,                          // sub această lungime a comenzii, eroul stă pe loc
@@ -77,7 +77,7 @@ const MINE_COST = [{ crystal: 35, metal: 0 }, { crystal: 45, metal: 20 }, { crys
 
 export function cost(kind: BuildKind, level: number): Record<Res, number> {
   if (kind === 'turret') return { crystal: 20 + 15 * (level - 1), metal: 15 * (level - 1) }    // cristal 20 + 15(n−1), metal 15(n−1)
-  if (kind === 'hero') return { crystal: 25 + 15 * (level - 2), metal: 10 + 15 * (level - 2) } // nivelurile 2–9
+  if (kind === 'hero') return { crystal: 15 + 5 * (level - 2), metal: 5 * (level - 2) }        // nivelurile 2–9
   const table = kind === 'collector' ? COLLECTOR_COST : MINE_COST
   const row = table[level - 1]
   if (!row) throw new Error(`nivel fără cost: ${kind} ${level}`)
@@ -95,5 +95,5 @@ export function spawnEvery(t: number): number {
 
 /** Viața unui dușman obișnuit care apare la momentul t. */
 export function foeHp(t: number): number {
-  return 14 * (1 + t / 45)
+  return 14 * (1 + t / 33)
 }
