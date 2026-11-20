@@ -34,6 +34,16 @@ export function heroReady(s: GameState): boolean {
   return need !== null && s.hero.xp >= need
 }
 
+/** Ce arată cercul navei: încă strânge experiență (`a` din `b`), pragul e atins, ori nava e la nivelul maxim. */
+export type HeroPadView = { kind: 'wait'; a: number; b: number } | { kind: 'ready' } | { kind: 'max' }
+
+export function heroPadView(s: GameState): HeroPadView {
+  const need = xpNeed(s.hero.lvl)
+  if (need === null) return { kind: 'max' }
+  if (s.hero.xp >= need) return { kind: 'ready' }
+  return { kind: 'wait', a: Math.floor(s.hero.xp), b: need }
+}
+
 /**
  * Ofertele pentru nivelul la care a ajuns nava: module noi (cât are locuri libere) și întăriri (sub treapta maximă), doar din `pool`.
  * Cel mult `OFFERS`, diferite; cel puțin una nouă dacă există, cel puțin o întărire dacă există. null dacă nu e nimic de oferit.

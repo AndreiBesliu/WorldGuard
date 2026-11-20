@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { MAX_TIER, MOD_IDS, type ModId } from '../data/modules'
+import { BALANCE } from '../data/balance'
 import { createRng } from './rng'
 import { createGame, type GameState, type Input } from './state'
-import { choose, heroReady, makeOffer, slotsAt, tierOf, xpNeed } from './mods'
+import { choose, heroPadView, heroReady, makeOffer, slotsAt, tierOf, xpNeed } from './mods'
 import { step } from './step'
 import { stepFor } from './testkit'
 
@@ -172,5 +173,20 @@ describe('pasul cu oferta deschisă', () => {
     for (const i of script) { step(a, i); step(b, i) }
     expect(b).toEqual(a)
     expect(a.hero.mods.length + tierOf(a, 'wave')).toBeGreaterThan(2)   // alegerea chiar a schimbat nava
+  })
+})
+
+describe('heroPadView', () => {
+  it('cercul navei: așteaptă experiența, e gata, ori la nivelul maxim', () => {
+    const s = createGame(1), need = BALANCE.hero.xpToLevel[0]!
+    expect(heroPadView(s)).toEqual({ kind: 'wait', a: 0, b: need })
+    s.hero.xp = need - 1
+    expect(heroPadView(s)).toEqual({ kind: 'wait', a: need - 1, b: need })
+    s.hero.xp = need
+    expect(heroPadView(s)).toEqual({ kind: 'ready' })
+    s.hero.xp = 1000
+    expect(heroPadView(s)).toEqual({ kind: 'ready' })
+    s.hero.lvl = BALANCE.hero.maxLevel
+    expect(heroPadView(s)).toEqual({ kind: 'max' })   // la nivelul maxim, experiența nu mai contează
   })
 })

@@ -2,7 +2,6 @@
 import { BALANCE } from '../data/balance'
 import { CORE } from '../data/layout'
 import { nearestFoeWithin } from '../sim/combat'
-import { xpNeed } from '../sim/mods'
 import type { GameState, Pad, ResNode } from '../sim/state'
 
 const TAU = Math.PI * 2
@@ -17,16 +16,6 @@ export function turretAim(s: GameState, p: Pad): number {
 export function shieldSpan(hp: number, max: number): number {
   if (hp <= 0) return 0
   return TAU * Math.min(1, hp / max)
-}
-
-/** Ce arată cercul navei: încă strânge experiență (`a` din `b`), pragul e atins, ori nava e la nivelul maxim. */
-export type HeroPadView = { kind: 'wait'; a: number; b: number } | { kind: 'ready' } | { kind: 'max' }
-
-export function heroPadView(s: GameState): HeroPadView {
-  const need = xpNeed(s.hero.lvl)
-  if (need === null) return { kind: 'max' }
-  if (s.hero.xp >= need) return { kind: 'ready' }
-  return { kind: 'wait', a: Math.floor(s.hero.xp), b: need }
 }
 
 /** Cât a crescut la loc o resursă golită, de la 0 la 1; 1 pentru una care nu e golită. */

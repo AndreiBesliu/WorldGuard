@@ -1,7 +1,7 @@
 // Banda de sus: cristal, metal, ceas, viața nucleului și rândul navei (nivel, locuri, experiență). DOM-ul se atinge doar când o valoare s-a schimbat.
 import { BALANCE } from '../data/balance'
 import { LOW_FRAC } from '../data/layout'
-import { heroPadView } from '../render/derive'
+import { heroPadView } from '../sim/mods'
 import type { GameState } from '../sim/state'
 import { clock } from './format'
 import { shipSlots, slotElement, slotsKey, type SlotView } from './slots'

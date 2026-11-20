@@ -523,35 +523,47 @@ async function main() {
       a25.level === '1' && /^experiență 0\/\d+$/.test(a25.text) && !a25.ready && a25.slots.join() === 'slot-weapon:#i-wave,slot-free,slot-locked:#i-lock' && b25.text === 'Nivel 2 gata' && b25.ready,
       `nivel ${a25.level}, text „${a25.text}”, locuri ${a25.slots.join(' ')}; peste prag: „${b25.text}”, gata ${b25.ready}`)
 
-    // 26. banda are aceeași înălțime (în pixeli) pe cartonașul de start, în joc, în pauză, cu panoul deschis, la final și în testul de viteză
+    // 26. banda are aceeași înălțime (în pixeli) pe cartonașul de start, în joc, în pauză, cu panoul deschis și la final;
+    // în testul de viteză e mai înaltă, și nu cu mai mult decât rândul fps plus distanța dintre rânduri (măsurate în pagină).
+    // Lângă fiecare înălțime se cere faza în care s-a măsurat, ca o așteptare eșuată să nu fie măsurată tăcut în altă fază.
     const bannerH = () => page.evaluate(() => document.getElementById('banner').getBoundingClientRect().height)
-    const heights = {}
+    const heights = {}, wrong = []
+    const measure = async (name, phase, sel) => {
+      const got = await page.evaluate(() => window.__wg.phase())
+      const shown = sel ? await visible(sel) : true
+      if (got !== phase || !shown) wrong.push(`${name}: fază ${got} (cerută ${phase}), ${sel ?? 'fără cartonaș'} ${shown ? 'vizibil' : 'ascuns'}`)
+      heights[name] = await bannerH()
+    }
     await load()
-    heights.start = await bannerH()
+    await measure('start', 'ready', '#startVeil')
     await page.click('#start')
     await page.waitForTimeout(500)
-    heights.joc = await bannerH()
+    await measure('joc', 'playing', '#pause')
     await page.click('#pause')
     await page.waitForTimeout(200)
-    heights.pauză = await bannerH()
+    await measure('pauză', 'paused', '#pauseVeil')
     await page.click('#resume')
     await page.waitForTimeout(200)
     await prepLevel()
     await waitOffer()
-    heights.panou = await bannerH()
+    await measure('panou', 'playing', '#choiceVeil')
     await page.keyboard.press('1')
     await page.waitForTimeout(300)
     await page.evaluate(() => window.__wg.run(200))
-    await page.waitForSelector('#overVeil:not([hidden])', { timeout: 3000 }).catch(() => {})
+    await page.waitForSelector('#overVeil:not([hidden])', { timeout: 3000 })
     await page.waitForTimeout(200)
-    heights.final = await bannerH()
+    await measure('final', 'over', '#overVeil')
     await load()
     await page.click('#stress')
     await page.waitForTimeout(1500)
-    heights.test = await bannerH()
-    const hv = Object.values(heights)
-    check(26, 'banda are aceeași înălțime în toate fazele: start, joc, pauză, panou, final, test de viteză',
-      hv.length === 6 && Math.max(...hv) - Math.min(...hv) < 0.5, Object.entries(heights).map(([k, v]) => `${k} ${v.toFixed(1)} px`).join(', '))
+    await measure('test', 'playing', '#fps')
+    const fpsRow = await page.evaluate(() => document.getElementById('fps').getBoundingClientRect().height + parseFloat(getComputedStyle(document.querySelector('.time')).rowGap))
+    const xp26 = await page.locator('#xpText').innerText()
+    const plain = ['start', 'joc', 'pauză', 'panou', 'final'].map((k) => heights[k])
+    const spread26 = Math.max(...plain) - Math.min(...plain), more26 = heights.test - Math.max(...plain)
+    check(26, 'banda are aceeași înălțime în start, joc, pauză, panou și final; în testul de viteză e mai înaltă, cel mult cu rândul fps plus distanța dintre rânduri; rândul navei arată „experiență 0/…”',
+      wrong.length === 0 && spread26 < 0.5 && more26 > 0.5 && more26 <= fpsRow + 0.5 && /^experiență 0\/\d+$/.test(xp26),
+      `${Object.entries(heights).map(([k, v]) => `${k} ${v.toFixed(1)} px`).join(', ')}; diferența testului ${more26.toFixed(1)} px din cel mult ${fpsRow.toFixed(1)} (rând fps + distanță); rândul navei „${xp26}”${wrong.length ? `; faze greșite: ${wrong.join(' | ')}` : ''}`)
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))
