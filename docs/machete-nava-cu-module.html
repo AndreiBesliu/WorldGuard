@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Machete nava cu module</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800&family=Rubik:wght@400;500;700&display=swap">
+<style>
+/* Așezare: o coloană de citit, cu machetele de telefon puse două câte două (una sub alta pe telefon). Un singur aspect, cel al jocului. */
+:root {
+  color-scheme: dark;
+  --edge: #05071a; --sky: #0c1236; --sky-deep: #090c26; --night: #060a1f;
+  --ink: #f1f4ff; --ink-soft: #9fa9c9;
+  --panel: rgba(6, 10, 31, .86); --card: rgba(241, 244, 255, .07);
+  --line: rgba(241, 244, 255, .14); --track: rgba(241, 244, 255, .16);
+  --hero: #ffcf4a; --foe: #ff4d6d; --foe-jet: #ffb347;
+  --crystal: #4fe3c1; --metal: #b3aee6; --shield: #8fe9ff;
+  --ocean: #2f7fd8; --land: #4fc98a; --hull: #dfe6f7; --hull-shade: #8a94b8; --ore: #8d88b5;
+  --neb-a: #3b2a86; --neb-b: #0f4a6a;
+  --font-display: "Exo 2", "Rubik", system-ui, sans-serif;
+  --font-ui: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+body {
+  background: var(--edge); color: var(--ink); font-family: var(--font-ui); font-size: 16px; line-height: 1.55;
+  padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 900px; margin-inline: auto; display: flex; flex-direction: column; gap: 52px; }
+header { display: flex; flex-direction: column; gap: 12px; }
+.eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 800; margin: 0; text-wrap: balance; line-height: 1.15; }
+h1 { font-size: clamp(30px, 6vw, 44px); }
+h2 { font-size: clamp(22px, 4.2vw, 28px); }
+h3 { font-size: 18px; }
+p { margin: 0; max-width: 62ch; }
+.lead { color: var(--ink-soft); }
+.answer { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; background: var(--card); max-width: 62ch; }
+.answer b { color: var(--hero); }
+section { display: flex; flex-direction: column; gap: 22px; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 36px 28px; }
+.opt { display: flex; flex-direction: column; gap: 12px; margin: 0; min-width: 0; }
+.opt-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.tag { font-family: var(--font-display); font-weight: 800; font-size: 15px; color: var(--night); background: var(--hero); border-radius: 8px; padding: 2px 9px; }
+.rec { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--hero); }
+.phone { display: block; width: 100%; max-width: 340px; height: auto; margin-inline: auto; border-radius: 30px; border: 2px solid var(--line); background: var(--sky); }
+.strip { display: block; width: 100%; max-width: 440px; height: auto; border-radius: 18px; border: 1px solid var(--line); background: var(--sky); }
+.pm { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; color: var(--ink-soft); font-size: 15px; }
+.pm li { display: grid; grid-template-columns: 18px 1fr; gap: 6px; }
+.pm li::before { content: "+"; color: var(--crystal); font-weight: 700; }
+.pm li.minus::before { content: "−"; color: var(--foe); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 26px 28px; }
+.kind { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.kind h3 { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; font-family: var(--font-ui); font-weight: 700; }
+.mod { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: center; }
+.mod svg { width: 40px; height: 40px; border-radius: 11px; background: var(--card); padding: 8px; box-sizing: border-box; }
+.mod b { display: block; font-family: var(--font-display); font-weight: 800; }
+.mod span { color: var(--ink-soft); font-size: 14px; }
+.k-arm { color: var(--hero); } .k-body { color: var(--shield); } .k-util { color: var(--metal); }
+.note { color: var(--ink-soft); font-size: 14px; }
+
+/* Culorile din desene, toate din jetoanele de sus. */
+.f-ink { fill: var(--ink); } .f-soft { fill: var(--ink-soft); } .f-hero { fill: var(--hero); } .f-foe { fill: var(--foe); }
+.f-foejet { fill: var(--foe-jet); } .f-crystal { fill: var(--crystal); } .f-metal { fill: var(--metal); } .f-shield { fill: var(--shield); }
+.f-ocean { fill: var(--ocean); } .f-land { fill: var(--land); } .f-hull { fill: var(--hull); } .f-hullsh { fill: var(--hull-shade); }
+.f-ore { fill: var(--ore); } .f-night { fill: var(--night); } .f-panel { fill: var(--panel); } .f-track { fill: var(--track); }
+.f-card { fill: var(--card); } .f-cur { fill: currentColor; }
+.s-line { stroke: var(--line); } .s-ink { stroke: var(--ink); } .s-shield { stroke: var(--shield); } .s-hero { stroke: var(--hero); }
+.s-track { stroke: var(--track); } .s-cur { stroke: currentColor; }
+.td { font-family: var(--font-display); font-weight: 800; } .tu { font-family: var(--font-ui); font-weight: 500; } .tub { font-family: var(--font-ui); font-weight: 700; }
+.cap { letter-spacing: .12em; }
+.ico { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pad { fill: none; stroke: var(--ink); stroke-opacity: .6; stroke-width: 1.6; stroke-dasharray: 5 4; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="g-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--sky)"/><stop offset="1" style="stop-color:var(--sky-deep)"/></linearGradient>
+    <radialGradient id="g-neb-a"><stop offset="0" style="stop-color:var(--neb-a);stop-opacity:.55"/><stop offset="1" style="stop-color:var(--neb-a);stop-opacity:0"/></radialGradient>
+    <radialGradient id="g-neb-b"><stop offset="0" style="stop-color:var(--neb-b);stop-opacity:.5"/><stop offset="1" style="stop-color:var(--neb-b);stop-opacity:0"/></radialGradient>
+
+    <filter id="f-blur" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="5"/></filter>
+    <symbol id="ship" viewBox="-16 -16 32 32"><polygon class="f-shield" points="-6,-3 -15,0 -6,3"/><polygon class="f-hero" points="14,0 -10,-9 -5,0 -10,9"/><ellipse class="f-night" cx="2" cy="0" rx="4" ry="2.2"/></symbol>
+    <symbol id="foe" viewBox="-16 -16 32 32"><polygon class="f-foejet" points="-5,-2.5 -12,0 -5,2.5"/><polygon class="f-foe" points="10,0 -8,-7 -4,0 -8,7"/></symbol>
+    <symbol id="turret" viewBox="-16 -16 32 32"><circle class="f-hullsh" r="11"/><rect class="f-hull" x="0" y="-2.2" width="15" height="4.4" rx="1.5"/><circle class="f-hull" r="6.5"/></symbol>
+    <symbol id="gem" viewBox="-8 -12 16 22"><ellipse class="f-night" cx="0" cy="8" rx="7" ry="2.4" opacity=".6"/><polygon class="f-crystal" points="0,-11 6,0 0,8 -6,0"/><polygon class="f-ink" opacity=".35" points="0,-11 2.4,0 0,8"/></symbol>
+
+    <symbol id="i-wave" viewBox="0 0 24 24"><g class="ico"><path d="M4 14a6 6 0 0 1 6 6"/><path d="M4 9a11 11 0 0 1 11 11"/><path d="M4 4a16 16 0 0 1 16 16"/></g></symbol>
+    <symbol id="i-laser" viewBox="0 0 24 24"><g class="ico"><path d="M3 21 15 9"/><circle cx="17" cy="7" r="2.5"/><path d="M17 1.5v2M22.5 7h-2M21 3l-1.4 1.4"/></g></symbol>
+    <symbol id="i-rocket" viewBox="0 0 24 24"><g class="ico"><path d="M12 3c3 2 4.5 5.5 4.5 9.5V16h-9v-3.5C7.5 8.5 9 5 12 3z"/><path d="M7.5 13 5 17h2.5M16.5 13l2.5 4h-2.5M10 19.5V21M14 19.5V21"/></g></symbol>
+    <symbol id="i-armor" viewBox="0 0 24 24"><g class="ico"><path d="M12 3 5 6v5.5c0 4.3 2.9 7.6 7 9.5 4.1-1.9 7-5.2 7-9.5V6z"/></g></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><g class="ico"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.5"/></g></symbol>
+    <symbol id="i-repair" viewBox="0 0 24 24"><g class="ico"><path d="M12 5v14M5 12h14"/></g></symbol>
+    <symbol id="i-engine" viewBox="0 0 24 24"><g class="ico"><path d="M5 6l6 6-6 6M13 6l6 6-6 6"/></g></symbol>
+    <symbol id="i-magnet" viewBox="0 0 24 24"><g class="ico"><path d="M6 4v8a6 6 0 0 0 12 0V4h-4v8a2 2 0 0 1-4 0V4z"/></g></symbol>
+    <symbol id="i-relay" viewBox="0 0 24 24"><g class="ico"><path d="M12 21V11M8 21h8"/><circle cx="12" cy="8.5" r="2"/><path d="M7 13a7 7 0 0 1 0-9M17 13a7 7 0 0 0 0-9"/></g></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><g class="ico"><rect x="6" y="11" width="12" height="9" rx="2"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3"/></g></symbol>
+
+    <!-- Terenul: același în toate machetele. -->
+    <symbol id="scene" viewBox="0 0 360 760">
+      <rect width="360" height="760" fill="url(#g-sky)"/>
+      <ellipse cx="50" cy="170" rx="190" ry="150" fill="url(#g-neb-a)"/>
+      <ellipse cx="330" cy="610" rx="200" ry="170" fill="url(#g-neb-b)"/>
+      <g class="f-ink">
+        <circle cx="22" cy="128" r="1.1" opacity=".8"/><circle cx="88" cy="176" r=".9" opacity=".6"/><circle cx="140" cy="118" r="1.3" opacity=".9"/><circle cx="196" cy="150" r=".8" opacity=".6"/>
+        <circle cx="262" cy="170" r="1.1" opacity=".7"/><circle cx="338" cy="196" r=".9" opacity=".7"/><circle cx="30" cy="250" r=".8" opacity=".5"/><circle cx="276" cy="262" r="1" opacity=".6"/>
+        <circle cx="20" cy="402" r="1.2" opacity=".8"/><circle cx="96" cy="388" r=".8" opacity=".5"/><circle cx="150" cy="420" r="1" opacity=".6"/><circle cx="344" cy="446" r="1.2" opacity=".8"/>
+        <circle cx="58" cy="560" r="1" opacity=".7"/><circle cx="118" cy="520" r=".8" opacity=".5"/><circle cx="244" cy="548" r="1.3" opacity=".8"/><circle cx="300" cy="520" r=".8" opacity=".5"/>
+        <circle cx="84" cy="664" r="1.1" opacity=".7"/><circle cx="206" cy="690" r=".9" opacity=".6"/><circle cx="318" cy="700" r="1.2" opacity=".8"/><circle cx="262" cy="640" r=".8" opacity=".5"/>
+        <circle cx="170" cy="590" r=".8" opacity=".5"/><circle cx="24" cy="724" r="1" opacity=".6"/>
+      </g>
+      <!-- asteroizi -->
+      <circle class="f-ore" cx="300" cy="136" r="13"/><circle class="f-ore" cx="322" cy="120" r="9"/><circle class="f-ink" cx="296" cy="132" r="1.6" opacity=".7"/><circle class="f-ink" cx="324" cy="118" r="1.2" opacity=".7"/>
+      <!-- cristale -->
+      <use href="#gem" x="40" y="288" width="16" height="22"/><use href="#gem" x="64" y="280" width="16" height="22"/><use href="#gem" x="30" y="314" width="16" height="22"/>
+      <use href="#gem" x="58" y="318" width="16" height="22"/><use href="#gem" x="78" y="302" width="16" height="22"/>
+      <!-- planeta -->
+      <circle class="f-shield" cx="215" cy="335" r="72" opacity=".07"/>
+      <circle class="f-ocean" cx="215" cy="335" r="46"/>
+      <ellipse class="f-land" cx="203" cy="322" rx="16" ry="12"/><ellipse class="f-land" cx="234" cy="352" rx="11" ry="8"/>
+      <path d="M186 312a36 36 0 0 1 50-14" fill="none" class="s-ink" stroke-width="3" stroke-linecap="round" opacity=".45"/>
+      <circle cx="215" cy="335" r="54" fill="none" class="s-shield" stroke-width="3" opacity=".9"/>
+      <!-- turele construite și cercurile lor -->
+      <use href="#turret" x="99" y="202" width="32" height="32" transform="rotate(-140 115 218)"/><circle class="pad" cx="115" cy="256" r="20"/>
+      <use href="#turret" x="299" y="202" width="32" height="32" transform="rotate(80 315 218)"/><circle class="pad" cx="315" cy="256" r="20"/>
+      <circle class="pad" cx="115" cy="452" r="20"/><circle cx="115" cy="452" r="5" fill="none" class="s-ink" stroke-width="1.6" opacity=".6"/>
+      <circle class="pad" cx="315" cy="452" r="20"/><circle cx="315" cy="452" r="5" fill="none" class="s-ink" stroke-width="1.6" opacity=".6"/>
+      <line x1="320" y1="250" x2="326" y2="290" class="s-shield" stroke-width="2.4" stroke-linecap="round"/>
+      <!-- cercul navei -->
+      <circle class="pad" cx="215" cy="205" r="22"/><polyline points="207,212 215,197 223,212" fill="none" class="s-ink" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity=".8"/>
+      <text x="215" y="246" text-anchor="middle" class="tub f-ink" font-size="11">Navă nivel 4</text>
+      <text x="215" y="260" text-anchor="middle" class="tu f-soft" font-size="10">experiență 14/40</text>
+      <!-- cercul de reparat -->
+      <circle class="pad" cx="215" cy="455" r="20"/><path d="M215 447v16M207 455h16" class="s-ink" stroke-width="2" stroke-linecap="round" opacity=".8" fill="none"/>
+      <!-- nava -->
+      <rect class="f-hero" x="140" y="276" width="30" height="3.5" rx="1.75"/>
+      <use href="#ship" x="139" y="284" width="32" height="32" transform="rotate(-150 155 300)"/>
+      <!-- dușmani -->
+      <use href="#foe" x="36" y="96" width="32" height="32" transform="rotate(54 52 112)"/>
+      <use href="#foe" x="150" y="130" width="32" height="32" transform="rotate(72 166 146)"/>
+      <use href="#foe" x="322" y="364" width="32" height="32" transform="rotate(200 338 380)"/>
+      <use href="#foe" x="134" y="594" width="32" height="32" transform="rotate(283 150 610)"/>
+      <use href="#foe" x="12" y="484" width="32" height="32" transform="rotate(-41 28 500)"/>
+    </symbol>
+
+    <!-- Banda de sus, rândurile de azi. -->
+    <symbol id="hud-rows" viewBox="0 0 360 100">
+      <polygon class="f-crystal" points="30,30 36,37 30,44 24,37"/><text x="44" y="43" class="td f-ink" font-size="17">20</text><text x="72" y="42" class="tu f-soft cap" font-size="8.5">CRISTALE</text>
+      <polygon class="f-metal" points="146,31 152,34 152,40 146,43 140,40 140,34"/><text x="160" y="43" class="td f-ink" font-size="17">0</text><text x="176" y="42" class="tu f-soft cap" font-size="8.5">METAL</text>
+      <text x="334" y="44" text-anchor="end" class="td f-ink" font-size="18">2:14</text>
+      <text x="24" y="70" class="tu f-soft cap" font-size="8.5">PLANETĂ</text>
+      <rect class="f-track" x="86" y="62" width="176" height="8" rx="4"/><rect class="f-ink" x="86" y="62" width="150" height="8" rx="4"/>
+      <text x="270" y="70" class="td f-ink" font-size="12">340</text>
+      <rect x="302" y="54" width="32" height="24" rx="8" fill="none" class="s-line" stroke-width="1.4"/><rect class="f-ink" x="313" y="60" width="3.4" height="12" rx="1"/><rect class="f-ink" x="320" y="60" width="3.4" height="12" rx="1"/>
+    </symbol>
+
+    <!-- Cele patru locuri, mari (40 px) și mici (22 px). -->
+    <symbol id="slots-big" viewBox="0 0 180 56">
+      <rect class="f-panel s-line" x="1" y="1" width="40" height="40" rx="11" stroke-width="1.4"/><use href="#i-wave" class="k-arm" x="9" y="9" width="24" height="24"/>
+      <rect class="f-panel s-line" x="47" y="1" width="40" height="40" rx="11" stroke-width="1.4"/><use href="#i-armor" class="k-body" x="55" y="9" width="24" height="24"/>
+      <rect x="93" y="1" width="40" height="40" rx="11" fill="none" class="s-ink" stroke-width="1.4" stroke-dasharray="4 4" opacity=".55"/>
+      <rect class="f-panel s-line" x="139" y="1" width="40" height="40" rx="11" stroke-width="1.4" opacity=".7"/><use href="#i-lock" style="color:var(--ink-soft)" x="149" y="10" width="20" height="20"/>
+      <text x="159" y="53" text-anchor="middle" class="tu f-soft" font-size="9">nivel 5</text>
+    </symbol>
+    <symbol id="slots-small" viewBox="0 0 110 24">
+      <rect class="f-card s-line" x="1" y="1" width="22" height="22" rx="6" stroke-width="1"/><use href="#i-wave" class="k-arm" x="5" y="5" width="14" height="14"/>
+      <rect class="f-card s-line" x="29" y="1" width="22" height="22" rx="6" stroke-width="1"/><use href="#i-armor" class="k-body" x="33" y="5" width="14" height="14"/>
+      <rect x="57" y="1" width="22" height="22" rx="6" fill="none" class="s-ink" stroke-width="1" stroke-dasharray="3 3" opacity=".55"/>
+      <rect class="f-card s-line" x="85" y="1" width="22" height="22" rx="6" stroke-width="1" opacity=".7"/><use href="#i-lock" style="color:var(--ink-soft)" x="90" y="6" width="12" height="12"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">World Guard · prima etapă</span>
+    <h1>Nava cu module</h1>
+    <p class="lead">Două machete de telefon cu ce ai ales, apoi cum se aprinde cercul navei, cele nouă module și o schiță cu modulele pe navă. Formele sunt simple anume; contează așezarea.</p>
+    <p class="answer">Dacă panoul arată cum îl voiai, spune-mi <b>ok</b> și scriu designul primei etape.</p>
+  </header>
+
+  <section aria-labelledby="s1">
+    <h2 id="s1">Ce ai ales</h2>
+    <p class="lead">La alegere, jocul stă pe loc, panoul apare în mijlocul ecranului, iar terenul din spate se vede încețoșat. În joc, nivelul, experiența și locurile stau toate în banda de sus. Cele trei oferte le-am pus ca rânduri, ca să aibă loc o explicație; asta e alegerea mea.</p>
+    <div class="pair">
+      <figure class="opt">
+        <div class="opt-head"><span class="tag">ales</span><h3>Pauză, panou pe mijloc</h3></div>
+        <svg class="phone" viewBox="0 0 360 760" role="img" aria-label="Jocul e pe pauză și încețoșat; în mijloc, un panou cu trei oferte de module, una sub alta">
+          <g filter="url(#f-blur)">
+            <use href="#scene"/>
+            <rect class="f-panel" x="12" y="14" width="336" height="106" rx="14"/><use href="#hud-rows" x="0" y="0" width="360" height="100"/>
+            <circle cx="38" cy="98" r="13" fill="none" class="s-hero" stroke-width="3.5"/><use href="#slots-small" x="62" y="86" width="110" height="24"/>
+          </g>
+          <rect width="360" height="760" class="f-night" opacity=".5"/>
+          <rect class="f-night s-line" x="18" y="176" width="324" height="404" rx="22" stroke-width="1.2" opacity=".97"/>
+          <text x="36" y="210" class="tu f-soft cap" font-size="9">NIVEL 4</text><text x="36" y="232" class="td f-ink" font-size="19">Alege un modul</text>
+          <use href="#slots-small" x="214" y="208" width="110" height="24"/>
+          <!-- rândul 1: Laser -->
+          <g class="k-arm"><rect class="f-card s-line" x="30" y="254" width="300" height="86" rx="14" stroke-width="1.2"/>
+            <rect class="f-card" x="42" y="267" width="60" height="60" rx="14"/><use href="#i-laser" x="56" y="281" width="32" height="32"/>
+            <text x="116" y="288" class="td f-ink" font-size="17">Laser</text><text x="318" y="286" text-anchor="end" class="tub f-cur cap" font-size="8.5">ARMĂ · NOU</text>
+            <text x="116" y="307" class="tu f-soft" font-size="12">Un dușman, de departe.</text><text x="116" y="323" class="tu f-soft" font-size="12">Bun contra navelor grele.</text>
+            <circle class="f-cur" cx="296" cy="319" r="3.5"/><circle class="f-track" cx="306" cy="319" r="3.5"/><circle class="f-track" cx="316" cy="319" r="3.5"/></g>
+          <!-- rândul 2: Undă -->
+          <g class="k-arm"><rect class="f-card s-line" x="30" y="350" width="300" height="86" rx="14" stroke-width="1.2"/>
+            <rect class="f-card" x="42" y="363" width="60" height="60" rx="14"/><use href="#i-wave" x="56" y="377" width="32" height="32"/>
+            <text x="116" y="384" class="td f-ink" font-size="17">Undă</text><text x="318" y="382" text-anchor="end" class="tub f-cur cap" font-size="8.5">ARMĂ · ÎNTĂRIRE</text>
+            <text x="116" y="403" class="tu f-soft" font-size="12">Mai lată și mai puternică.</text><text x="116" y="419" class="tu f-soft" font-size="12">Treapta 2 din 3.</text>
+            <circle class="f-cur" cx="296" cy="415" r="3.5"/><circle class="f-cur" cx="306" cy="415" r="3.5"/><circle class="f-track" cx="316" cy="415" r="3.5"/></g>
+          <!-- rândul 3: Releu -->
+          <g class="k-util"><rect class="f-card s-line" x="30" y="446" width="300" height="86" rx="14" stroke-width="1.2"/>
+            <rect class="f-card" x="42" y="459" width="60" height="60" rx="14"/><use href="#i-relay" x="56" y="473" width="32" height="32"/>
+            <text x="116" y="480" class="td f-ink" font-size="17">Releu</text><text x="318" y="478" text-anchor="end" class="tub f-cur cap" font-size="8.5">UTILITAR · NOU</text>
+            <text x="116" y="499" class="tu f-soft" font-size="12">Turelele de lângă navă</text><text x="116" y="515" class="tu f-soft" font-size="12">trag mai repede.</text>
+            <circle class="f-cur" cx="296" cy="511" r="3.5"/><circle class="f-track" cx="306" cy="511" r="3.5"/><circle class="f-track" cx="316" cy="511" r="3.5"/></g>
+          <text x="180" y="560" text-anchor="middle" class="tu f-soft" font-size="10.5">Jocul stă pe loc cât alegi.</text>
+        </svg>
+        <ul class="pm"><li>Citești liniștit: nimic nu se mișcă în spate.</li><li>Punctele arată la ce treaptă ajunge modulul.</li><li>Aceeași fereastră va servi mai târziu la obiectele luate de la elite.</li><li class="minus">Oprește jocul de câteva ori pe partidă.</li></ul>
+      </figure>
+
+      <figure class="opt">
+        <div class="opt-head"><span class="tag">ales</span><h3>Totul în banda de sus</h3></div>
+        <svg class="phone" viewBox="0 0 360 760" role="img" aria-label="În joc: nivelul cu inel de experiență și patru locuri mici, toate în banda de sus">
+          <use href="#scene"/>
+          <rect class="f-panel" x="12" y="14" width="336" height="106" rx="14"/><use href="#hud-rows" x="0" y="0" width="360" height="100"/>
+          <circle cx="38" cy="98" r="13" fill="none" class="s-track" stroke-width="3.5"/>
+          <circle cx="38" cy="98" r="13" fill="none" class="s-hero" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="28.6 81.7" transform="rotate(-90 38 98)"/>
+          <text x="38" y="102.5" text-anchor="middle" class="td f-ink" font-size="13">3</text>
+          <use href="#slots-small" x="62" y="86" width="110" height="24"/>
+          <text x="334" y="102" text-anchor="end" class="tu f-soft" font-size="10">experiență 14/40</text>
+          <circle cx="180" cy="640" r="44" fill="none" class="s-ink" stroke-width="2" opacity=".35"/><circle class="f-ink" cx="162" cy="650" r="18" opacity=".35"/>
+        </svg>
+        <ul class="pm"><li>Terenul rămâne liber; tot ce e de citit stă într-un singur loc.</li><li>Inelul din jurul nivelului se umple cu experiența strânsă.</li><li class="minus">Pictogramele modulelor sunt mici.</li></ul>
+      </figure>
+    </div>
+  </section>
+
+  <section aria-labelledby="s3">
+    <h2 id="s3">Când bara e plină</h2>
+    <p class="lead">Cercul navei se aprinde și își arată prețul. Plătești ca azi, stând pe el, apoi apar cartonașele. Până atunci, sub cerc scrie câtă experiență mai lipsește.</p>
+    <svg class="strip" viewBox="0 0 360 176" role="img" aria-label="Banda arată „Nivel 4 gata”, iar cercul navei e aprins și are prețul scris lângă el">
+      <rect width="360" height="176" fill="url(#g-sky)"/>
+      <rect class="f-panel" x="12" y="12" width="336" height="40" rx="12"/>
+      <text x="24" y="37" class="td f-hero" font-size="13">NIVEL 4 GATA</text>
+      <rect class="f-hero" x="136" y="28" width="198" height="8" rx="4"/>
+      <circle class="f-hero" cx="120" cy="116" r="36" opacity=".14"/>
+      <circle cx="120" cy="116" r="24" fill="none" class="s-hero" stroke-width="2.2" stroke-dasharray="6 4"/>
+      <polyline points="111,124 120,107 129,124" fill="none" class="s-hero" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+      <text x="170" y="110" class="tub f-ink" font-size="14">Navă nivel 4</text>
+      <polygon class="f-crystal" points="176,122 182,129 176,136 170,129"/><text x="188" y="134" class="td f-ink" font-size="14">55</text>
+      <polygon class="f-metal" points="226,123 232,126 232,132 226,135 220,132 220,126"/><text x="238" y="134" class="td f-ink" font-size="14">40</text>
+      <use href="#ship" x="34" y="118" width="32" height="32" transform="rotate(-18 50 134)"/>
+    </svg>
+  </section>
+
+  <section aria-labelledby="s4">
+    <h2 id="s4">Primele nouă module</h2>
+    <p class="lead">Lista pe care ai văzut-o, cu pictogramele din machete. Armele trag toate singure, fiecare în ritmul ei. Același modul luat a doua oară urcă o treaptă, până la a treia.</p>
+    <div class="cols">
+      <div class="kind k-arm"><h3>Arme</h3>
+        <div class="mod"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-wave"/></svg><div><b>Undă</b><span>Cea de azi: aproape, în arc, împinge.</span></div></div>
+        <div class="mod"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-laser"/></svg><div><b>Laser</b><span>Un singur dușman, de departe.</span></div></div>
+        <div class="mod"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-rocket"/></svg><div><b>Rachete</b><span>Lente, lovesc o zonă întreagă.</span></div></div>
+      </div>
+      <div class="kind k-body"><h3>Corp</h3>
+        <div class="mod"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-armor"/></svg><div><b>Blindaj</b><span>Mai multă viață.</span></div></div>
+        <div class="mod"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"/></svg><div><b>Scut</b><span>Oprește o lovitură la câteva secunde.</span></div></div>
+        <div class="mod"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-repair"/></svg><div><b>Reparator</b><span>Te refaci mai repede.</span></div></div>
+      </div>
+      <div class="kind k-util"><h3>Utilitare</h3>
+        <div class="mod"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-engine"/></svg><div><b>Motor</b><span>Nava merge mai repede.</span></div></div>
+        <div class="mod"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-magnet"/></svg><div><b>Magnet</b><span>Strângi resurse de mai departe.</span></div></div>
+        <div class="mod"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-relay"/></svg><div><b>Releu</b><span>Turelele de lângă navă trag mai repede.</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="s5">
+    <h2 id="s5">Modulele se văd pe navă</h2>
+    <p class="lead">Fiecare modul adaugă o formă, ca nava să arate altfel de la o partidă la alta. E doar o schiță a ideii.</p>
+    <svg class="strip" viewBox="0 0 360 128" role="img" aria-label="Patru nave: de bază, cu laser, cu rachete, cu scut și motor">
+      <rect width="360" height="128" fill="url(#g-sky)"/>
+      <use href="#ship" x="17" y="22" width="56" height="56"/>
+      <text x="45" y="110" text-anchor="middle" class="tu f-soft" font-size="11">de bază</text>
+      <line x1="150" y1="50" x2="176" y2="50" class="s-shield" stroke-width="3" stroke-linecap="round"/><use href="#ship" x="107" y="22" width="56" height="56"/><rect class="f-hull" x="128" y="46" width="14" height="8" rx="2"/>
+      <text x="135" y="110" text-anchor="middle" class="tu f-soft" font-size="11">cu Laser</text>
+      <use href="#ship" x="197" y="22" width="56" height="56"/><rect class="f-hull" x="206" y="30" width="18" height="7" rx="2"/><rect class="f-hull" x="206" y="63" width="18" height="7" rx="2"/><rect class="f-foejet" x="224" y="31.5" width="5" height="4" rx="1"/><rect class="f-foejet" x="224" y="64.5" width="5" height="4" rx="1"/>
+      <text x="225" y="110" text-anchor="middle" class="tu f-soft" font-size="11">cu Rachete</text>
+      <polygon class="f-shield" points="296,44 272,50 296,56" opacity=".9"/><use href="#ship" x="287" y="22" width="56" height="56"/><circle cx="315" cy="50" r="33" fill="none" class="s-shield" stroke-width="2" opacity=".8"/>
+      <text x="315" y="110" text-anchor="middle" class="tu f-soft" font-size="11">cu Scut și Motor</text>
+    </svg>
+    <p class="note">Elitele cu obiecte de adoptat, dușmanii de mai multe feluri, turelele de mai multe feluri și tipurile de nave vin în etapele următoare; nu sunt în aceste machete.</p>
+  </section>
+</div>
+</html>
