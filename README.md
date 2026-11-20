@@ -39,8 +39,9 @@ planeta și nava mereu întregi (fără nave noi în afara celor 150), și arat�
 
 **Semne în adresă:** `?seed=7` fixează sămânța (aceeași partidă la fiecare pornire); `?debug=1` pune în fereastră
 `window.__wg` (starea jocului, faza cu `phase()`, `run(secunde)` și `drawMs(cadre)`, timpul mediu de desen pe cadru în ms), folosit de proba din browser;
-`npm run smoke` tipărește din el un rând `SMOKE INFO` cu timpul de desen pe cadru cu cele 150 de nave dușmane așezate
-în jurul planetei (în vedere, ca desenul să nu le sară).
+`npm run smoke` tipărește din el două rânduri `SMOKE INFO` cu timpul de desen pe cadru cu cele 150 de nave dușmane așezate
+în jurul planetei (în vedere, ca desenul să nu le sară): o dată cu nava fără module și o dată cu toate cele nouă module la treapta 3,
+cu raze de laser, rachete în zbor și explozii în cadru.
 
 Designul: [`docs/GDD.md`](docs/GDD.md). Regulile proiectului: [`CLAUDE.md`](CLAUDE.md).
 Jocul vechi (tower defense pe hexagoane) a rămas la commit-ul `ec73b9e`.

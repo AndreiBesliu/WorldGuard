@@ -55,10 +55,12 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   aspectul și pictează cerul o dată), `camera.ts` (scara ecranului și urmărirea navei), `world.ts` (tot ce e în coordonate de lume și ar fi la fel
   în orice aspect: straturile, săritul peste ce nu se vede, cercurile, etichetele, barele, textele plutitoare),
   `overlay.ts` (indicatorul spre planetă și joystickul, în coordonate de ecran), `palette.ts` (culorile citite o dată din variabilele CSS),
-  `skin.ts` (interfața `Skin`: formele de pe canvas care diferă de la un aspect la altul; culorile stau în `palette.ts` și în `ui.css`), `draw.ts` (primitivele de desen), `derive.ts` (ce citește desenul din
-  stare, fără DOM: `turretAim`, `shieldSpan`, `regrown`), `orbit/` (aspectul „Orbită”, singura implementare a lui `Skin`: `index.ts`;
-  `scene.ts` — cerul și planeta, **singurul loc cu gradient și decupaj**; `things.ts` — resurse, clădiri, nave, raze, doar forme pline și linii).
-  Testele: `derive.test.ts`, `world.test.ts` (ordinea straturilor; `drawWorld` cu `ORBIT` peste o stare bogată nu schimbă starea),
+  `skin.ts` (interfața `Skin`: formele de pe canvas care diferă de la un aspect la altul, între ele nava cu modulele ei în `hero`, racheta în `shot`,
+  raza laserului în `beam` și explozia în `blast`; culorile stau în `palette.ts` și în `ui.css`), `draw.ts` (primitivele de desen), `derive.ts` (ce citește desenul din
+  stare, fără DOM: `turretAim`, `shieldSpan`, `regrown`, `fade`, `shieldReady`, `blockGlow`, `blastReach`), `orbit/` (aspectul „Orbită”, singura implementare a lui `Skin`: `index.ts`;
+  `scene.ts` — cerul și planeta, **singurul loc cu gradient și decupaj**; `things.ts` — resurse, clădiri, nave (a ta cu formele modulelor și inelul Scutului), raze, rachete, explozii, doar forme pline și linii).
+  `world.ts` desenează stratul razelor peste inelul planetei: exploziile, raza laserului, apoi rachetele și razele turelelor.
+  Testele: `derive.test.ts`, `world.test.ts` (ordinea straturilor; `drawWorld` cu `ORBIT` peste o stare bogată, și peste una cu toate cele nouă module, nu schimbă starea),
   `discipline.test.ts` (fără `shadowBlur`; gradient de orice fel, decupaj și `ctx.filter` doar în `orbit/scene.ts`), `palette.test.ts`
   (culorile `#rgb` lăsate de micșorarea CSS-ului la build, aduse la `#rrggbb`) și `camera.test.ts`. `ground.ts` nu mai există. Mișcările doar de desen (continente, nori, satelit, flăcări, țeava turelei)
   se calculează din timpul partidei și din stare; nu scriu nimic în stare.
@@ -72,9 +74,10 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
 - `src/main.ts` — legătura dintre ele: nu ține stări, le ia din sesiune; pauza (buton, Escape, pagina ascunsă), bucla de cadre,
   ecranul aprins, înregistrarea service worker-ului (doar în build, cu `__WG_SW__`). Cu `?debug=1`, `window.__wg` are `state()`,
   `phase()`, `run(secunde)` și `drawMs(cadre)`.
-- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 26 de verificări, capturi în `smoke-out/`, plus un rând `SMOKE INFO` cu timpul de
-  desen pe cadru cu cele 150 de nave dușmane ale testului de viteză așezate în jurul planetei, ca să fie în vedere, din `window.__wg.drawMs`;
-  merge doar pe Linux și macOS), `single-file.mjs` (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`),
+- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 26 de verificări, capturi în `smoke-out/`, plus rânduri `SMOKE INFO` cu timpul de
+  desen pe cadru cu cele 150 de nave dușmane ale testului de viteză așezate în jurul planetei, ca să fie în vedere, din `window.__wg.drawMs`:
+  o dată cu nava fără module, o dată cu toate cele nouă module la treapta 3 și armele trăgând; capturile `10-nava-module.png` (mărită),
+  `11-explozie.png`, `12-nava-la-scara.png`, `13-banda-rachete.png` și `14-panou-rachete.png` nu sunt verificări; merge doar pe Linux și macOS), `single-file.mjs` (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`),
   `sw-template.js` și `build-sw.mjs` (service worker-ul scris de mână; după `vite build`, `build-sw.mjs` pune în el lista fișierelor din
   `dist` și o versiune din SHA-256-ul lor și scrie `dist/sw.js`; o versiune nouă se activează la următoarea pornire, niciodată în timpul
   unei partide) și `make-icons.cjs` (`npm run icons`).

@@ -2,8 +2,9 @@
 // Doar forme pline și linii: fără gradient, fără decupaj, fără umbră estompată.
 import { BALANCE } from '../../data/balance'
 import { heroArc } from '../../sim/hero'
-import type { Foe, GameState, Input, Pad, PadKind, Res, ResNode, Shot } from '../../sim/state'
-import { regrown, turretAim } from '../derive'
+import { tierOf } from '../../sim/mods'
+import type { Foe, Fx, GameState, Input, Pad, PadKind, Res, ResNode, Shot } from '../../sim/state'
+import { blastReach, blockGlow, fade, regrown, shieldReady, turretAim } from '../derive'
 import { blob, disc, poly, rr, seg, TAU, type Pt } from '../draw'
 import { alpha, FONT_UI, palette } from '../palette'
 
@@ -19,6 +20,8 @@ const LUNGE = 0.12           // cât ține avântul unei nave care lovește, s
 const FOE_FLASH = 0.08       // cât clipește o navă dușmană lovită, s
 const HURT_FLASH = 0.1       // cât clipește nava ta lovită, s
 const WAVE = 0.16            // cât se vede unda, s
+const SHIELD_R = 25          // raza inelului Scutului în jurul navei tale, px
+const BEAM_FROM = 14         // de la ce distanță de mijlocul navei pornește raza laserului, px
 
 /** Un patrulater rotit cu (cos, sin) în jurul lui (x, y). */
 function quad(ctx: CanvasRenderingContext2D, x: number, y: number, c: number, sn: number,
@@ -159,19 +162,87 @@ export function foe(ctx: CanvasRenderingContext2D, s: GameState, f: Foe): void {
   ctx.restore()
 }
 
+/** Un semn mic de pe navă: întâi o linie lată, închisă, ca semnul să se desprindă de corpul galben, apoi semnul în culoarea lui. */
+function mark(ctx: CanvasRenderingContext2D, color: string, width: number): void {
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+  ctx.lineWidth = width + 2; ctx.strokeStyle = palette().hullDark; ctx.stroke()
+  ctx.lineWidth = width; ctx.strokeStyle = color; ctx.stroke()
+}
+
+/** Jetul din spate, cu vârful la `back` − `len` × pâlpâire; `w` e jumătate din lățimea lui la bază. */
+function jet(ctx: CanvasRenderingContext2D, back: number, w: number, len: number, fl: number): void {
+  const C = palette()
+  ctx.beginPath(); ctx.moveTo(back, -w); ctx.lineTo(back - len * fl, 0); ctx.lineTo(back, w); ctx.closePath(); ctx.fillStyle = C.jet; ctx.fill()
+  ctx.beginPath(); ctx.moveTo(back, -w / 2); ctx.lineTo(back - len * fl * 0.55, 0); ctx.lineTo(back, w / 2); ctx.closePath(); ctx.fillStyle = C.star; ctx.fill()
+}
+
+/**
+ * Nava ta, în coordonate locale (botul spre +x), cu formele modulelor: Motorul — o duză în coadă și un jet care arde și pe loc,
+ * mai lung în mers; Blindajul — un contur alb, gros; Laserul — o țeavă în bot; Rachetele — două cutii pe aripi, cu vârful
+ * portocaliu; Reparatorul — un plus în cabină; Magnetul — o potcoavă pe aripa stângă; Releul — o antenă cu unde pe aripa dreaptă.
+ * Treapta: țeava, cutiile și jetul se lungesc, conturul și plusul se îngroașă, potcoava crește, antena are una, două sau trei unde.
+ */
+function ship(ctx: CanvasRenderingContext2D, s: GameState, moving: boolean): void {
+  const C = palette(), h = s.hero
+  const engine = tierOf(s, 'engine'), armor = tierOf(s, 'armor'), laser = tierOf(s, 'laser'), missile = tierOf(s, 'missile')
+  const mender = tierOf(s, 'mender'), magnet = tierOf(s, 'magnet'), relay = tierOf(s, 'relay')
+  const fl = 0.6 + 0.4 * Math.sin(s.t * 34)
+  if (engine > 0) {
+    jet(ctx, -11, 4.2, moving ? 13 + 4 * engine : 4 + 2 * engine, moving ? fl : 0.85 + 0.15 * fl)
+    ctx.fillStyle = C.hullShade; rr(ctx, -12.5, -3, 7, 6, 2); ctx.fill()
+  } else if (moving) jet(ctx, -8, 4.5, 14, fl)
+  poly(ctx, SHIP)
+  if (armor > 0) { ctx.lineWidth = 2.6 + 1.6 * armor; ctx.lineJoin = 'round'; ctx.strokeStyle = C.hull; ctx.stroke() }
+  ctx.fillStyle = s.t - h.hurtT < HURT_FLASH ? C.ink : C.hero; ctx.fill()
+  ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.strokeStyle = C.heroShade; ctx.stroke()
+  if (missile > 0) {
+    const len = 7 + 2 * missile
+    for (const side of [-1, 1]) {
+      const y = side * 12.3 - 2.4
+      rr(ctx, -10, y, len, 4.8, 1.8); ctx.fillStyle = C.hull; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = C.hullDark; ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(-10 + len, y); ctx.lineTo(-6 + len, y + 2.4); ctx.lineTo(-10 + len, y + 4.8); ctx.closePath()
+      ctx.fillStyle = C.foeJet; ctx.fill(); ctx.stroke()
+    }
+  }
+  if (laser > 0) {
+    const tip = 20 + 3 * laser
+    rr(ctx, 7, -1.9, tip - 7, 3.8, 1.5); ctx.fillStyle = C.hull; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = C.hullDark; ctx.stroke()
+    disc(ctx, tip, 0, 2, C.shield)
+  }
+  ctx.beginPath(); ctx.ellipse(3, 0, 5, 3.2, 0, 0, TAU); ctx.fillStyle = C.night; ctx.fill()
+  if (mender > 0) {
+    const a = 1.2 + 0.4 * mender
+    ctx.beginPath(); ctx.moveTo(3 - a, 0); ctx.lineTo(3 + a, 0); ctx.moveTo(3, -a); ctx.lineTo(3, a)
+    ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.strokeStyle = C.shield; ctx.stroke()
+  }
+  if (magnet > 0) {                                       // potcoava, cu deschiderea spre coadă
+    const r = 1.4 + 0.45 * magnet, x = -4, y = -5.2
+    ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x, y - r); ctx.arc(x, y, r, -Math.PI / 2, Math.PI / 2); ctx.lineTo(x - r, y + r)
+    mark(ctx, C.metal, 1.6)
+  }
+  if (relay > 0) {                                        // antena: un punct între două unde, spre bot și spre coadă; undele se îngroașă cu treapta
+    const x = -3.5, y = 5.6, r = 4.3
+    ctx.beginPath()
+    ctx.moveTo(x + Math.cos(-0.8) * r, y + Math.sin(-0.8) * r); ctx.arc(x, y, r, -0.8, 0.8)
+    ctx.moveTo(x + Math.cos(Math.PI - 0.8) * r, y + Math.sin(Math.PI - 0.8) * r); ctx.arc(x, y, r, Math.PI - 0.8, Math.PI + 0.8)
+    ctx.lineWidth = 0.9 + 0.35 * relay; ctx.lineCap = 'round'; ctx.strokeStyle = C.hullDark; ctx.stroke()
+    disc(ctx, x, y, 2.2, C.hullDark); disc(ctx, x, y, 1.4, C.metal)
+  }
+}
+
 export function hero(ctx: CanvasRenderingContext2D, s: GameState, input: Input): void {
   const C = palette(), h = s.hero
   ctx.save(); ctx.translate(h.x, h.y); ctx.rotate(h.face)
-  if (Math.hypot(input.x, input.y) > BALANCE.hero.deadzone) {
-    const fl = 0.6 + 0.4 * Math.sin(s.t * 34)
-    ctx.beginPath(); ctx.moveTo(-8, -4.5); ctx.lineTo(-13 - 9 * fl, 0); ctx.lineTo(-8, 4.5); ctx.closePath(); ctx.fillStyle = C.jet; ctx.fill()
-    ctx.beginPath(); ctx.moveTo(-8, -2.2); ctx.lineTo(-9 - 5 * fl, 0); ctx.lineTo(-8, 2.2); ctx.closePath(); ctx.fillStyle = C.star; ctx.fill()
-  }
-  poly(ctx, SHIP)
-  ctx.fillStyle = s.t - h.hurtT < HURT_FLASH ? C.ink : C.hero; ctx.fill()
-  ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.strokeStyle = C.heroShade; ctx.stroke()
-  ctx.beginPath(); ctx.ellipse(3, 0, 5, 3.2, 0, 0, TAU); ctx.fillStyle = C.night; ctx.fill()
+  ship(ctx, s, Math.hypot(input.x, input.y) > BALANCE.hero.deadzone)
   ctx.restore()
+  const glow = blockGlow(s), shield = tierOf(s, 'shield')
+  if (shieldReady(s) || glow > 0) {                       // inelul Scutului: subțire cât e încărcat; clipește când oprește o lovitură
+    const ga = ctx.globalAlpha
+    ctx.beginPath(); ctx.arc(h.x, h.y, glow > 0 ? SHIELD_R + 5 * (1 - glow) : SHIELD_R, 0, TAU)
+    if (glow > 0) { ctx.globalAlpha = ga * glow; ctx.lineWidth = 4.5; ctx.strokeStyle = C.ink }
+    else { ctx.globalAlpha = ga * 0.8; ctx.lineWidth = 0.8 + 0.5 * shield; ctx.strokeStyle = C.shield }
+    ctx.stroke(); ctx.globalAlpha = ga
+  }
   const sa = s.t - h.waveT
   if (sa < WAVE) {
     const ga = ctx.globalAlpha, arc = heroArc(s)
@@ -181,12 +252,48 @@ export function hero(ctx: CanvasRenderingContext2D, s: GameState, input: Input):
   }
 }
 
-/** Raza: o liniuță cu halou lat și străveziu, cu vârful în (x, y) și coada în urmă. */
+/** Racheta: un corp mic, alb, cu vârful portocaliu și un jet care pâlpâie după locul în care se află (fără ceas). */
+function missileShot(ctx: CanvasRenderingContext2D, sh: Shot): void {
+  const C = palette(), fl = 0.6 + 0.4 * Math.sin((sh.x + sh.y) * 0.9)
+  ctx.save(); ctx.translate(sh.x, sh.y); ctx.rotate(sh.a)
+  ctx.beginPath(); ctx.moveTo(-5, -2); ctx.lineTo(-5 - 8 * fl, 0); ctx.lineTo(-5, 2); ctx.closePath(); ctx.fillStyle = C.foeJet; ctx.fill()
+  rr(ctx, -6, -2.2, 10, 4.4, 2); ctx.fillStyle = C.hull; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = C.hullDark; ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(2, -2.2); ctx.lineTo(7, 0); ctx.lineTo(2, 2.2); ctx.closePath(); ctx.fillStyle = C.foeJet; ctx.fill()
+  ctx.restore()
+}
+
+/** Raza unei turele: o liniuță cu halou lat și străveziu, cu vârful în (x, y) și coada în urmă. Racheta navei are forma ei. */
 export function shot(ctx: CanvasRenderingContext2D, sh: Shot): void {
+  if (sh.kind === 'missile') { missileShot(ctx, sh); return }
   const C = palette(), x1 = sh.x - Math.cos(sh.a) * 12, y1 = sh.y - Math.sin(sh.a) * 12
   ctx.lineCap = 'round'
   seg(ctx, sh.x, sh.y, x1, y1); ctx.strokeStyle = alpha(C.shield, 0.3); ctx.lineWidth = 7; ctx.stroke()
   seg(ctx, sh.x, sh.y, x1, y1); ctx.strokeStyle = C.bolt; ctx.lineWidth = 2.5; ctx.stroke()
+}
+
+/** Raza laserului: o linie dreaptă de la navă la țintă, cu halou, și o scânteie la țintă; se stinge în `beamLife`. */
+export function beam(ctx: CanvasRenderingContext2D, f: Extract<Fx, { kind: 'beam' }>, age: number): void {
+  const C = palette(), k = fade(age, BALANCE.fx.beamLife), ga = ctx.globalAlpha
+  if (k <= 0) return
+  const d = Math.hypot(f.tx - f.x, f.ty - f.y), off = d > BEAM_FROM ? BEAM_FROM / d : 0      // pornește de la marginea navei, nu din mijlocul ei
+  const x0 = f.x + (f.tx - f.x) * off, y0 = f.y + (f.ty - f.y) * off
+  ctx.globalAlpha = ga * k; ctx.lineCap = 'round'
+  seg(ctx, x0, y0, f.tx, f.ty); ctx.strokeStyle = alpha(C.shield, 0.35); ctx.lineWidth = 7; ctx.stroke()
+  seg(ctx, x0, y0, f.tx, f.ty); ctx.strokeStyle = C.bolt; ctx.lineWidth = 2.2; ctx.stroke()
+  disc(ctx, f.tx, f.ty, 3 + 3 * k, C.bolt)
+  ctx.globalAlpha = ga
+}
+
+/** Explozia: un disc portocaliu, străveziu, și un inel galben care cresc până la zona rachetei și se sting în `blastLife`. */
+export function blast(ctx: CanvasRenderingContext2D, f: Extract<Fx, { kind: 'blast' }>, age: number): void {
+  const C = palette(), k = fade(age, BALANCE.fx.blastLife), ga = ctx.globalAlpha
+  if (k <= 0) return
+  const r = blastReach(f.r, age)
+  ctx.globalAlpha = ga * k
+  disc(ctx, f.x, f.y, r, alpha(C.foeJet, 0.28))
+  disc(ctx, f.x, f.y, r * 0.45 * k, C.star)
+  ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, TAU); ctx.lineWidth = 3.5; ctx.strokeStyle = C.hero; ctx.stroke()
+  ctx.globalAlpha = ga
 }
 
 /** Semnul din mijlocul cercului: țintă, romb, hexagon, săgeată de navă sau plus. */

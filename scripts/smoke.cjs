@@ -7,6 +7,8 @@
 // (18) service worker-ul și cache-ul, (19) pornirea fără rețea, apoi (20) pauza și „Continuă” atinse cu al doilea deget, cât primul ține joystickul,
 // și panoul de alegere: (21) apare după plata nivelului și jocul stă, iar o atingere imediat după deschidere, Enter și Spațiu nu aleg, (22) un rând atins alege, (23) pauza și reîncărcarea îl păstrează,
 // (24) tasta 1 alege, iar o atingere începută în afara unui rând nu alege nimic.
+// În afara verificărilor: rândurile `SMOKE INFO` (timpul de desen cu 150 de nave, fără module și cu toate cele nouă trăgând)
+// și capturile modulelor pe navă (10, mărită; 12, la scara jocului), a tragerilor (11) și a pictogramei Rachetelor (13, 14).
 // Fiecare rulare pornește un browser cu un context nou, deci fără cache sau service worker rămase de la o rulare anterioară.
 // Nu face parte din `npm run check`: are nevoie de un Playwright instalat pe mașină.
 // Merge doar pe Linux și macOS: oprește serverul prin grupul lui de procese (`process.kill(-pid)`), pe care Windows nu îl are.
@@ -180,20 +182,51 @@ async function main() {
     const fpsText = await page.locator('#fps').innerText()
     check(9, 'testul de viteză are 150 de dușmani și banda arată „fps” și „min”', foes === 150 && fpsText.includes('fps') && fpsText.includes('min'), `dușmani ${foes}, bandă „${fpsText}”`)
 
-    // Informativ, nu o verificare: cât durează desenul cu 150 de nave în vedere (mediana a cinci serii de 200 de cadre).
+    // Informativ, nu o verificare: cât durează desenul cu 150 de nave în vedere (mediana a cinci serii de 200 de cadre),
+    // de două ori în aceeași rulare: cu nava de la început (doar Unda) și cu toate cele nouă module la treapta 3, trăgând.
     // La 1,5 s navele sunt încă la marginea hărții, în afara vederii, iar desenul le sare; de aceea sunt aduse,
     // la fel de fiecare dată, în jurul planetei: nava i la unghiul i × 2,399963 rad și la raza 70 + (i % 5) × 28.
-    await page.evaluate(() => {
-      window.__wg.state().foes.forEach((f, i) => {
-        const a = i * 2.399963, r = 70 + (i % 5) * 28
+    // Așezarea și cele cinci serii stau într-un singur `evaluate`: bucla jocului nu face niciun pas între ele, deci
+    // razele și exploziile, care trăiesc zecimi de secundă, sunt aceleași în toate cadrele măsurate.
+    const drawInfo = (armed) => page.evaluate((armed) => {
+      const s = window.__wg.state()
+      const ring = (k = 1) => s.foes.forEach((f, i) => {
+        const a = i * 2.399963, r = (70 + (i % 5) * 28) * k
         f.x = 550 + Math.cos(a) * r; f.y = 750 + Math.sin(a) * r
       })
-    })
+      ring()
+      let fired = null
+      if (armed) {
+        // Nouă module pe navă e o stare forțată (încap cel mult șase). Navele dușmane primesc viață multă, ca armele
+        // să nu doboare niciuna, iar la sfârșit viața plină, ca barele lor să nu se deseneze doar în a doua măsurătoare.
+        for (const f of s.foes) { f.maxHp = 1e9; f.hp = 1e9 }
+        s.hero.mods = ['wave', 'laser', 'missile', 'armor', 'shield', 'mender', 'engine', 'magnet', 'relay'].map((id) => ({ id, tier: 3, t: 0 }))
+        // Armele trag singure, din simulare: pași până ajunge prima rachetă (explozia), apoi ceasul Laserului și al
+        // Rachetelor pus la zero și încă un pas: în cadru sunt o explozie, o rază de laser și o rachetă în zbor.
+        // Cât trag, inelul e mai larg (× 1,5): lângă planetă cea mai apropiată navă e lipită de a ta, iar racheta ar
+        // ajunge chiar în pasul în care pleacă; după ultimul pas, navele se întorc pe inelul obișnuit.
+        ring(1.5)
+        const has = (k) => s.fx.some((f) => f.kind === k)
+        for (let i = 0; i < 180 && !has('blast'); i++) window.__wg.run(1 / 60)
+        for (const m of s.hero.mods) if (m.id === 'laser' || m.id === 'missile') m.t = 0
+        window.__wg.run(1 / 60)
+        ring()
+        for (const f of s.foes) f.hp = f.maxHp
+        const count = (k) => s.fx.filter((f) => f.kind === k).length
+        fired = { beam: count('beam'), blast: count('blast'), missile: s.shots.filter((q) => q.kind === 'missile').length, dead: s.hero.dead, foes: s.foes.length }
+      }
+      const draws = []
+      for (let i = 0; i < 5; i++) draws.push(window.__wg.drawMs(200))
+      draws.sort((a, b) => a - b)
+      return { ms: draws[2], fired }
+    }, armed)
+    const plainDraw = await drawInfo(false)
     await shot('05-test.png')
-    const draws = []
-    for (let i = 0; i < 5; i++) draws.push(await page.evaluate(() => window.__wg.drawMs(200)))
-    draws.sort((a, b) => a - b)
-    console.log(`SMOKE INFO: desen cu 150 de nave în jurul planetei: ${draws[2].toFixed(2)} ms pe cadru`)
+    const armedDraw = await drawInfo(true)
+    const f05 = armedDraw.fired
+    console.log(`SMOKE INFO: desen cu 150 de nave în jurul planetei, nava fără module: ${plainDraw.ms.toFixed(2)} ms pe cadru`)
+    console.log(`SMOKE INFO: desen cu 150 de nave în jurul planetei, nava cu toate cele nouă module la treapta 3, trăgând: ${armedDraw.ms.toFixed(2)} ms pe cadru` +
+      ` (în cadru: ${f05.beam} raze de laser, ${f05.missile} rachete în zbor, ${f05.blast} explozii; ${f05.foes} nave dușmane; nava ${f05.dead ? 'doborâtă' : 'vie'})`)
 
     // Pauza și reluarea. Blocul de mai sus lasă pagina în testul de viteză, deci se pornește dintr-o pagină reîncărcată.
     const clockNow = () => page.locator('#clock').innerText()
@@ -564,6 +597,85 @@ async function main() {
     check(26, 'banda are aceeași înălțime în start, joc, pauză, panou și final; în testul de viteză e mai înaltă, cel mult cu rândul fps plus distanța dintre rânduri; rândul navei arată „experiență 0/…”',
       wrong.length === 0 && spread26 < 0.5 && more26 > 0.5 && more26 <= fpsRow + 0.5 && /^experiență 0\/\d+$/.test(xp26),
       `${Object.entries(heights).map(([k, v]) => `${k} ${v.toFixed(1)} px`).join(', ')}; diferența testului ${more26.toFixed(1)} px din cel mult ${fpsRow.toFixed(1)} (rând fps + distanță); rândul navei „${xp26}”${wrong.length ? `; faze greșite: ${wrong.join(' | ')}` : ''}`)
+
+    // Capturi, nu verificări: modulele pe navă, tragerile și pictogramele Rachetelor în bandă și în panou.
+    await load()
+    await page.click('#start')
+    await page.evaluate(() => { const h = window.__wg.state().hero; h.x = 330; h.y = 1000; h.face = -0.35 })   // un loc gol, unde camera nu e oprită de marginea hărții
+    await page.waitForTimeout(1500)                                                                          // camera ajunge nava
+    await page.evaluate(() => { window.__wg.state().hero.mods = [{ id: 'wave', tier: 1, t: 0 }, { id: 'missile', tier: 1, t: 0 }] })
+    await page.waitForTimeout(300)
+    await page.screenshot({ path: path.join(outDir, '13-banda-rachete.png'), clip: await page.locator('#banner').boundingBox() })
+    await page.evaluate(() => { window.__wg.state().offer = [{ id: 'missile', tier: 2 }, { id: 'laser', tier: 1 }, { id: 'relay', tier: 1 }] })
+    await page.waitForSelector('#choiceVeil:not([hidden])', { timeout: 3000 })
+    await page.waitForTimeout(300)
+    await shot('14-panou-rachete.png')
+    await page.waitForTimeout(300)                                         // trece fereastra de început a panoului
+    await page.keyboard.press('1')
+    await page.waitForTimeout(500)
+    await page.click('#pause')
+    await page.waitForTimeout(200)
+    // Pe pauză bucla nu face pași; vălul și indiciul se ascund doar pentru capturi, iar cadrul îl desenează `drawMs(1)`, cu camera pe loc.
+    await page.addStyleTag({ content: '.veil, #hint { display: none !important }' })
+    const ships = [
+      ['nava legitimă, treapta 1', [['wave', 1], ['laser', 1], ['missile', 1], ['armor', 1], ['engine', 1], ['magnet', 1]]],
+      ['nava legitimă, treapta 3', [['wave', 3], ['laser', 3], ['missile', 3], ['armor', 3], ['engine', 3], ['magnet', 3]]],
+      ['celelalte trei, treapta 1', [['wave', 1], ['shield', 1], ['mender', 1], ['relay', 1]]],
+      ['celelalte trei, treapta 3', [['wave', 3], ['shield', 3], ['mender', 3], ['relay', 3]]],
+    ]
+    const shipCrop = async (mods, half) => {
+      const at = await page.evaluate((mods) => {
+        const s = window.__wg.state()
+        s.hero.lvl = 9; s.hero.face = -0.35; s.fx = []; s.shots = []
+        s.hero.mods = mods.map(([id, tier]) => ({ id, tier, t: 0 }))
+        window.__wg.drawMs(1)
+        const c = document.getElementById('field').getBoundingClientRect()
+        const k = Math.max(c.height / 880, c.width / 1100)                 // scara ecranului (`viewScale`); camera ține nava cu 50 de unități deasupra mijlocului
+        return { x: c.left + c.width / 2, y: c.top + c.height / 2 - 50 * k }
+      }, mods)
+      return page.screenshot({ clip: { x: at.x - half, y: at.y - half, width: 2 * half, height: 2 * half } })
+    }
+    const sheet = async (name, crops, width) => {                        // lipește decupajele într-o singură imagine, cu titlu sub fiecare
+      const p = await context.newPage()
+      await p.setViewportSize({ width, height: 100 })
+      await p.setContent(`<meta name="viewport" content="width=device-width"><body style="margin:0;background:#05071a;color:#9fa9c9;font:12px sans-serif;display:flex;flex-wrap:wrap;gap:6px;padding:6px">${
+        crops.map(([label, png]) => `<figure style="margin:0;text-align:center"><img src="data:image/png;base64,${png.toString('base64')}" style="display:block;width:${png.readUInt32BE(16) / 2}px"><figcaption>${label}</figcaption></figure>`).join('')}</body>`)
+      await p.screenshot({ path: path.join(outDir, name), fullPage: true })
+      await p.close()
+    }
+    const atScale = []
+    for (const [label, mods] of [ships[1], ships[3]]) atScale.push([label, await shipCrop(mods, 40)])
+    await sheet('12-nava-la-scara.png', atScale, 190)
+    await page.setViewportSize({ width: 390, height: 3200 })                // vedere înaltă: aceeași navă, mărită de vreo patru ori
+    await page.waitForTimeout(300)
+    const zoomed = []
+    for (const [label, mods] of ships) zoomed.push([label, await shipCrop(mods, 110)])
+    await sheet('10-nava-module.png', zoomed, 470)
+    await page.setViewportSize({ width: 390, height: 780 })
+    await page.waitForTimeout(300)
+    // O explozie de rachetă și raza laserului, trase de simulare: patru nave dușmane (cu viață multă) în bătaia armelor.
+    // Nava are o încărcătură legitimă de șase module; navele dușmane stau pe loc și nu lovesc, ca în cadru să rămână doar tragerile.
+    const fired11 = await page.evaluate(() => {
+      const s = window.__wg.state(), h = s.hero
+      h.lvl = 9; h.face = -0.35
+      h.mods = [['wave', 3], ['laser', 3], ['missile', 3], ['armor', 2], ['shield', 2], ['engine', 1]].map(([id, tier]) => ({ id, tier, t: 0 }))
+      s.fx = []; s.shots = []
+      s.foes = [[400, 1085], [420, 1104], [392, 1114], [300, 1125]].map(([x, y], i) => ({
+        id: 9000 + i, x, y, r: 10, hp: 1e9, maxHp: 1e9, speed: 0, dmg: 0, brute: false, atkT: 1e9, kx: 0, ky: 0, a: -2.3, hitT: -1, lungeT: -1,
+      }))
+      // Pași până la prima explozie; apoi Rachetele din nou gata și zece pași (a doua rachetă se vede în zbor, departe de navă),
+      // apoi Laserul din nou gata și încă un pas. Explozia are atunci 11 pași, mai puțin decât trăiește.
+      const has = (k) => s.fx.some((f) => f.kind === k)
+      for (let i = 0; i < 180 && !has('blast'); i++) window.__wg.run(1 / 60)
+      for (const m of h.mods) if (m.id === 'missile') m.t = 0
+      window.__wg.run(10 / 60)
+      for (const m of h.mods) if (m.id === 'laser') m.t = 0
+      window.__wg.run(1 / 60)
+      window.__wg.drawMs(1)
+      return { beam: s.fx.filter((f) => f.kind === 'beam').length, blast: s.fx.filter((f) => f.kind === 'blast').length, missile: s.shots.filter((q) => q.kind === 'missile').length }
+    })
+    await shot('11-explozie.png')
+    console.log(`SMOKE INFO: captura 11-explozie.png are ${fired11.beam} raze de laser, ${fired11.blast} explozii și ${fired11.missile} rachete în zbor`)
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))

@@ -108,7 +108,7 @@ function drawFx(ctx: CanvasRenderingContext2D, s: GameState, v: Visible): void {
   for (const f of s.fx) {
     if (!seen(v, f.x, f.y)) continue
     const age = s.t - f.t0
-    if (f.kind === 'beam' || f.kind === 'blast' || f.kind === 'block') continue   // desenul lor vine odată cu desenul modulelor
+    if (f.kind === 'beam' || f.kind === 'blast' || f.kind === 'block') continue   // razele și exploziile, în stratul razelor; scutul, pe navă
     if (f.kind === 'puff') {
       ctx.globalAlpha = 1 - age / BALANCE.fx.puffLife
       ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.5 + age / BALANCE.fx.puffLife), 0, TAU)
@@ -126,7 +126,8 @@ function drawFx(ctx: CanvasRenderingContext2D, s: GameState, v: Visible): void {
 
 /**
  * Tot ce e în coordonate de lume, în straturi: cercurile; nucleul; resursele, clădirile și navele, sortate după y,
- * fiecare cu bara ei; inelul-scut, peste nave; apoi reapariția, razele și textele plutitoare.
+ * fiecare cu bara ei; inelul-scut, peste nave; apoi reapariția, razele (explozii, raza laserului, rachete și raze de turelă)
+ * și textele plutitoare.
  */
 export function drawWorld(ctx: CanvasRenderingContext2D, s: GameState, input: Input, v: Visible, skin: Skin): void {
   const C = palette()
@@ -160,6 +161,10 @@ export function drawWorld(ctx: CanvasRenderingContext2D, s: GameState, input: In
     ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.strokeStyle = C.hero; ctx.stroke()
     label(ctx, String(Math.ceil(h.respawnT)), HOME.x, HOME.y + 0.5, 15, C.hero)
   }
+  // Stratul razelor: exploziile, apoi raza laserului, apoi rachetele și razele turelelor (racheta și laserul țintesc
+  // adesea aceeași navă, iar racheta trebuie să se vadă peste rază).
+  for (const f of s.fx) if (f.kind === 'blast' && seen(v, f.x, f.y)) skin.blast(ctx, f, s.t - f.t0)
+  for (const f of s.fx) if (f.kind === 'beam' && (seen(v, f.x, f.y) || seen(v, f.tx, f.ty))) skin.beam(ctx, f, s.t - f.t0)
   for (const sh of s.shots) if (seen(v, sh.x, sh.y)) skin.shot(ctx, sh)
   drawFx(ctx, s, v)
 }
