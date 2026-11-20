@@ -113,6 +113,13 @@ describe('ce cumpără, pe rând', () => {
     t.dwell = BALANCE.pay.dwell - 1 / 60; s.crystal = 30; s.metal = 30; s.hero.xp = 6
     expect(nextPad(s, buy)).toBe(padOf(s, 'hero'))
   })
+  it('un cerc din afara categoriilor purtării nu e ținut; fără nimic de cumpărat, null (R8)', () => {
+    const s = createGame(1); s.crystal = 30; s.metal = 30; s.hero.xp = 6
+    onPad(s, padOf(s, 'hero')); padOf(s, 'hero').paid = { crystal: 3, metal: 0 }
+    expect(nextPad(s, pol('amestec').buy)).toBe(padOf(s, 'hero'))
+    expect(nextPad(s, ['turret', 'economy'])).toBe(padOf(s, 'turret', 0))
+    expect(nextPad(s, [])).toBeNull()
+  })
   it('cercul de reparat nu e ținut niciodată', () => {
     const s = createGame(1), buy = pol('amestec').buy
     onPad(s, padOf(s, 'repair')); s.metal = 30; s.core.hp = 100
@@ -150,14 +157,20 @@ describe('ce face la fiecare pas', () => {
     addFoe(s, CORE.x + 100, CORE.y)
     expect(chooseGoal(s, pol('amestec'), 80).kind).not.toBe('fight')
   })
-  it('lipsă 5 metal: strânge metal, de la cel mai apropiat asteroid nevid', () => {
-    const s = createGame(1), p = pol('doar-nava')   // nivelul 3 al navei: 20 cristale și 5 metal; în stoc 20 de cristale
-    s.hero.lvl = 2; s.hero.xp = 9
+  it('lipsă 5 cristale și 10 metal: strânge metal, de la cel mai apropiat asteroid nevid', () => {
+    const s = createGame(1), p = pol('doar-nava')   // nivelul 4 al navei: 25 cristale și 10 metal; în stoc 20 de cristale
+    s.hero.lvl = 3; s.hero.xp = 11
     s.nodes.filter((n) => n.type === 'metal').slice(0, 2).forEach((n) => { n.left = 0; n.regrowAt = 50 })
     const live = s.nodes.filter((n) => n.type === 'metal' && n.left > 0)
     const d = (n: { x: number; y: number }) => Math.hypot(n.x - s.hero.x, n.y - s.hero.y)
     const best = live.reduce((a, b) => (d(b) < d(a) ? b : a))
     expect(chooseGoal(s, p)).toEqual({ kind: 'gather', node: best, pad: padOf(s, 'hero') })
+  })
+  it('lipsă 10 cristale și 5 metal: strânge cristal (lipsa mai mare câștigă, nu orice lipsă de metal)', () => {
+    const s = createGame(1), p = pol('doar-nava')   // nivelul 4 al navei: 25 cristale și 10 metal; în stoc 15 și 5
+    s.hero.lvl = 3; s.hero.xp = 11; s.crystal = 15; s.metal = 5
+    const g = chooseGoal(s, p)
+    expect(g.kind === 'gather' && g.node.type).toBe('crystal')
   })
   it('la egalitate, cristalul', () => {
     const s = createGame(1); s.crystal = 0

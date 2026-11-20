@@ -44,6 +44,7 @@ function ending(p: Policy, s: GameState): string[] {
   if (p.name === 'fara-nava' && JSON.stringify(s.hero.mods.map((m) => [m.id, m.tier])) !== '[["wave",1]]') bad.push('nava are alte module decât Unda')
   if (p.name === 'doar-nava' && all.some((l) => l > 0)) bad.push(`nava ${s.hero.lvl}, cercuri ${all.join('')}`)
   if (p.name === 'fara-economie' && [...lvls(s, 'collector'), ...lvls(s, 'mine')].some((l) => l > 0)) bad.push('economie cumpărată')
+  if (p.name === 'fara-turele' && lvls(s, 'turret').some((l) => l > 0)) bad.push(`turele cumpărate: ${lvls(s, 'turret').join('')}`)
   if (p.name === 'nimic' && s.hero.moved) bad.push('nava s-a mișcat')
   return bad
 }

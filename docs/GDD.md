@@ -203,7 +203,7 @@ Sunt cifrele de după reechilibrarea din 18.11.2026 (două s-au schimbat față 
 | Primul dușman | la 10 s |
 | Ritmul dușmanilor | unul la fiecare max(0,6; 5 / (1 + t / 90)) secunde |
 | Viața dușmanului | 14 × (1 + t / 33) (propunere din 20.11.2026; înainte t / 45) |
-| Releu, Magnet | Releul împarte timpul dintre trageri la 1,3 / 1,55 / 1,8; Magnetul strânge de la 50 / 75 / 100 px (propuneri din 20.11.2026; înainte 1,2 / 1,35 / 1,5 și 40 / 60 / 80) |
+| Releu | împarte timpul dintre trageri al turelelor de lângă navă la 1,3 / 1,55 / 1,8 (propunere din 20.11.2026; înainte 1,2 / 1,35 / 1,5) |
 | Dușman obișnuit (navă invadatoare) | raza 10; viteză 46/s; 3 viață pe lovitură; lovește planeta o dată pe secundă, nava ta la 0,8 s |
 | Dușman greu (navă grea) | fiecare al 7-lea, după 120 s; viață × 4; raza 15; viteză 30/s; 9 viață pe lovitură |
 

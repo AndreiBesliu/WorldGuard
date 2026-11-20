@@ -82,15 +82,20 @@ function heroDue(s: GameState, buy: readonly Category[]): Pad | null {
   return s.crystal >= left.crystal && s.metal >= left.metal ? pad : null
 }
 
+/** Categoria din care se cumpără la cerc (cercul de reparat nu e în nicio categorie: e respins înainte). */
+function categoryOf(p: Pad): Category {
+  return p.kind === 'turret' ? 'turret' : p.kind === 'hero' ? 'hero' : 'economy'
+}
+
 /**
- * Cercul pe care plata curge chiar acum (nava vie în el, `dwell` la prag), dacă mai are ceva de plătit pentru nivelul
+ * Cercul pe care plata curge chiar acum, dintr-o categorie pe care purtarea o cumpără (nava vie în el, `dwell` la prag), dacă mai are ceva de plătit pentru nivelul
  * următor și stocul mai poate plăti măcar o unitate din ce a rămas; altfel null. Cercul de reparat nu e ținut niciodată.
  * Plata începută se termină: ținta nu se mută de sub ea (R7).
  */
-function heldPad(s: GameState): Pad | null {
+function heldPad(s: GameState, buy: readonly Category[]): Pad | null {
   if (s.hero.dead) return null
   for (const p of s.pads) {
-    if (p.kind === 'repair' || p.dwell < BALANCE.pay.dwell) continue
+    if (p.kind === 'repair' || p.dwell < BALANCE.pay.dwell || !buy.includes(categoryOf(p))) continue
     if (Math.hypot(s.hero.x - p.x, s.hero.y - p.y) > PAD_R) continue
     if (!nextCost(s, p)) continue
     const left = remaining(s, p)
@@ -104,7 +109,7 @@ function heldPad(s: GameState): Pad | null {
  * sau următoarea din listă care mai are ce cumpăra.
  */
 export function nextPad(s: GameState, buy: readonly Category[]): Pad | null {
-  const held = heldPad(s)
+  const held = heldPad(s, buy)
   if (held) return held
   const due = heroDue(s, buy)
   if (due) return due
@@ -139,7 +144,7 @@ function nodeFor(s: GameState, type: Res): ResNode | null {
 export function chooseGoal(s: GameState, p: Policy, guard = GUARD): Goal {
   if (p.still || s.hero.dead) return { kind: 'none' }
   // Cu o plată care curge la alt cerc, nivelul gata o așteaptă; plata nivelului însuși trece, ca înainte, înaintea luptei.
-  const held = heldPad(s)
+  const held = heldPad(s, p.buy)
   const due = held && held.kind !== 'hero' ? null : heroDue(s, p.buy)
   if (due) return { kind: 'pay', pad: due }
   let foe: Foe | null = null, fd = guard
