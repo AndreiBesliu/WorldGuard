@@ -503,6 +503,56 @@ async function main() {
       keyClosed && panel24a && panel24 && after24 === before24,
       `tasta 1 ${keyClosed}, panou ${panel24a} → ${panel24}, oferta și modulele ${after24 === before24 ? 'neschimbate' : `schimbate: ${before24} → ${after24}`}`)
 
+    // 25. rândul navei din bandă: nivelul 1, două locuri (unul ocupat, unul liber) plus lacătul, „experiență 0/…”; peste prag, „Nivel 2 gata”
+    await load()
+    await page.click('#start')
+    await page.waitForTimeout(400)
+    const row25 = () => page.evaluate(() => ({
+      level: document.getElementById('level').textContent,
+      text: document.getElementById('xpText').textContent,
+      ready: document.getElementById('ship').classList.contains('ready'),
+      slots: [...document.querySelectorAll('#shipSlots .slot')].map((e) => e.className.replace('slot ', '') + (e.querySelector('use') ? ':' + e.querySelector('use').getAttribute('href') : '')),
+    }))
+    const a25 = await row25()
+    await page.evaluate(() => { window.__wg.state().hero.xp = 1000 })
+    await page.waitForTimeout(300)
+    const b25 = await row25()
+    await shot('09-banda-gata.png')
+    await page.evaluate(() => { window.__wg.state().hero.xp = 0 })
+    check(25, 'banda arată nivelul 1, locurile (unul ocupat cu pictograma Undei, unul liber) și lacătul, „experiență 0/…”; cu experiența peste prag, „Nivel 2 gata”',
+      a25.level === '1' && /^experiență 0\/\d+$/.test(a25.text) && !a25.ready && a25.slots.join() === 'slot-weapon:#i-wave,slot-free,slot-locked:#i-lock' && b25.text === 'Nivel 2 gata' && b25.ready,
+      `nivel ${a25.level}, text „${a25.text}”, locuri ${a25.slots.join(' ')}; peste prag: „${b25.text}”, gata ${b25.ready}`)
+
+    // 26. banda are aceeași înălțime (în pixeli) pe cartonașul de start, în joc, în pauză, cu panoul deschis, la final și în testul de viteză
+    const bannerH = () => page.evaluate(() => document.getElementById('banner').getBoundingClientRect().height)
+    const heights = {}
+    await load()
+    heights.start = await bannerH()
+    await page.click('#start')
+    await page.waitForTimeout(500)
+    heights.joc = await bannerH()
+    await page.click('#pause')
+    await page.waitForTimeout(200)
+    heights.pauză = await bannerH()
+    await page.click('#resume')
+    await page.waitForTimeout(200)
+    await prepLevel()
+    await waitOffer()
+    heights.panou = await bannerH()
+    await page.keyboard.press('1')
+    await page.waitForTimeout(300)
+    await page.evaluate(() => window.__wg.run(200))
+    await page.waitForSelector('#overVeil:not([hidden])', { timeout: 3000 }).catch(() => {})
+    await page.waitForTimeout(200)
+    heights.final = await bannerH()
+    await load()
+    await page.click('#stress')
+    await page.waitForTimeout(1500)
+    heights.test = await bannerH()
+    const hv = Object.values(heights)
+    check(26, 'banda are aceeași înălțime în toate fazele: start, joc, pauză, panou, final, test de viteză',
+      hv.length === 6 && Math.max(...hv) - Math.min(...hv) < 0.5, Object.entries(heights).map(([k, v]) => `${k} ${v.toFixed(1)} px`).join(', '))
+
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))
     results.sort((a, b) => a.n - b.n)

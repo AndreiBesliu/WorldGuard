@@ -43,6 +43,11 @@ export interface Strings {
   chooseTitle: string
   levelN(n: number): string
   chooseNote: string
+  /** Experiența strânsă și pragul nivelului următor, din bandă și de sub cercul navei. */
+  xpOf(a: number, b: number): string
+  /** Pragul e atins: nivelul de după cel de acum e gata de plătit. */
+  levelReady(n: number): string
+  levelMax: string
 }
 
 export const STR: Strings = {
@@ -95,4 +100,7 @@ export const STR: Strings = {
   chooseTitle: 'Alege un modul',
   levelN: (n) => `Nivel ${n}`,
   chooseNote: 'Jocul stă pe loc cât alegi.',
+  xpOf: (a, b) => `experiență ${a}/${b}`,
+  levelReady: (n) => `Nivel ${n} gata`,
+  levelMax: 'Nivel maxim',
 }

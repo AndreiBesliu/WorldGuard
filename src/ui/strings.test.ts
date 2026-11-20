@@ -42,6 +42,10 @@ describe('textele temei de spațiu', () => {
     expect([STR.offerNew, STR.offerUp, STR.chooseTitle, STR.chooseNote]).toEqual(['Nou', 'Întărire', 'Alege un modul', 'Jocul stă pe loc cât alegi.'])
     expect([STR.levelN(4), STR.tierLine(2)]).toEqual(['Nivel 4', 'Treapta 2 din 3'])
   })
+  it('experiența și nivelul din bandă și de pe cercul navei', () => {
+    expect([STR.xpOf(14, 40), STR.levelReady(4), STR.levelMax]).toEqual(['experiență 14/40', 'Nivel 4 gata', 'Nivel maxim'])
+    expect(STR.xpOf(34, 34).length).toBeLessThanOrEqual(18)   // încape în bandă la 360 px, lângă inel și locuri
+  })
   it('niciun text nu mai pomenește tema veche', () => {
     const all = JSON.stringify(STR, (_k, v) => (typeof v === 'function' ? v('x', 1) : v)).toLowerCase()
     for (const w of ['castel', 'turn', 'lemn', 'piatr', 'copac', 'stânc', 'tăietor', 'carier', 'erou']) expect(all).not.toContain(w)

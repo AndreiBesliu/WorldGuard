@@ -37,9 +37,9 @@ describe('choiceView', () => {
     }
   })
   it('locurile: ocupate cu felul lor, apoi cele libere, apoi următorul care se deschide', () => {
-    expect(choiceView(withOffer())!.slots).toEqual(['weapon', 'body', 'free', 'locked'])
+    expect(choiceView(withOffer())!.slots).toEqual([{ kind: 'weapon', id: 'wave' }, { kind: 'body', id: 'armor' }, { kind: 'free' }, { kind: 'locked' }])
     const s = withOffer(); s.hero.lvl = 9
-    expect(choiceView(s)!.slots).toEqual(['weapon', 'body', 'free', 'free', 'free', 'free'])   // la nivelul maxim nu mai e nimic de deschis
+    expect(choiceView(s)!.slots.map((v) => v.kind)).toEqual(['weapon', 'body', 'free', 'free', 'free', 'free'])   // la nivelul maxim nu mai e nimic de deschis
   })
 })
 

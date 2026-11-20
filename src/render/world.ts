@@ -6,6 +6,7 @@ import { heroMaxHp } from '../sim/hero'
 import { levelOf, nextCost } from '../sim/pads'
 import type { Fx, GameState, Input, Pad, Res } from '../sim/state'
 import { STR } from '../ui/strings'
+import { heroPadView } from './derive'
 import { rr, TAU } from './draw'
 import { alpha, FONT_UI, palette } from './palette'
 import type { Skin } from './skin'
@@ -46,13 +47,20 @@ function chipLine(ctx: CanvasRenderingContext2D, skin: Skin, parts: Part[], cx: 
 
 function drawPad(ctx: CanvasRenderingContext2D, s: GameState, p: Pad, skin: Skin): void {
   const C = palette()
-  const h = s.hero, cost = nextCost(s, p), repair = p.kind === 'repair', maxed = !repair && !cost
+  const h = s.hero, cost = nextCost(s, p), repair = p.kind === 'repair'
+  // Cercul navei: cât experiența nu ajunge n-are cost, dar nu e la nivelul maxim (trei stări în `heroPadView`)
+  const hv = p.kind === 'hero' ? heroPadView(s) : null
+  const maxed = hv ? hv.kind === 'max' : !repair && !cost
+  const lit = hv?.kind === 'ready'
   const on = !h.dead && Math.hypot(h.x - p.x, h.y - p.y) < PAD_R
   ctx.globalAlpha = maxed ? 0.4 : 1
   ctx.beginPath(); ctx.arc(p.x, p.y, PAD_R, 0, TAU)
-  ctx.fillStyle = alpha(C.ink, on ? 0.2 : 0.08); ctx.fill()
-  ctx.setLineDash([7, 6]); ctx.lineDashOffset = on ? -s.t * 28 : 0
-  ctx.lineWidth = 2; ctx.lineCap = 'butt'; ctx.strokeStyle = alpha(C.ink, 0.8); ctx.stroke(); ctx.setLineDash([])
+  ctx.fillStyle = lit ? alpha(C.hero, on ? 0.3 : 0.18) : alpha(C.ink, on ? 0.2 : 0.08); ctx.fill()
+  if (lit) { ctx.lineWidth = 3; ctx.strokeStyle = C.hero; ctx.stroke() }   // aprins: inel plin, în culoarea navei
+  else {
+    ctx.setLineDash([7, 6]); ctx.lineDashOffset = on ? -s.t * 28 : 0
+    ctx.lineWidth = 2; ctx.lineCap = 'butt'; ctx.strokeStyle = alpha(C.ink, 0.8); ctx.stroke(); ctx.setLineDash([])
+  }
   if (cost) {
     const paid = p.paid.crystal + p.paid.metal
     if (paid > 0) {
@@ -68,7 +76,8 @@ function drawPad(ctx: CanvasRenderingContext2D, s: GameState, p: Pad, skin: Skin
   const lvl = levelOf(s, p), name = STR.pad[p.kind]
   const title = repair ? name : maxed ? STR.padMax(name) : lvl === 0 ? name : STR.padLevel(name, lvl + 1)
   label(ctx, title, p.x, p.y + PAD_R + 14, 13.5, C.ink)
-  if (repair) chipLine(ctx, skin, [{ res: 'metal', text: STR.repairCost(BALANCE.repair.heal), ok: s.metal > 0, w: 0 }], p.x, p.y + PAD_R + 33)
+  if (hv?.kind === 'wait') label(ctx, STR.xpOf(hv.a, hv.b), p.x, p.y + PAD_R + 33, 13, C.inkSoft)
+  else if (repair) chipLine(ctx, skin, [{ res: 'metal', text: STR.repairCost(BALANCE.repair.heal), ok: s.metal > 0, w: 0 }], p.x, p.y + PAD_R + 33)
   else if (cost) {
     const parts: Part[] = []
     for (const res of ['crystal', 'metal'] as const) {

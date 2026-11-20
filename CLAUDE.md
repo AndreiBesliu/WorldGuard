@@ -56,14 +56,14 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   în orice aspect: straturile, săritul peste ce nu se vede, cercurile, etichetele, barele, textele plutitoare),
   `overlay.ts` (indicatorul spre planetă și joystickul, în coordonate de ecran), `palette.ts` (culorile citite o dată din variabilele CSS),
   `skin.ts` (interfața `Skin`: formele de pe canvas care diferă de la un aspect la altul; culorile stau în `palette.ts` și în `ui.css`), `draw.ts` (primitivele de desen), `derive.ts` (ce citește desenul din
-  stare, fără DOM: `turretAim`, `shieldSpan`, `regrown`), `orbit/` (aspectul „Orbită”, singura implementare a lui `Skin`: `index.ts`;
+  stare, fără DOM: `turretAim`, `shieldSpan`, `regrown`, `heroPadView`), `orbit/` (aspectul „Orbită”, singura implementare a lui `Skin`: `index.ts`;
   `scene.ts` — cerul și planeta, **singurul loc cu gradient și decupaj**; `things.ts` — resurse, clădiri, nave, raze, doar forme pline și linii).
   Testele: `derive.test.ts`, `world.test.ts` (ordinea straturilor; `drawWorld` cu `ORBIT` peste o stare bogată nu schimbă starea),
   `discipline.test.ts` (fără `shadowBlur`; gradient de orice fel, decupaj și `ctx.filter` doar în `orbit/scene.ts`), `palette.test.ts`
   (culorile `#rgb` lăsate de micșorarea CSS-ului la build, aduse la `#rrggbb`) și `camera.test.ts`. `ground.ts` nu mai există. Mișcările doar de desen (continente, nori, satelit, flăcări, țeava turelei)
   se calculează din timpul partidei și din stare; nu scriu nimic în stare.
 - `src/input/` — comenzile: `joystick.ts` (logica joystickului, fără DOM, testată), `bind.ts` (singurul cu DOM: pointer și taste; `pickIndex`, fără DOM și testată, spune ce ofertă aleg tastele 1–3).
-- `src/ui/` — textele (în română, într-un singur modul `strings.ts`, fixate de `strings.test.ts`), banda de sus (`hud.ts`),
+- `src/ui/` — textele (în română, într-un singur modul `strings.ts`, fixate de `strings.test.ts`), banda de sus (`hud.ts`: `shipRow` fără DOM dă rândul navei, cu inelul de experiență), locurile navei (`slots.ts`, aceleași în bandă și în panou),
   cartonașele de start (cu „Continuă partida”), de pauză și de final (`cards.ts`), panoul de alegere de la un nivel nou al navei
   (`choice.ts`: `choiceView` fără DOM, `createChoice` în pagină; la deschidere focusul stă pe cartonaș, nu pe o ofertă, și nicio alegere nu trece
   în primele `CHOICE_GRACE_MS` = 400 ms, propunere; pictogramele modulelor sunt `<symbol>` în `index.html`), apăsarea butoanelor (`tap.ts`: la atingere, la ridicarea
@@ -72,7 +72,7 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
 - `src/main.ts` — legătura dintre ele: nu ține stări, le ia din sesiune; pauza (buton, Escape, pagina ascunsă), bucla de cadre,
   ecranul aprins, înregistrarea service worker-ului (doar în build, cu `__WG_SW__`). Cu `?debug=1`, `window.__wg` are `state()`,
   `phase()`, `run(secunde)` și `drawMs(cadre)`.
-- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 24 de verificări, capturi în `smoke-out/`, plus un rând `SMOKE INFO` cu timpul de
+- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 26 de verificări, capturi în `smoke-out/`, plus un rând `SMOKE INFO` cu timpul de
   desen pe cadru cu cele 150 de nave dușmane ale testului de viteză așezate în jurul planetei, ca să fie în vedere, din `window.__wg.drawMs`;
   merge doar pe Linux și macOS), `single-file.mjs` (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`),
   `sw-template.js` și `build-sw.mjs` (service worker-ul scris de mână; după `vite build`, `build-sw.mjs` pune în el lista fișierelor din

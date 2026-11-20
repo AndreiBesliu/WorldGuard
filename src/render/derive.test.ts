@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { BALANCE } from '../data/balance'
 import { CORE } from '../data/layout'
 import { addFoe, addNode, padOf, quietGame } from '../sim/testkit'
-import { regrown, shieldSpan, turretAim } from './derive'
+import { heroPadView, regrown, shieldSpan, turretAim } from './derive'
 
 describe('ce citește desenul din stare', () => {
   it('turela fără țintă arată dinspre nucleu în afară', () => {
@@ -35,5 +35,17 @@ describe('ce citește desenul din stare', () => {
     expect(regrown(n, 10)).toBe(0)
     expect(regrown(n, 10 + grow / 2)).toBeCloseTo(0.5, 9)
     expect(regrown(n, 10 + grow + 3)).toBe(1)
+  })
+  it('cercul navei: așteaptă experiența, e gata, ori la nivelul maxim', () => {
+    const s = quietGame(), need = BALANCE.hero.xpToLevel[0]!
+    expect(heroPadView(s)).toEqual({ kind: 'wait', a: 0, b: need })
+    s.hero.xp = need - 1
+    expect(heroPadView(s)).toEqual({ kind: 'wait', a: need - 1, b: need })
+    s.hero.xp = need
+    expect(heroPadView(s)).toEqual({ kind: 'ready' })
+    s.hero.xp = 1000
+    expect(heroPadView(s)).toEqual({ kind: 'ready' })
+    s.hero.lvl = BALANCE.hero.maxLevel
+    expect(heroPadView(s)).toEqual({ kind: 'max' })   // la nivelul maxim, experiența nu mai contează
   })
 })

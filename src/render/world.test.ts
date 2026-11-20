@@ -137,6 +137,35 @@ describe('desenul doar citește starea', () => {
     )
     expect(texts(s)).toEqual(plain)
   })
+  it('cercul navei: experiența sub nume cât nu e gata; gata, prețul; la nivelul maxim, „nivel maxim”; starea nu se schimbă', () => {
+    const texts = (s: GameState): string[] => {
+      const out: string[] = []
+      const ctx = new Proxy({}, {
+        get: (_t, k) => {
+          if (k === 'measureText') return () => ({ width: 10 })
+          if (k === 'fillText') return (t: unknown) => { out.push(String(t)) }
+          return () => undefined
+        },
+        set: () => true,
+      }) as unknown as CanvasRenderingContext2D
+      const before = JSON.stringify(s)
+      drawWorld(ctx, s, { x: 0, y: 0 }, all, recorder().skin)
+      expect(JSON.stringify(s)).toBe(before)
+      return out
+    }
+    const s = quietGame(), need = BALANCE.hero.xpToLevel[0]!
+    s.hero.xp = 3
+    const wait = texts(s)
+    expect(wait).toContain(`experiență 3/${need}`)
+    expect(wait).toContain('Navă nivel 2')
+    expect(wait.join('|')).not.toContain('nivel maxim')
+    s.hero.xp = need
+    const ready = texts(s)
+    expect(ready.join('|')).not.toContain('experiență')
+    expect(ready).toContain('Navă nivel 2')
+    s.hero.lvl = BALANCE.hero.maxLevel
+    expect(texts(s)).toContain('Navă · nivel maxim')
+  })
   it('la fel cu nava ta doborâtă, cât așteaptă să reapară', () => {
     const s = richGame()
     s.hero.dead = true; s.hero.respawnT = 2.4; s.hero.hp = 0
