@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BALANCE, cost, foeHp, spawnEvery, turretDamage } from './balance'
+import { MAX_TIER, MODS } from './modules'
 
 describe('balans', () => {
   it('costurile din spec', () => {
@@ -34,6 +35,30 @@ describe('balans', () => {
       }
     }
     expect(bad).toEqual([])
+  })
+  it('modulele: fiecare treaptă e strict mai bună decât cea dinainte, pe cifra ei principală', () => {
+    // `up`: mai mare e mai bine; `down`: mai mic e mai bine.
+    const lists: [string, readonly number[], 'up' | 'down'][] = [
+      ['wave.dmg', MODS.wave.dmg, 'up'], ['wave.arc', MODS.wave.arc, 'up'],
+      ['laser.dmg', MODS.laser.dmg, 'up'], ['missile.dmg', MODS.missile.dmg, 'up'],
+      ['armor.hp', MODS.armor.hp, 'up'], ['shield.every', MODS.shield.every, 'down'],
+      ['mender.wait', MODS.mender.wait, 'down'], ['mender.regen', MODS.mender.regen, 'up'],
+      ['engine.speed', MODS.engine.speed, 'up'],
+      ['magnet.reach', MODS.magnet.reach, 'up'], ['magnet.every', MODS.magnet.every, 'down'],
+      ['relay.every', MODS.relay.every, 'up'],
+    ]
+    const bad: string[] = []
+    for (const [name, list, dir] of lists) {
+      if (list.length !== MAX_TIER) bad.push(`${name}: ${list.length} trepte`)
+      for (let i = 1; i < list.length; i++) {
+        const better = dir === 'up' ? list[i]! > list[i - 1]! : list[i]! < list[i - 1]!
+        if (!better) bad.push(`${name}: treapta ${i + 1} (${list[i]}) nu e mai bună decât ${i} (${list[i - 1]})`)
+      }
+    }
+    expect(bad).toEqual([])
+    expect(MODS.engine.speed[0]).toBeGreaterThan(1)          // Motorul de treapta 1 tot adaugă
+    expect(MODS.magnet.every[0]).toBeLessThan(1)
+    expect(MODS.relay.every[0]).toBeGreaterThan(1)
   })
   it('curbele: ritmul pozitiv și fără să crească, viața pozitivă și fără să scadă, de la 0 la 600 s', () => {
     for (let t = 0; t <= 600; t += 30) {

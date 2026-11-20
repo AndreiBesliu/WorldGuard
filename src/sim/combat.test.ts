@@ -169,6 +169,16 @@ describe('Rachetele', () => {
     expect(s.fx.some((f) => f.kind === 'blast' && f.x === 450 && f.y === 300)).toBe(true)
     expect(s.shots).toEqual([])
   })
+  it('explozia dispare din efecte după durata ei', () => {
+    const s = quietGame(); heroAt(s, 300, 300); arm(s, [['missile', 1]])
+    dummy(s, 450, 300)
+    const blasts = () => s.fx.filter((f) => f.kind === 'blast').length
+    let n = 0
+    while (blasts() === 0 && n++ < 120) stepFor(s, 1 / 60)   // racheta zboară până la țintă
+    expect(blasts()).toBe(1)
+    stepFor(s, BALANCE.fx.blastLife - 1 / 60); expect(blasts()).toBe(1)
+    stepFor(s, 2 / 60); expect(blasts()).toBe(0)
+  })
   it('razele turelelor rămân „bolt”, fără zonă', () => {
     const s = quietGame(); heroAt(s, 100, 100); const p = turret(s); dummy(s, p.bx + 100, p.by)
     stepFor(s, 1 / 60)

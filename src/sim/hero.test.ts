@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { BALANCE } from '../data/balance'
 import type { ModId } from '../data/modules'
 import { NEVER, type GameState, type Mod } from './state'
 import { addNode, heroAt, quietGame, stepFor } from './testkit'
@@ -99,6 +100,14 @@ describe('modulele de corp', () => {
       const hurtT = s.hero.hurtT
       hurtHero(s, 10); expect([s.hero.hp, s.hero.hurtT]).toEqual([50, hurtT])   // refăcut: oprită din nou
     }
+  })
+  it('semnul scutului dispare din efecte după durata lui', () => {
+    const s = quietGame(); heroAt(s, 700, 1200); fit(s, 'shield', 1)
+    hurtHero(s, 10)
+    const blocks = () => s.fx.filter((f) => f.kind === 'block').length
+    expect(blocks()).toBe(1)
+    stepFor(s, BALANCE.fx.blockLife - 1 / 60); expect(blocks()).toBe(1)
+    stepFor(s, 2 / 60); expect(blocks()).toBe(0)
   })
   it('două lovituri în același pas cu scutul încărcat: prima oprită, a doua primită (Review Focus 5)', () => {
     const s = quietGame(); heroAt(s, 700, 1200); fit(s, 'shield', 3)

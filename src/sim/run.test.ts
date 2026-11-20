@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { BALANCE } from '../data/balance'
+import { MODS } from '../data/modules'
 import { createGame } from './state'
 import { createRng } from './rng'
 import { spawnFoe } from './foes'
@@ -33,14 +35,30 @@ describe('partida întreagă', () => {
     const t0 = performance.now(); for (let i = 0; i < 600; i++) step(s, { x: 1, y: 0 })
     expect((performance.now() - t0) / 600).toBeLessThan(1)
   })
-  it('la fel cu nava purtând cele trei arme la treapta 3', () => {
+  it('la fel cu nava purtând cele trei arme la treapta 3, cu dușmanii în bătaia armelor', () => {
     const s = quietGame(); s.tick = 200 * 60; s.t = 200
     s.hero.lvl = 9
     s.hero.mods = [{ id: 'wave', tier: 3, t: 0 }, { id: 'laser', tier: 3, t: 0 }, { id: 'missile', tier: 3, t: 0 }]
-    for (let i = 0; i < 150; i++) spawnFoe(s)
+    heroAt(s, 300, 1100); s.hero.hp = 1e9                 // nava nu cade: armele ei trag tot timpul
+    for (let i = 0; i < 150; i++) {
+      spawnFoe(s)
+      const f = s.foes[s.foes.length - 1]!, a = (i * 2.399) % (Math.PI * 2), d = 30 + (i % 10) * 15   // inele între 30 și 165 de navă
+      f.x = 300 + Math.cos(a) * d; f.y = 1100 + Math.sin(a) * d; f.hp = f.maxHp = 1e6
+    }
     s.core.hp = 1e9
-    const t0 = performance.now(); for (let i = 0; i < 600; i++) step(s, { x: 1, y: 0 })
+    let ms = 0, waves = 0, beams = 0, blasts = 0
+    for (let i = 0; i < 600; i++) {
+      const waveT = s.hero.waveT
+      const t0 = performance.now(); step(s, { x: 0, y: 0 }); ms += performance.now() - t0
+      if (s.hero.waveT !== waveT) waves++
+      for (const f of s.fx) if (f.t0 === s.t && f.kind === 'beam') beams++
+      for (const f of s.fx) if (f.t0 === s.t && f.kind === 'blast') blasts++
+    }
     expect(s.hero.mods.every((m) => m.tier === 3)).toBe(true)
-    expect((performance.now() - t0) / 600).toBeLessThan(1)
+    // În 10 s: unda la 0,45 s, laserul la 0,9 s, racheta la 2,4 s (plus zborul ei până la țintă).
+    expect(waves).toBeGreaterThanOrEqual(Math.floor(10 / BALANCE.hero.strikeEvery))   // măsurat: 23
+    expect(beams).toBeGreaterThanOrEqual(Math.floor(10 / MODS.laser.every))           // măsurat: 12
+    expect(blasts).toBeGreaterThanOrEqual(Math.floor(10 / MODS.missile.every))        // măsurat: 5
+    expect(ms / 600).toBeLessThan(1)
   })
 })
