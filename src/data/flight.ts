@@ -6,6 +6,9 @@
 export type FlightModId = 'gun' | 'laser' | 'missile' | 'shield' | 'magnet'
 export type FlightFoeKind = 'drone' | 'weaver' | 'gunship' | 'cargo' | 'elite'
 
+/** Modulele din zbor, în ordinea din spec. */
+export const FLIGHT_MODS: readonly FlightModId[] = ['gun', 'laser', 'missile', 'shield', 'magnet']
+
 export const FLIGHT = {
   field: { w: 390, h: 680 },                 // câmpul de joc, fix (propunere); înălțimile de mai jos sunt fracții din `h`
   sectorSecs: 170,                           // secunde până nu mai apar dușmani obișnuiți
@@ -28,10 +31,50 @@ export const FLIGHT = {
     dmg: 4,                                  // lovitura unui proiectil (× Armamentul)
     speed: 780,                              // viteza proiectilului, în sus
     spread: 7,                               // la treapta 1: cele două proiectile pleacă la ±`spread` de mijlocul navei
+    // Salva pe trepte: unghiurile evantaiului, radiani față de drept în sus; lista goală = cele două proiectile paralele de la treapta 1.
+    volley: [[], [-0.1, 0, 0.1], [-0.2, -0.1, 0, 0.1, 0.2]] as readonly (readonly number[])[],
+    fanX: 45,                                // în evantai, un proiectil pleacă la unghi × `fanX` de mijlocul navei, în lățime
     lift: 12,                                // și cu atât mai sus de el
     goneTop: 20, goneSide: 10,               // iese din joc la atât deasupra câmpului sau în afara lui, în lături
     foeHit: { x: 3, y: 6 },                  // cât de larg prinde un proiectil un dușman, peste raza lui (în lățime, în înălțime)
     asteroidHit: { x: 2, y: 5 },             // la fel, pentru un asteroid
+  },
+  // Modulele culese din zbor. Listele pe trepte au indexul treaptă − 1. Lovitura armelor se înmulțește cu Armamentul.
+  mods: {
+    tiers: 3,                                // treapta cea mai mare
+    maxed: 5,                                // cristalele date de un modul cules când e deja la treapta 3
+    laser: {
+      every: 0.9, range: 300, dmg: [14, 22, 32] as readonly number[],
+      retry: 0.1,                            // fără țintă, mai caută peste atât
+      from: 14,                              // raza pleacă de la atât deasupra mijlocului navei
+    },
+    missile: {
+      every: 2.4, dmg: [12, 18, 26] as readonly number[],
+      range: 430,                            // pleacă doar dacă are o țintă până la atât
+      retry: 0.2,
+      blast: 50, blastPad: 0.5,              // explozia prinde tot ce e la mai puțin de `blast` + `blastPad` × raza lui
+      from: 10, launch: 220,                 // pleacă de la atât deasupra navei, în sus cu `launch`
+      speed: 320, steer: 7,                  // viteza spre țintă și cât de repede se întoarce (pe secundă, cel mult 1 pe pas)
+      seek: 500, seekAhead: 60,              // fără țintă, ia cel mai apropiat dușman până la `seek`, căutat de la `seekAhead` sub ea
+      hit: 5,                                // se sparge la raza dușmanului + atât
+      gone: 30,                              // iese din joc la atât în afara câmpului
+    },
+    shield: {
+      recharge: [6, 4.5, 3] as readonly number[],   // secunde până se reîncarcă după o lovitură oprită
+      inv: 0.45,                             // secunde fără lovituri după una oprită
+    },
+    magnet: { reach: [45, 90, 135] as readonly number[] },   // se adaugă la `drops.reach`
+  },
+  // Pe cine țintesc Laserul și Rachetele: dușmanii vii, nu mai sus de `top` (transportul, nu mai sus de `cargoTop`),
+  // nici mai jos de `below` sub punctul din care se caută.
+  aim: { top: 12, cargoTop: 30, below: 30 },
+  // Ce lasă transportul doborât (un singur lucru de cules) și cum se culege.
+  picks: {
+    fall: 62,                                // coboară cu atât; nu vine spre navă, nici cu Magnetul
+    take: 27,                                // se culege la atât de mijlocul navei
+    gone: 30,                                // iese din joc la atât sub câmp
+    fresh: 0.65,                             // șansa să aleagă dintre modulele pe care nava nu le are (când există)
+    repair: 0.22, repairLow: 0.5, low: 2,    // cu nava lovită, șansa unei reparații; cu viața cel mult `low`, `repairLow`
   },
   // `keepsAway`: nu trage la mai puțin de `foe.fireGap` deasupra navei, nici după ce a trecut de ea. Doar cei care trec pe lângă
   // navă; nava grea și elita stau sus și trag oricât de aproape ar urca nava (propunere, R2).
@@ -74,6 +117,7 @@ export const FLIGHT = {
     weaver: { first: 24, every: [3.6, 2.0], jitter: 0.8, jitterSpan: 0.4, margin: 80 },
     gunship: { first: 50, every: [10, 6.5], margin: 70, most: 2, mostLate: 3, lateAfter: 0.6, retry: 1 },
     asteroid: { first: 10, every: [2.8, 1.8], jitter: 0.7, jitterSpan: 0.6 },
+    cargo: { first: 5, every: 14, span: 4, margin: 60 },   // transportul: la `every` + până la `span` secunde (nu în liniștea de la jumătate)
     escort: { first: 7, every: 5.5, x: 40, xSpan: 110 },   // dronele care o însoțesc pe elită, câte două, simetric
     y: 6,                                    // un dușman intră la raza lui + atât deasupra câmpului
   },
@@ -99,6 +143,7 @@ export const FLIGHT = {
   },
   fx: {
     puffLife: 0.4, hurtLife: 0.3, downLife: 0.6,
+    beamLife: 0.12, blastLife: 0.3, blockLife: 0.35, tookLife: 1.6,   // raza Laserului, explozia unei rachete, lovitura oprită de Scut, rândul „ai cules”
     foePuff: 1.9, elitePuffs: 6, elitePuffR: 30, elitePuffSpan: 30, eliteSpreadX: 80, eliteSpreadY: 60,
     shotPuff: 9, asteroidPuff: 1.7, crashPuff: 1.6,
   },

@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest'
 import { MAX_UPS, NO_UPS, UP_IDS, WORKSHOP, upPrice } from './workshop'
 
-it('prima treaptă a Carenei costă 60 de cristale și 10 de metal', () => {
-  expect(upPrice('hull', 1)).toEqual({ crystal: 60, metal: 10 })
+it('prima treaptă a Carenei costă 50 de cristale și 10 de metal', () => {
+  expect(upPrice('hull', 1)).toEqual({ crystal: 50, metal: 10 })
 })
 it('prețul crește cu treapta și e multiplu de 5', () => {
   for (const id of UP_IDS) {

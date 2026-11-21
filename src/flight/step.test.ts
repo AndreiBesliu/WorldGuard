@@ -44,6 +44,36 @@ describe('determinismul', () => {
       expect(JSON.stringify(relay)).toBe(JSON.stringify(direct))
     })
   }
+  for (const [name, safe] of kinds) {
+    it(`cu toate modulele la treapta 3 și cu rachete în zbor: aceeași stare, și prin JSON (nava ${name})`, () => {
+      const armed = (): FlightState => {
+        const f = start(7, safe)
+        for (const id of ['gun', 'laser', 'missile', 'shield', 'magnet'] as const) f.ship.mods[id] = 3
+        f.ship.shieldUp = true
+        return f
+      }
+      // Nava înarmată doboară totul înainte să tragă cineva; un proiectil dușman pus pe ea la fiecare 7 s îi încearcă Scutul.
+      const run = (relay: number, watch?: (f: FlightState) => void): FlightState => {
+        let g = armed()
+        for (let i = 0; i < 3000; i++) {
+          if (relay > 0 && i > 0 && i % relay === 0) g = JSON.parse(JSON.stringify(g)) as FlightState
+          if (i % 420 === 200) g.shots.push({ x: g.ship.x, y: g.ship.y, vx: 0, vy: 0 })
+          stepFlight(g, zigzag(i))
+          watch?.(g)
+        }
+        return g
+      }
+      let inFlight = 0, blocks = 0
+      const direct = run(0, (g) => {
+        if (g.tick % 50 === 0 && g.missiles.length > 0) inFlight++   // rachete în zbor chiar în clipa trecerii prin JSON
+        blocks += g.fx.filter((e) => e.kind === 'block' && e.t0 === g.t).length
+      })
+      expect(inFlight).toBeGreaterThan(5)
+      expect(blocks > 0).toBe(!safe)                                // nava obișnuită își folosește și Scutul
+      expect(JSON.stringify(run(0))).toBe(JSON.stringify(direct))
+      expect(JSON.stringify(run(50))).toBe(JSON.stringify(direct))
+    })
+  }
   it('și în sectorul 3, cu întăriri, în lupta cu nava de elită', () => {
     const start = (): FlightState => {
       const f = createFlight(5, 3, { ...NO_UPS, hull: 4, arms: 5, reach: 3 })

@@ -1,4 +1,4 @@
-// Nava ta în zbor: condusul, Tunul, loviturile primite, strânsul resurselor.
+// Nava ta în zbor: condusul, loviturile primite (și Scutul care oprește una), strânsul resurselor (și Magnetul). Armele stau în `arsenal.ts`.
 import { FLIGHT } from '../data/flight'
 import { WORKSHOP } from '../data/workshop'
 import { DT, EPS, type FlightInput, type FlightState } from './state'
@@ -33,22 +33,29 @@ export function driveShip(f: FlightState, input: FlightInput): void {
 
 /** Lovitura unui proiectil al Tunului, cu Armamentul (fără rotunjire). */
 export function boltDmg(f: FlightState): number {
-  return FLIGHT.gun.dmg * (1 + WORKSHOP.arms.dmg * f.ups.arms)
+  return FLIGHT.gun.dmg * armsFactor(f)
 }
 
-/** Tunul trage singur, drept înainte: la treapta 1, două proiectile la ±`spread` de mijlocul navei. */
-export function fireGun(f: FlightState): void {
-  const s = f.ship, g = FLIGHT.gun
-  s.fireT -= DT
-  if (s.fireT > EPS) return
-  s.fireT += g.every
-  f.bolts.push({ x: s.x - g.spread, y: s.y - g.lift, vx: 0 }, { x: s.x + g.spread, y: s.y - g.lift, vx: 0 })
+/** Cât înmulțește Armamentul lovitura armelor navei (Tunul, Laserul, Rachetele), fără rotunjire. */
+export function armsFactor(f: FlightState): number {
+  return 1 + WORKSHOP.arms.dmg * f.ups.arms
 }
 
-/** Nava primește o lovitură, dacă poate fi lovită: nu cât clipește și nu după ce a căzut nava de elită. */
+/**
+ * Nava primește o lovitură, dacă poate fi lovită: nu cât clipește și nu după ce a căzut nava de elită.
+ * Scutul încărcat o oprește: viața rămâne, Scutul se descarcă și se reîncarcă după treapta lui.
+ */
 export function hurtShip(f: FlightState): void {
   const s = f.ship
   if (f.mode !== 'flying' || s.inv > EPS || f.exploreAt >= 0) return
+  if (s.shieldUp) {
+    const sh = FLIGHT.mods.shield
+    s.shieldUp = false
+    s.shieldT = sh.recharge[s.mods.shield - 1]!
+    s.inv = sh.inv
+    f.fx.push({ kind: 'block', x: s.x, y: s.y, t0: f.t })
+    return
+  }
   s.hp -= 1
   s.inv = FLIGHT.ship.inv
   if (s.hp > 0) { f.fx.push({ kind: 'hurt', x: s.x, y: s.y, t0: f.t }); return }
@@ -57,9 +64,10 @@ export function hurtShip(f: FlightState): void {
   f.fx.push({ kind: 'down', x: s.x, y: s.y, t0: f.t })
 }
 
-/** De la cât vin resursele spre navă: baza (Magnetul se va adăuga la ea) × Colectarea. */
+/** De la cât vin resursele spre navă: (baza + Magnetul) × Colectarea. */
 export function pullReach(f: FlightState): number {
-  const base = FLIGHT.drops.reach
+  const tier = f.ship.mods.magnet
+  const base = FLIGHT.drops.reach + (tier > 0 ? FLIGHT.mods.magnet.reach[tier - 1]! : 0)
   return base * (1 + WORKSHOP.reach.reach * f.ups.reach)
 }
 

@@ -2,6 +2,7 @@
 // Hazardul vine din fluxuri cu nume, câte unul pe întâmplare (o apariție, un dușman, un foc, o pradă), cu numărul ei din stare.
 import { FLIGHT, sectorScale, type FlightFoeKind } from '../data/flight'
 import { createRng, type Rng } from '../sim/rng'
+import { dropPick } from './pickups'
 import { boltDmg, hurtShip } from './ship'
 import { DT, EPS, NEVER, type FlightAsteroid, type FlightFoe, type FlightState, type SpawnKind } from './state'
 
@@ -48,7 +49,10 @@ function addAsteroid(f: FlightState, rng: Rng): void {
   })
 }
 
-/** Aparițiile: dușmanii obișnuiți și asteroizii până la `sectorSecs` (fără liniștea de la jumătate), apoi nava de elită și escorta ei. */
+/**
+ * Aparițiile: dușmanii obișnuiți, transporturile și asteroizii până la `sectorSecs` (fără liniștea de la jumătate),
+ * apoi nava de elită și escorta ei.
+ */
 export function spawnFlight(f: FlightState): void {
   const t = f.t + EPS, k = along(f), nx = f.next, sp = FLIGHT.spawn, { w } = FLIGHT.field
   const pace = sectorScale(f.sector).pace
@@ -80,6 +84,11 @@ export function spawnFlight(f: FlightState): void {
         nx.gunship = f.t + lerp(c.every[0], c.every[1], k) * pace
         makeFoe(f, 'gunship', c.margin + rng.next() * (w - 2 * c.margin))
       } else nx.gunship = f.t + c.retry
+    }
+    if (t >= nx.cargo) {
+      const rng = spawnRng(f, 'cargo'), c = sp.cargo
+      nx.cargo = f.t + c.every + c.span * rng.next()
+      makeFoe(f, 'cargo', c.margin + rng.next() * (w - 2 * c.margin))
     }
     return
   }
@@ -113,6 +122,7 @@ function killFoe(f: FlightState, foe: FlightFoe): void {
   const d = FLIGHT.foes[foe.kind], fx = FLIGHT.fx
   f.kills += 1
   f.fx.push({ kind: 'puff', what: 'foe', r: foe.r * fx.foePuff, x: foe.x, y: foe.y, t0: f.t })
+  if (foe.kind === 'cargo') { dropPick(f, foe); return }   // transportul lasă un lucru de cules, nu cristale
   if (foe.kind !== 'elite') {
     scatter(f, 'crystal', foe.x, foe.y, d.drop, d.drop > 1 ? FLIGHT.drops.spread.many : FLIGHT.drops.spread.one)
     return
@@ -216,7 +226,7 @@ export function updateFoes(f: FlightState): void {
   for (const foe of f.foes) {
     if (foe.hp <= EPS) continue
     move(foe)
-    const canFire = foe.kind !== 'cargo' && f.mode === 'flying' && f.exploreAt < 0
+    const canFire = FLIGHT.foes[foe.kind].fire > 0 && f.mode === 'flying' && f.exploreAt < 0
       && foe.y > c.fireTop && foe.y < h * c.fireLow && (!FLIGHT.foes[foe.kind].keepsAway || s.y - foe.y > c.fireGap)
     if (canFire) {
       foe.fireT -= DT
