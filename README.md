@@ -8,15 +8,15 @@ Andrei a încercat-o pe telefonul lui, un Samsung Galaxy A54 („se simte ok pâ
 (18.11.2026), iar Andrei a încercat-o pe telefon în aceeași zi: „pe telefon, totul arată super bine”. Planul 2 e în cod
 (18.11.2026): pauza, reluarea unei partide întrerupte, ecranul aprins, instalarea pe telefon și jocul fără internet; e publicat
 (pull request-ul #14), dar Andrei nu l-a încercat încă pe telefon. Planul 3 e în cod (18.11.2026): plasa pentru dificultate și
-reechilibrarea a două cifre (propuneri, până le vede Andrei în joc). Nava cu module e în cod (20.11.2026), pe ramură, în pull request-ul #15 (ciornă, neîmbinat, care ține și faza 3): experiență înainte de nivel, alegere din trei oferte la fiecare nivel, nouă module; cifrele ei sunt propuneri, până le vede Andrei în joc. Jocul publicat pe GitHub Pages are fazele 1, tema și 2. Proba lui pe telefon va acoperi fazele 2 și 3 și nava cu module împreună; cele două cifre de la „Test de viteză” (tema nouă și nava cu module, acum cu cele trei arme la treapta 3 trăgând) lipsesc încă.
+reechilibrarea a două cifre (propuneri, până le vede Andrei în joc). Nava cu module e în cod (20.11.2026), pe ramură, în pull request-ul #15 (ciornă, neîmbinat, care ține și faza 3): experiență înainte de nivel, alegere din trei oferte la fiecare nivel, nouă module; cifrele ei sunt propuneri, până le vede Andrei în joc. „Explorează galaxia” (21.11.2026), al doilea mod, cu rezerva și atelierul, e în cod pe aceeași ramură și în același pull request (#15, ciornă, neîmbinat); cifrele lui sunt propuneri, în afară de cele șapte hotărâri ale lui Andrei din `docs/GDD.md`. Jocul publicat pe GitHub Pages are fazele 1, tema și 2. Proba lui pe telefon va acoperi fazele 2 și 3, nava cu module și zborul împreună; nimic din etapele de pe ramură n-a fost încercat încă de el pe telefon, iar cele două cifre de la „Test de viteză” (tema nouă și nava cu module, acum cu cele trei arme la treapta 3 trăgând) lipsesc încă.
 
 ```bash
 npm install
 npm run dev      # http://localhost:5180
-npm run check    # typecheck + teste + build cu service worker (poarta înainte de commit; CI rulează același lucru)
+npm run check    # typecheck + teste + build cu service worker + jocul într-un singur fișier (poarta înainte de commit; CI rulează același lucru)
 npm run smoke    # proba în browser (Playwright, 37 de verificări); nu face parte din `check`
 npm run single   # dist-single/world-guard.html: tot jocul într-un singur fișier, fără nicio referință în afară
-npm run balance  # tabelul jucătorilor automați (120 de partide, ~15 s); cu `-- --raze` și pentru razele de apărare 80 și 160 (~40 s)
+npm run balance  # tabelul jucătorilor automați (120 de partide, ~15 s), plus rândul „Amestec cu toate întăririle” și cifra unui zbor condus de script; cu `-- --raze` și pentru razele de apărare 80 și 160 (~40 s)
 npm run icons    # desenează din nou pictogramele PNG din public/icons/icon.svg (doar când se schimbă desenul)
 ```
 
@@ -57,7 +57,7 @@ fost doborâtă”, ce ai adus, rezerva, „Sectorul următor” sau „Încă u
 zborului) e un panou peste cartonașul de unde s-a deschis: rezerva, cinci întăriri (Carenă, Armament, Colectare, Planetă, Arsenal de pornire) cu treptele ca
 puncte și butonul cu prețul treptei următoare, stins când rezerva nu ajunge, „La plafon” când nu mai sunt trepte; o apăsare cumpără o treaptă și o
 salvează pe loc, iar „Înapoi” arată din nou cartonașul, cu rezerva nouă. Nu se deschide în timpul unei partide, al unui zbor sau al unei pauze;
-partidele și zborurile pornite după o cumpărătură pornesc cu întăririle noi. Cu `?debug=1&zbor=N` zborul pornește direct, în sectorul N. Cu `?debug=1`, `window.__wg` are și `mode()`, `flight()`,
+partidele și zborurile pornite după o cumpărătură pornesc cu întăririle noi. Fără nicio întărire, apărarea planetei e exact cea de dinainte (o păzește `src/bots/golden.test.ts`), iar jucătorii automați joacă mereu fără întăriri. Regulile și cifrele zborului sunt în `docs/GDD.md`. Cu `?debug=1&zbor=N` zborul pornește direct, în sectorul N. Cu `?debug=1`, `window.__wg` are și `mode()`, `flight()`,
 `runFlight(secunde)`, `flightDrawMs(cadre)` și `flightField()`; proba din browser tipărește un rând `SMOKE INFO` cu timpul de desen al zborului
 în clipa cea mai plină.
 

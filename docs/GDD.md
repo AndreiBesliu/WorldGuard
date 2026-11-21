@@ -1,6 +1,6 @@
 # World Guard: designul primei versiuni
 
-Scris pe 2026-11-13, actualizat pe 2026-11-20 (nava cu module; înainte, pe 2026-11-18: tema de spațiu, plasa pentru dificultate). Sursa: documentul „World Guard: designul primei versiuni”, aprobat de Andrei pe 2026-11-17.
+Scris pe 2026-11-13, actualizat pe 2026-11-21 („Explorează galaxia”; înainte, pe 2026-11-20: nava cu module; pe 2026-11-18: tema de spațiu, plasa pentru dificultate). Sursa: documentul „World Guard: designul primei versiuni”, aprobat de Andrei pe 2026-11-17.
 
 Prima versiune este jocul din prototip făcut ca proiect adevărat: instalat pe telefon, jucabil fără internet, cu cifre ușor de reglat și cu o plasă care prinde stricarea dificultății. Se construiește în repo-ul WorldGuard, unde ia locul jocului de acolo.
 
@@ -60,13 +60,60 @@ Hotărârile 1–8 sunt în cuvintele lor de dinainte de tema de spațiu: „ero
 - Regulile noi ale jucătorilor automați: plătesc nivelul navei când e gata și au bani, înaintea luptei, și își termină plata începută. Din valul de reparații de după recenzie (21.11.2026): purtările care nu cumpără turele („Doar navă”, „Fără turele”) iau Releul doar dacă nu au altă ofertă, fiindcă Releul grăbește doar turelele.
 - Nava din „Test de viteză” (din valul de reparații de după recenzie, 21.11.2026): pornește la nivelul 3, care îi dă trei locuri, cu Unda, Laserul și Rachetele la treapta 3 și viața plină pentru nivelul ei, ca cifrele de cadre de pe telefon să fie cu toate armele trăgând. Experiența rămâne 0, nava nu urcă niveluri și panoul nu se deschide, numărul de nave dușmane rămâne 150. Partida obișnuită nu se schimbă.
 
+**„Explorează galaxia”, din 2026-11-21.** Hotărârile de mai jos sunt ale lui Andrei, din discuția din 21.11.2026, și sunt scrise în [specul etapei](superpowers/specs/2026-11-21-exploreaza-galaxia-design.md), secțiunea „Cine a hotărât ce”. Nu se redeschid fără el.
+
+21. Un mod nou, „Explorează galaxia”: nava zboară înainte și trage în dușmani care vin din partea de sus a ecranului; jucătorul se ferește de armele lor.
+22. Din explorare aduci resurse cu care întărești arsenalul sau cifrele de bază ale navei.
+23. Întăririle cumpărate contează peste tot, și în explorare, și la apărarea planetei. A ales asta dintre trei variante, după ce i s-a spus prețul: apărarea devine mai ușoară cu timpul, deci întăririle sunt mici și cu plafon, iar dificultatea se măsoară în continuare cu nava neîntărită.
+24. Nava se conduce cu degetul (nava urmează mișcarea degetului), nu cu joystickul. Le-a încercat pe amândouă în prototip.
+25. Focul dușman din prototip e în regulă deocamdată; se revede când apar dușmani de mai multe feluri, cu atacuri diferite.
+26. Un zbor ține trei minute.
+27. În zbor nava capătă arme și module, dar nu dintr-un panou: sunt lucruri peste care nava zboară ca să le culeagă, ca resursele, iar întăririle se aplică singure. Jocul nu se oprește.
+
+(Hotărârea 2 de sus, „totul în timp real”, rămâne adevărată și pentru zbor; panoul de alegere de la apărare rămâne cum e.)
+
+**„Explorează galaxia”: propus de Claude și acceptat de Andrei când i-a fost arătat („e ok, continuă”, 21.11.2026).**
+
+- Modulele culese țin doar zborul acela. Acasă ajung doar cristalele și metalul, într-o rezervă care se păstrează între partide.
+- Dacă nava e doborâtă, păstrezi ce ai strâns până atunci, dar nu mai primești prada navei de elită.
+- La capătul fiecărui sector te așteaptă o navă de elită. Fiecare sector explorat îl deschide pe următorul, mai greu și mai bogat.
+- Un atelier vinde puține întăriri, mici și cu plafon: viața navei, lovitura armelor, raza de strâns, viața planetei și modulul cu care pornești la drum.
+- Apărarea planetei rămâne cum e, cu panoul ei de alegere la fiecare nivel.
+- Ordinea: întâi bucla întreagă (zborul, rezerva, atelierul); apoi dușmanii de mai multe feluri, o singură dată, pentru amândouă modurile.
+
+**„Explorează galaxia”: ales de Claude și acceptat de Andrei odată cu documentul (21.11.2026).** I-au fost arătate ca listă de verificat; până le vede în joc, rămân propuneri.
+
+- Felul în care se construiește: un al doilea joc lângă primul, în aceeași aplicație.
+- Cele cinci module din zbor și cifrele lor; navele de transport care le lasă în urmă; reparația.
+- Cele trei feluri de dușmani, asteroizii, nava de elită și cifrele lor, din prototip.
+- Lista din atelier, treptele, plafoanele și prețurile (prețurile de azi sunt mai jos, la propunerile din construcție).
+- Cum cresc sectoarele și că poți zbura din nou un sector deja explorat.
+- Recordul de la apărare rămâne unul singur, cu sau fără întăriri.
+- Un zbor întrerupt de închiderea paginii nu se reia; ce ai strâns până atunci rămâne al tău.
+- Lupta cu nava de elită nu are limită de timp: zborul ține până cade una dintre nave.
+- Cum arată cartonașul de start cu două moduri, atelierul și cartonașul de la sfârșitul zborului (machetele).
+
+**„Explorează galaxia”: propuneri făcute în timpul construcției, care așteaptă să le vadă Andrei în joc.** Nu sunt hotărâri; până le vede, pot fi schimbate. Cifrele sunt în `src/data/flight.ts` și `src/data/workshop.ts`.
+
+- **Cifrele zborului și ale navelor dușmane.** Câmpul de 390 × 680 de unități; sectorul de 170 s, cu nava de elită la 2,5 s după; nava cu 5 lovituri, 1,2 s fără lovituri după una primită, punctul de lovire cu raza 6; condusul cu factorul 1,2 și cel mult 1100 de unități pe secundă; limita de sus a navei la 30% din înălțime; cifrele armelor, ale Scutului și ale Magnetului; viața, viteza și focul celor cinci feluri de nave dușmane; asteroizii; liniștea de la jumătatea sectorului; escorta navei de elită. Cele mai multe vin din prototip, iar ce nu e în tabelele specului e propunere. Formula sectoarelor: viața dușmanilor × (1 + 0,25 (n − 1)), pauzele dintre apariții × max(0,6; 0,94^(n − 1)), viața navei de elită × (1 + 0,35 (n − 1)), prada × (1 + 0,2 (n − 1)).
+- **Prețurile atelierului și ținta de ritm.** Prețul treptei e baza × înmulțitorul^(treapta − 1), rotunjit la 5; bazele (cristale / metal) și înmulțitorii: Carenă 50 / 10, ×1,7; Armament 60 / 15, ×1,6; Colectare 40 / 0, ×1,8; Planetă 55 / 20, ×1,7; Arsenal de pornire 95 / 30, ×2. Cu toate la plafon costă 2960 de cristale și 770 de metal. Un zbor în sectorul 1 cu nava condusă de script aduce 99 de cristale și 32,5 metal (mediana pe 10 semințe), deci tot atelierul înseamnă cam 29,9 zboruri la cristale și 23,7 la metal, în ținta de 25–35 de zboruri; prima întărire (Colectarea, 40 de cristale) se poate cumpăra după primul zbor.
+- **Formele și așezările de pe ecran.** Formele din zbor (nava cu modulele, cele cinci feluri de dușmani, focul dușman rotund și portocaliu, lucrurile de cules ca pătrate cu chenar, resursele); câmpul lipit de jos, sub bandă, cu cer în plus sau fâșii în lături; banda zborului și rândul „ai cules” ca pastilă sub ea; cartonașele de start, de pauză și de sfârșit ale zborului; atelierul ca panou peste cartonașul de unde s-a deschis, cu cele cinci rânduri.
+- **Textele** din interfața zborului și a atelierului (în `src/ui/strings.ts`), între ele „Partidă nouă: cea salvată se pierde.” și rândul „{nume} e la maxim · +5 cristale”.
+- **Purtări hotărâte în construcție, în numele lui Andrei** (fiecare se poate schimba după ce joacă):
+  - după ce cade nava de elită, sectorul explorat nu se mai poate pierde: în cele 3,4 secunde nava ta nu mai poate fi lovită (nici nu mai trage), iar dușmanii rămași nu mai trag; prototipul lăsa nava să fie doborâtă și atunci;
+  - nava grea și nava de elită trag indiferent cât de aproape e nava ta; doar dronele și șerpuitoarele nu trag de la mai puțin de 110 unități sau după ce au trecut de navă; în prototipul pe care Andrei l-a găsit în regulă la foc exista o fâșie de sus în care elita nu trăgea;
+  - cartonașul de sfârșit al zborului apare imediat, peste cadrul înghețat, ca la apărare; căderea navei nu se vede;
+  - când există o partidă salvată, „Continuă partida” e butonul principal, iar „Apără planeta” (stil secundar) avertizează că salvarea se pierde; fără salvare, „Apără planeta” e butonul principal;
+  - Escape nu închide atelierul (cu atelierul deschis, Escape, pagina ascunsă și `pagehide` nu schimbă nimic).
+- **Alte alegeri de purtare:** Scutul oprește o lovitură și lasă 0,45 s fără lovituri; transportul nu vine în liniștea de la jumătate; cu toate modulele la treapta 3, transportul lasă tot un modul (cules, dă 5 cristale); o reparație culeasă la viață plină dispare fără efect; transportul doborât se numără la dușmanii doborâți; lovitura unei rachete se hotărăște la lansare; la „Apără planeta” nava pornește cu viața plină, cu tot cu Carena; Magnetul și Colectarea se combină așa: distanța de la care vin resursele e (85 + adaosul Magnetului) × (1 + 0,1 × treapta Colectării).
+
 **Propus de Claude și acceptat de Andrei când i-a fost arătat întregul.**
 
 - Trei direcții de investit: economie, apărare, erou (pe ecran, navă).
 - Nava doborâtă reapare la planetă după câteva secunde. Partida se termină doar când cade planeta.
 - Partida nu are sfârșit și devine tot mai grea. Scorul e cât ai rezistat.
 - Aspect din forme simple. Arta vine mai târziu.
-- Fără îmbunătățiri păstrate de la o partidă la alta în prima versiune.
+- Fără îmbunătățiri păstrate de la o partidă la alta în prima versiune. (Din 2026-11-21 există: întăririle din atelierul modului „Explorează galaxia”, hotărâte de Andrei; vezi mai jos.)
 - Din spec, văzute de Andrei pe pagina cu machete și lăsate neschimbate: numele de pe ecran (Planetă, Navă, cristale, metal, Turelă, Colector, Mină) și viața planetei desenată ca inel în jurul ei, în locul barei de deasupra castelului.
 
 **Hotărât de Claude, nevăzut încă de Andrei.**
@@ -277,6 +324,54 @@ Cercurile de investit:
 - Nava are cercul la 150 deasupra planetei.
 - Reparatul are cercul la 100 sub planetă.
 
+## „Explorează galaxia”: regulile și cifrele
+
+Al doilea mod, adăugat pe 2026-11-21. Designul întreg, cu motivele, e în [specul etapei](superpowers/specs/2026-11-21-exploreaza-galaxia-design.md); aici stau regulile ca să le găsești lângă ale apărării. Cifrele sunt citite din `src/data/flight.ts` și `src/data/workshop.ts`; toate sunt propuneri, în afară de cele din tabelele specului care sunt hotărâri ale lui Andrei (trei minute, conducerea cu degetul). Regulile zborului sunt în `src/flight/`, separate de ale apărării.
+
+**Zborul.** Câmpul stă în picioare, 390 × 680 de unități, și nu depinde de ecran. Nava e jos; cerul curge în jos. Condusul: degetul se pune oriunde, iar nava face aceeași mișcare × 1,2, cu cel mult 1100 de unități pe secundă; nu sare sub deget; poate urca până la 30% din înălțime, măsurat de sus. Cu tastatura (săgeți sau WASD), 255 de unități pe secundă. Nava ține 5 lovituri (plus Carena); după una, 1,2 s fără lovituri; contează doar un punct cu raza 6 din mijlocul navei. Tunul trage singur, drept înainte, la 0,11 s. Până la secunda 170 apar dușmani obișnuiți; la 172,5 s vine nava de elită. Dacă cade, sectorul e explorat și mai ai 3,4 s să strângi ce a lăsat; dacă nava ta pierde a cincea viață, zborul se încheie pe loc. Lupta cu elita nu are limită de timp. La jumătatea sectorului sunt câteva secunde fără dușmani noi. Pauza: buton, Escape, pagina ascunsă.
+
+**Modulele din zbor.** Nava pornește cu Tunul la treapta 1; restul se culeg, fiecare cu trei trepte (un modul cules a doua oară urcă o treaptă; la treapta 3 dă 5 cristale). Fără locuri limitate; la sfârșitul zborului dispar.
+
+| Modul | Fel | Treapta 1 | Treapta 2 | Treapta 3 |
+| --- | --- | --- | --- | --- |
+| Tun | armă | 2 proiectile (lovitura 4) | 3, în evantai mic | 5, în evantai |
+| Laser | armă | 14, la 0,9 s, până la 300 de unități | 22 | 32 |
+| Rachete | armă | 12, la 2,4 s, explozie pe raza 50 | 18 | 26 |
+| Scut | corp | oprește o lovitură, se reîncarcă în 6 s | 4,5 s | 3 s |
+| Magnet | utilitar | resursele vin de la +45 de unități (fără el, de la 85) | +90 | +135 |
+
+Modulele le lasă navele gri de transport (prima la secunda 5, apoi la 14–18 s; nu trag). Un modul coboară încet și nu vine spre navă: trebuie să zbori peste el. Cu nava lovită, în locul unui modul poate apărea o reparație, care dă înapoi o viață.
+
+**Dușmanii.** Viața crește pe parcursul sectorului până la × 1,8.
+
+| Dușman | Viață | Ce face |
+| --- | --- | --- |
+| Dronă | 14 | coboară drept; trage drept în jos, la 1,7 s |
+| Șerpuitoare | 20 | coboară șerpuind; trage spre navă, la 2,1 s; apare după secunda 24 |
+| Grea | 70 | se oprește sus și se plimbă; trei proiectile în evantai spre navă, la 1,9 s; pleacă după 9 s; apare după secunda 50 |
+| Transport | 34 | nu trage; lasă un modul |
+| Elită | 1400 | stă sus și se leagănă; cerc de 14 proiectile, apoi două salve de câte 5; sub jumătate din viață trage mai des și cercul are 18; o însoțesc drone |
+
+Asteroizii coboară încet și nu trag; sparți, lasă metal. Dușmanii lasă cristale: 1 cei mici, 4 nava grea, 24 nava de elită. Sectorul n are viața dușmanilor × (1 + 0,25 (n − 1)), pauzele dintre apariții × max(0,6; 0,94^(n − 1)), viața elitei × (1 + 0,35 (n − 1)) și prada × (1 + 0,2 (n − 1)).
+
+**Rezerva și sectoarele.** Cristalele și metalul rămase în urmă vin singure spre navă când e aproape. Ce a strâns zborul trece în rezervă exact o dată (la pauză, la sfârșit, și dacă nava e doborâtă; nimic nu se pierde, nimic nu se numără de două ori). Un sector explorat îl deschide pe următorul; se poate zbura orice sector până la primul neexplorat. Rezerva, sectorul cel mai îndepărtat și întăririle stau într-un singur loc din stocarea telefonului (`wg.v1.profile`), cu versiune, verificate la citire; un conținut stricat înseamnă rezervă goală și nicio întărire, nu o oprire a jocului.
+
+**Atelierul.** Cinci întăriri, cu trepte, plafon și preț care crește cu treapta (prețurile și ținta de ritm sunt la „Cine a hotărât ce”). Procentele se aplică fără rotunjire. O cumpărare nu se dă înapoi.
+
+| Întărire | La apărarea planetei | În zbor | Trepte |
+| --- | --- | --- | --- |
+| Carenă | viața navei + 6 pe treaptă | o lovitură în plus la treptele 2 și 4 (2 la treapta 4) | 4 |
+| Armament | lovitura Undei, Laserului și Rachetelor + 4% pe treaptă | lovitura armelor + 4% pe treaptă | 5 |
+| Colectare | nava strânge de la 10% mai departe pe treaptă | resursele vin de la 10% mai departe pe treaptă | 3 |
+| Planetă | viața planetei + 5% pe treaptă | nimic | 4 |
+| Arsenal de pornire | nimic | zborul pornește și cu Laserul; la treapta 2 și cu Rachetele; la 3 și cu Scutul (la treapta 1) | 3 |
+
+La plafon, toate la un loc dau la apărare: nava cu 24 de viață în plus, armele cu 20% mai tari, strânsul cu 30% mai departe, planeta cu 480 de viață în loc de 400.
+
+**Ce se schimbă la apărarea planetei.** O partidă nouă pornește cu întăririle din atelier, ținute în starea ei (`s.ups`), deci o partidă reluată continuă la fel chiar dacă atelierul s-a schimbat între timp; salvarea e la versiunea 3, iar una de versiunea 2 se primește ca „fără întăriri”. **Fără nicio întărire, partida de apărare e cea de dinainte, pas cu pas**; asta o păzește `src/bots/golden.test.ts`, care fixează trei partide întregi („Amestec”, semințele 1, 2 și 3) din codul de dinaintea întăririlor. „Test de viteză” pornește fără întăriri. Recordul rămâne unul singur. Un zbor nu atinge partida de apărare salvată și nici recordul.
+
+**Ce se vede.** Cartonașul de start: „Apără planeta” și „Explorează galaxia” (cu sectorul ales, − și +), rezerva, „Atelier”, plus „Continuă partida” și „Test de viteză”. În zbor, banda de sus: ce a strâns zborul, viețile, drumul prin sector (devine viața navei de elită), modulele cu treptele lor, pauza; sub bandă, rândul „ai cules”. La sfârșit: „Sector explorat” sau „Nava a fost doborâtă”, ce ai adus, rezerva, „Sectorul următor” sau „Încă un zbor”, „Atelier” și „Înapoi”.
+
 ## Ce e nou față de prototip
 
 1. **Pauză.** Buton în banda de sus și pauză automată când aplicația trece în fundal. Cartonașul de pauză are „Continuă” și „Partidă nouă”. Cât e pauză, simularea nu avansează.
@@ -287,6 +382,7 @@ Cercurile de investit:
 6. **Recordul** se păstrează sub o cheie cu versiune. Dacă telefonul refuză stocarea, jocul merge fără record.
 7. **Reluarea partidei.** Telefoanele închid des aplicațiile trecute în fundal. La fiecare pauză, jocul salvează pe telefon starea întreagă a partidei, cu tot cu starea generatorului de hazard. La următoarea pornire, cartonașul de start oferă „Continuă partida” lângă „Partidă nouă”. Salvarea are versiune și se șterge la sfârșitul partidei sau la o partidă nouă. O salvare cu altă versiune se aruncă fără eroare.
 8. **Nava cu module** (20.11.2026). Experiență înainte de nivel, alegere din trei oferte la fiecare nivel, nouă module. Salvarea păstrează acum și experiența, modulele, ceasurile armelor și oferta deschisă; versiunea ei e 2, deci o partidă salvată înainte de etapă nu se mai poate continua („Continuă partida” nu apare, fără eroare; recordul rămâne).
+9. **„Explorează galaxia”** (21.11.2026). Al doilea mod: zborul, rezerva păstrată între partide și atelierul cu întăriri care contează și la apărare (vezi mai sus secțiunea cu regulile și cifrele modului). Salvarea apărării trece la versiunea 3 (ține întăririle partidei); o salvare de versiunea 2 se primește ca „fără întăriri”.
 
 ## Abordări
 
@@ -335,7 +431,12 @@ Tabelul mai are trei coloane de informație, fără limită: nivelul navei la sf
 
 **Cum sunt făcuți jucătorii automați** (`src/bots/`). Au aceeași purtare și diferă doar prin lista de cumpărături: strâng resursa care le lipsește, plătesc la cercul următor din listă și, când o navă dușmană e la mai puțin de 120 de centrul planetei, lasă totul și luptă cu ea. Niciunul nu repară planeta. Două reguli noi, din etapa cu module (propuneri; au mutat tabelul, deci cifrele de dinainte nu se mai compară cu cele de azi): când nava e gata de nivel și stocul acoperă ce a rămas de plătit la cercul ei, purtările care cumpără nava plătesc acolo înaintea luptei și a restului listei, și un jucător își termină plata începută (cât stă pe un cerc pe care plata curge și mai are cu ce plăti, acel cerc rămâne ținta). Alegerea modulului o face rularea, nu jucătorul automat: la o ofertă deschisă, prima ofertă cu modulul cel mai sus pe lista de preferințe, aceeași pentru toate purtările: Laser, Blindaj, Releu, Undă, Rachete, Scut, Reparator, Motor, Magnet. Purtările care nu cumpără turele („Doar navă”, „Fără turele”) iau Releul ultimul, deci doar dacă nu au altă ofertă: Releul grăbește doar turelele, iar la ele ar fi un loc irosit (propunere, din valul de reparații de după recenzie). Un jucător nu stă pe un cerc care nu e ținta lui, ca să nu plătească din greșeală, iar un cerc străin construit îl ocolește împreună cu clădirea lui, ca pe un singur obstacol (altfel nava rămânea în colțul dintre ele). Tabelul depinde de aceste alegeri: dacă purtarea se schimbă, se schimbă și cifrele.
 
-**Comanda.** `npm run balance` rulează cele 120 de partide (6 jucători × 20 de semințe, cam 15 s) și tipărește tabelul; cu `-- --raze` tipărește și razele de apărare 80 și 160 (cam 40 s). Comanda doar afișează. Limitele rulează ca teste în `src/bots/net.test.ts` și pică build-ul când sunt depășite. Zgomotul tabelului, măsurat la faza 3 (istorie, nerefăcut cu nava cu module): o schimbare mică de cifre (viața dușmanului cu t / 44 … t / 46 în loc de t / 45, cum era atunci) muta „Amestec” între 326 și 344 s și procentele cu până la 3 puncte; un ultim bit diferit în calcule, ca pe altă mașină, îl muta cu cam ±2 s și procentele cu sub un punct.
+**Cu „Explorează galaxia” (21.11.2026).** Jucătorii automați joacă mereu fără întăriri; limitele de mai sus nu s-au atins și trec neschimbate (tabelul din „Măsurat cu nava cu module” e și cel de azi, rulat din nou pe 21.11.2026 cu `npm run balance`: aceleași cifre). Tabelul capătă două rânduri, doar tipărite, fără limită:
+
+- **„Amestec, cu toate întăririle la plafon”: 336 s (+9,7% față de Amestec).** Arată cât ușurează atelierul apărarea. Ținta de reglaj (nu limită) era ca rândul să nu treacă cu mai mult de un sfert peste „Amestec” fără întăriri; e la 9,7%. Dacă ar trece, se micșorează plafoanele, nu limitele.
+- **„Zbor, sectorul 1, navă condusă de script: 99 cristale, 32,5 metal”** (mediana pe semințele 1…10; toate cele zece zboruri ajung la sector explorat, la 230–268 s). Nava scriptului se plimbă dintr-o margine în cealaltă în 7 s, la înălțimea de pornire, și nu poate fi lovită; nu e un jucător automat și nu păzește nimic, doar dă cifra de pornire pentru prețurile atelierului. Fiindcă stă jos pe ecran, cifra e mai degrabă de jos: un om care urcă după module și după resurse ar aduce mai mult. `src/bots/flightYield.test.ts` rulează măsurătoarea la fiecare `npm run check`, cere ca ea să iasă exact cifra de mai sus (`MEASURED`) și că toate întăririle la plafon să coste 25–35 de zboruri; o schimbare a regulilor zborului care mută cât aduce un zbor pică deci `npm run check`.
+
+**Comanda.** `npm run balance` rulează cele 120 de partide (6 jucători × 20 de semințe, cam 15 s) și tipărește tabelul, plus cele două rânduri de mai sus; cu `-- --raze` tipărește și razele de apărare 80 și 160 (cam 40 s). Comanda doar afișează. Limitele rulează ca teste în `src/bots/net.test.ts` și pică build-ul când sunt depășite. Zgomotul tabelului, măsurat la faza 3 (istorie, nerefăcut cu nava cu module): o schimbare mică de cifre (viața dușmanului cu t / 44 … t / 46 în loc de t / 45, cum era atunci) muta „Amestec” între 326 și 344 s și procentele cu până la 3 puncte; un ultim bit diferit în calcule, ca pe altă mașină, îl muta cu cam ±2 s și procentele cu sub un punct.
 
 **Măsurat cu nava cu module, după regula Releului** (`npm run balance`, mediana pe 20 de semințe, raza de apărare 120, rulat în valul de reparații de după recenzie, 21.11.2026; cifrele rotunjite, procentele din „Amestec”):
 
@@ -351,6 +452,8 @@ Tabelul mai are trei coloane de informație, fără limită: nivelul navei la sf
 Cifrele astea sunt rezultatul reglajului din etapă (prețul și pragurile navei, viața dușmanului, Releul; vezi „Propuneri” de sus și `DEVLOG.md`) și al regulii Releului la jucătorii fără turele. Înainte de regula Releului, tabelul din încheierea etapei din `DEVLOG.md` avea „Doar navă” 199 s (65,0%) și „Fără turele” 235 s; celelalte rânduri nu s-au mișcat. „Amestec” ajunge la nivelul 7 (ținta din spec era 6–8), la nivelul 2 la 48 s și la nivelul 5 pe la minutul 2,4. „Doar navă” rămâne la nivelul 2 sau 3 (cauza e mai jos, la „Ce nu vede plasa”; „2,5” e mediana a zece partide la nivelul 2 și zece la 3). „Fără turele” ține 246 s, 80,3% din „Amestec”: cu lista de preferințe din cod, turelele valorează cam 20% din cât ține „Amestec”. Razele 80 și 160, informație, rulate tot acum (`npm run balance -- --raze`): la 80, „Amestec” 290 s, „Doar navă” 67,1%, „Fără navă” 74,2%; la 160, „Amestec” 300 s, „Doar navă” 67,6%, „Fără navă” 73,5%.
 
 **Ce nu vede plasa, la nava cu module.** Modulele de corp (Blindaj, Scut, Reparator) nu valorează aproape nimic pentru jucătorii automați, fiindcă nava lor e lovită rar și nu cade niciodată: cu „Amestec”, trei liste de preferințe dau armele întâi 303,7 s, utilitarele întâi 268,6 s și corpul întâi 250,5 s, deci armele bat corpul cu 21%. Cu cifre mult mai tari pentru corp, „corpul întâi” a urcat doar de la 250,5 la 252,8 s (măsurat la reglaj, vezi `DEVLOG.md`). Plasa nu poate spune deci dacă modulele de corp merită într-o partidă de om, unde nava ar putea fi lovită mai des. Releul se citește slab la scara jocului (un punct încercuit), iar la treapta 3 unele forme de pe navă se ating (țeava Laserului iese din inelul Scutului, potcoava Magnetului atinge cutia Rachetei); propuneri de aspect, de arătat lui Andrei.
+
+**Ce nu vede plasa, la „Explorează galaxia”.** Nu există jucători automați pentru zbor: dificultatea lui (greutatea sectorului 1, cât durează până vine prima întărire, cât se simte un zbor de trei minute cu module) se reglează jucând, iar singura cifră măsurată e cea a navei conduse de script, care stă jos pe ecran. Plasa de la apărare măsoară doar apărarea fără întăriri și cu toate la plafon; ce se întâmplă între ele, cu un jucător care cumpără pe rând, nu e măsurat.
 
 Tot aici, măsurate în valul de reparații de după recenzie (21.11.2026), cu un script de aruncat peste jucătorii automați din cod, după regula Releului (comanda și ieșirea sunt în raportul valului, nu în repo):
 
@@ -409,6 +512,8 @@ Construcția se face pe o ramură separată din WorldGuard, cu pull request.
 
 **Etapele următoare după nava cu module**, din spec (direcția e hotărâtă de Andrei, dar nimic nu e promis și fiecare etapă primește designul ei, cu el):
 
+**După „Explorează galaxia” (21.11.2026).** Din spec: întâi dușmanii de mai multe feluri, cu atacurile lor, o singură dată pentru amândouă modurile (și tot atunci se revede focul dușman din zbor, hotărârea 25); apoi obiectele adoptate de la navele de elită, tipurile de turele, tipurile de nave și alegerea modulelor înainte de zbor. Fiecare își primește designul ei, cu Andrei. Ce ține de „Explorează galaxia” și nu e încă făcut: proba lui pe telefon (vezi `DEVLOG.md`).
+
 - **Etapa 2: dușmani și elite.** Dușmani de mai multe feluri, fiecare cu unealta lui. Elite care poartă mai multe obiecte (defensive, ofensive, logistice, strategice și altele), pe care le vezi pe ele; când dobori una, alegi un obiect de adoptat sau treci mai departe, în același panou. Propunere: obiectele adoptate intră în aceleași locuri ca modulele, iar când locurile sunt pline schimbi unul vechi pe cel nou.
 - **Etapa 3: turele de mai multe feluri.** Felul se alege la construire. Propunere de pornire: laser (cea de azi), tun care lovește o zonă, frână care încetinește.
 - **Etapa 4: tipuri de nave și deblocări.** Nave care pornesc altfel (armă, locuri, viață, viteză) și se deblochează între partide.
@@ -422,6 +527,6 @@ Alte idei, fără ordine: sunet și vibrații, grafică desenată, feluri noi de
 - Numele fișierelor și ale modulelor, în structura `src/sim`, `src/data`, `src/render`.
 - CSS-ul exact, cât timp arată ca macheta „Orbită”.
 - Cu ce unealtă se face partea de instalare și de joc fără internet.
-- Dacă și cum se face o variantă într-un singur fișier, de arătat ca pagină privată înainte de publicare.
+- Dacă și cum se face o variantă într-un singur fișier, de arătat ca pagină privată înainte de publicare. (Făcut: `npm run single`, păzit din 21.11.2026 de `npm run check`.)
 - Cum sunt scriși jucătorii automați, cât timp fac ce spune tabelul.
 - Cifrele de echilibru, cât timp plasa trece și regulile rămân cele de mai sus.

@@ -3,14 +3,15 @@
 Faptele stabile și regulile proiectului. Se încarcă la fiecare sesiune.
 
 ## Ce e
-**World Guard** — un joc de apărat o planetă (genul: „castle defense”, cum l-a numit Andrei; tema e de spațiu), văzut de sus,
-pentru telefon. O navă condusă cu joystick strânge cristale și metal și le investește: turele, colector, mină,
-nivelul navei, repararea planetei. Dușmanii (nave) vin continuu și tot mai des; scorul e cât reziști. Pentru Andrei,
-deocamdată; nimic nu se construiește acum pentru o publicare. În cod, rolurile păstrează numele `hero` (nava) și `foe`
-(dușmanul); planeta e `core`, resursele `crystal` și `metal`, cercurile `turret`, `collector`, `mine`.
-Nava e acum una **cu module** (20.11.2026): strânge experiență din navele dușmane doborâte, nu urcă un nivel fără ea, iar la fiecare nivel plătit
-jocul stă pe loc și jucătorul alege una din trei oferte (un modul nou sau o treaptă în plus la unul pe care îl are); nouă module de trei feluri
-(arme, corp, utilitare), locuri de la 2 la 6, nivel maxim 9.
+**World Guard** — un joc de spațiu pentru telefon, cu **două moduri**. Pentru Andrei, deocamdată; nimic nu se construiește acum pentru o publicare.
+- **Apără planeta** (genul: „castle defense”, cum l-a numit Andrei), văzut de sus. O navă condusă cu joystick strânge cristale și metal și le
+  investește: turele, colector, mină, nivelul navei, repararea planetei. Dușmanii (nave) vin continuu și tot mai des; scorul e cât reziști. În cod,
+  rolurile păstrează numele `hero` (nava) și `foe` (dușmanul); planeta e `core`, resursele `crystal` și `metal`, cercurile `turret`, `collector`, `mine`.
+  Nava e **cu module** (20.11.2026): strânge experiență din navele dușmane doborâte, iar la fiecare nivel plătit jocul stă pe loc și jucătorul alege
+  una din trei oferte (un modul nou sau o treaptă în plus); nouă module de trei feluri (arme, corp, utilitare), locuri de la 2 la 6, nivel maxim 9.
+- **Explorează galaxia** (21.11.2026): un zbor de trei minute într-un câmp în picioare; nava înaintează și trage singură, jucătorul o conduce cu degetul și
+  o ferește de focul dușman, culege module peste care zboară și ajunge la o navă de elită. Ce strânge trece într-o **rezervă** păstrată între partide, din care
+  cumperi în **atelier** cinci întăriri cu plafon; ele contează și la zbor, și la apărare. În cod: `flight` (zborul), `profile` (rezerva), `ups` (întăririle).
 
 - Designul complet: [`docs/GDD.md`](docs/GDD.md) (în conflict cu prototipul, câștigă documentul).
 - Tema de spațiu, aspectul „Orbită” și numele din cod: [`docs/superpowers/specs/2026-11-17-tema-spatiu-design.md`](docs/superpowers/specs/2026-11-17-tema-spatiu-design.md)
@@ -20,6 +21,10 @@ jocul stă pe loc și jucătorul alege una din trei oferte (un modul nou sau o t
 - Nava cu module (aprobată de Andrei pe 20.11.2026): [`docs/superpowers/specs/2026-11-20-nava-cu-module-design.md`](docs/superpowers/specs/2026-11-20-nava-cu-module-design.md),
   planul [`docs/superpowers/plans/2026-11-20-world-guard-nava-cu-module.md`](docs/superpowers/plans/2026-11-20-world-guard-nava-cu-module.md),
   macheta [`docs/machete-nava-cu-module.html`](docs/machete-nava-cu-module.html).
+- „Explorează galaxia” (aprobat de Andrei pe 21.11.2026): [`docs/superpowers/specs/2026-11-21-exploreaza-galaxia-design.md`](docs/superpowers/specs/2026-11-21-exploreaza-galaxia-design.md),
+  planul [`docs/superpowers/plans/2026-11-21-world-guard-exploreaza-galaxia.md`](docs/superpowers/plans/2026-11-21-world-guard-exploreaza-galaxia.md),
+  macheta [`docs/machete-exploreaza-galaxia.html`](docs/machete-exploreaza-galaxia.html); prototipul de aruncat, reper de purtare:
+  [`docs/prototip-explorare.html`](docs/prototip-explorare.html). Regulile și cifrele lui, și hotărârile, sunt și în `docs/GDD.md`.
 - Istoria lucrului: [`DEVLOG.md`](DEVLOG.md).
 - Jocul vechi (tower defense pe hexagoane) e la commit-ul `ec73b9e`. Andrei poate pune eticheta:
   `git tag hex-td-v0.0.1 ec73b9e && git push origin hex-td-v0.0.1`.
@@ -27,13 +32,13 @@ jocul stă pe loc și jucătorul alege una din trei oferte (un modul nou sau o t
 ## Comenzi
 ```bash
 npm run dev        # Vite, http://localhost:5180
-npm run check      # typecheck + teste + bundle — ASTA e poarta înainte de commit
+npm run check      # typecheck + teste + bundle + single — ASTA e poarta înainte de commit (~30 s)
 npm test           # Vitest
 npm run bundle     # vite build + scripts/build-sw.mjs (scrie dist/sw.js); `build` = tsc + bundle
 npm run build
 npm run smoke      # proba în browser (Playwright instalat pe mașină); nu face parte din `check`
-npm run single     # dist-single/world-guard.html: tot jocul într-un singur fișier (pentru încercat pe telefon)
-npm run balance    # tabelul jucătorilor automați (120 de partide, ~15 s); `-- --raze` adaugă razele de apărare 80 și 160 (~40 s); doar afișează
+npm run single     # dist-single/world-guard.html: tot jocul într-un singur fișier (pentru încercat pe telefon); face parte din `check`, ca să pice când construirea lui pică
+npm run balance    # tabelul jucătorilor automați (120 de partide, ~15 s) și rândul zborului; `-- --raze` adaugă razele de apărare 80 și 160 (~40 s); doar afișează
 npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se schimbă desenul; PNG-urile se comit)
 ```
 
@@ -43,14 +48,23 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   `hero.ts` (mers, cu Motorul; coliziuni, reapariție, strâns, cu Magnetul; viața maximă, cu Blindajul; refacerea vieții, cu Reparatorul; Scutul care oprește o lovitură, `hurtHero`), `pads.ts` (cercurile de investit: plată, nivele, producție, reparat),
   `combat.ts` (armele navei: Unda, Laserul, Rachetele cu explozia lor; tragerea turelelor, grăbită de Releu; razele și rachetele în zbor; `nearestFoeWithin` e regula de țintire, folosită și de desen), `foes.ts` (apariții, mers, atac, despărțire),
   `mods.ts` (nava cu module: `tierOf`, `slotsAt`, `xpNeed`, `heroReady`, `heroPadView` pentru cele trei stări ale cercului navei, `makeOffer` și `choose` pentru oferte, `offerFits` care potrivește o ofertă cu nava, folosit și la citirea salvării),
+  `boost.ts` (întăririle din atelier la apărare: `hullHp`, `armsFactor`, `reachFactor`, `coreMaxHp`; le citește doar din `s.ups`, pus la `createGame`),
   `rng.ts` (aleatorul cu fluxuri numite), `result.ts` (verificări cu motiv), `testkit.ts` (ajutoare de test),
   plus testele de lângă fiecare (`*.test.ts`, între ele `discipline.test.ts` și `run.test.ts`, care măsoară partida întreagă).
-- `src/data/` — cifrele (`balance.ts`; `modules.ts`: cele nouă module, felurile, treptele și cifrele lor) și așezarea lumii (`layout.ts`: hartă, nucleu, grupuri de resurse, cercuri,
-  vederea de referință, pragul de viață scăzută). **Un număr de gameplay scris în afara lui `src/data/` e o greșeală.**
+- `src/flight/` — **regulile zborului „Explorează galaxia”, deterministe, fără DOM**, separate de apărare (din `src/sim/` ia doar `rng.ts` și `DT`, `EPS`, `NEVER` din `state.ts`).
+  `state.ts` (starea unui zbor: date simple, ținte prin `id`; `createFlight(seed, sector, ups)`), `step.ts` (un pas de 1/60 s; după ce zborul s-a încheiat,
+  `down` sau `explored`, nu mai schimbă nimic), `ship.ts` (condusul, loviturile, Scutul, strânsul, Magnetul), `arsenal.ts` (Tunul, Laserul, Rachetele),
+  `foes.ts` (cele cinci feluri de dușmani și asteroizii: apariții, mers, foc, pradă), `pickups.ts` (ce lasă transportul și cum se culege), `testkit.ts`,
+  plus testele de lângă fiecare.
+- `src/data/` — cifrele (`balance.ts`; `modules.ts`: cele nouă module, felurile, treptele și cifrele lor; `flight.ts`: tot ce ține de zbor, mărimea câmpului,
+  modulele din zbor, dușmanii, sectoarele (`sectorScale`); `workshop.ts`: cele cinci întăriri, plafoanele și prețurile (`upPrice`)) și așezarea lumii
+  (`layout.ts`: hartă, nucleu, grupuri de resurse, cercuri, vederea de referință, pragul de viață scăzută).
+  **Un număr de gameplay scris în afara lui `src/data/` e o greșeală.**
 - `src/app/` — lipiciul fără desen și fără reguli: `loop.ts` (acumulatorul: pași fixi din timpul cadrului, cel mult 5 pe cadru),
-  `flags.ts` (`?seed=` și `?debug=1` din adresă), `storage.ts` (recordul în `localStorage`, cheia `wg.v1.record`, și partida salvată:
-  `saveGame`, `loadGame`, `clearGame`, cheia `wg.v1.save`; orice eroare = fără record și fără reluare), `save.ts` (salvarea ca text,
-  cu versiune, verificată la citire; `SAVE_VERSION` = 2, iar oferta deschisă, de cel mult `OFFERS` elemente, e verificată cu `offerFits`; nivelul navei, experiența și numărul de module față de locuri sunt verificate și ele), `session.ts` (fazele `ready | playing | paused | over`, `choose(i)` pentru alegerea unei oferte, când se salvează și când se șterge partida,
+  `flags.ts` (`?seed=`, `?debug=1` și `?zbor=N` (doar cu `?debug=1`) din adresă), `storage.ts` (recordul în `localStorage`, cheia `wg.v1.record`, partida salvată:
+  `saveGame`, `loadGame`, `clearGame`, cheia `wg.v1.save`, și profilul: `loadProfile`, `saveProfile`, cheia `wg.v1.profile`; orice eroare = fără record,
+  fără reluare, profil gol), `save.ts` (salvarea ca text,
+  cu versiune, verificată la citire; `SAVE_VERSION` = 3, iar una de versiunea 2 se primește ca „fără întăriri”; oferta deschisă, de cel mult `OFFERS` elemente, e verificată cu `offerFits`; nivelul navei, experiența, numărul de module față de locuri și treptele întăririlor sunt verificate și ele), `profile.ts` (profilul: rezerva de cristale și metal, sectorul cel mai departe explorat, treptele atelierului; `canBuy`, `buy`, `bank`, `markExplored`, `packProfile` și `unpackProfile` verificat la citire; fiecare regulă întoarce un profil nou), `flightSession.ts` (sesiunea unui zbor, fără DOM și fără stocare: fazele `ready | playing | paused | over`, `start`, `pause`, `unpause`, `advance`, `quit`; trece în rezervă prin `deps.bank` doar diferența de la ultima trecere, deci exact o dată), `session.ts` (fazele `ready | playing | paused | over`, `choose(i)` pentru alegerea unei oferte, când se salvează și când se șterge partida,
   întreținerea testului de viteză, unde nava pornește cu `STRESS_SHIP` din `src/data/balance.ts`: nivelul 3, Unda, Laserul și Rachetele la treapta 3), `wake.ts` (ecranul aprins cât se joacă), `sw.ts` (înregistrează `./sw.js`; un refuz e înghițit).
 - `public/` — `manifest.webmanifest` (instalarea; `theme_color` e `--edge`) și `icons/` (`icon.svg`, sursa, și PNG-urile 192, 512 și
   `maskable` 512, făcute din el de `scripts/make-icons.cjs`). `src/env.d.ts` declară `__WG_SW__` (pus de `vite.config.ts` la `true`,
@@ -58,6 +72,10 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
 - `src/bots/` — plasa pentru dificultate: șase jucători automați (patru cu limite: Nimic, Amestec, Doar navă, Fără navă; doi doar tipăriți: Fără economie, Fără turele) care joacă partide întregi pe simulare. **Nu intră în jocul livrat** (`main.ts` nu-l importă) și e păzit de aceeași disciplină ca `src/sim/` (`src/sim/discipline.test.ts` îl citește și pe el): fără ceas și fără hazard global, doar citește starea.
   `policy.ts` (cele șase purtări, `POLICIES`, lista de preferințe `prefer` și `pickOffer` pentru alegerea modulului, unde purtările fără turele iau Releul ultimul, și alegerea țintei: luptă, plată, strâns, acasă; `heldPad` ține plata începută), `nav.ts` (mersul drept spre țintă, cu ocolire când nu se mai apropie, ieșirea de pe cercurile străine și ocolitul unui cerc străin construit împreună cu clădirea lui, ca un singur obstacol), `bot.ts` (`createBot`: starea în, `Input` afară), `run.ts` (`playOne`, `playStep` care alege oferta la nevoie, `measure`, `measureAll`; `SEEDS` = 1…20, `RUN_CAP` = 900 s),
   `limits.ts` (limitele din design ca date, `verdicts`, `formatTable` cu coloanele de nivel), `table.ts` (tipărește tabelul pentru `npm run balance`; construit cu `vite.balance.config.ts` în `dist-balance/`, ignorat de git) și `net.test.ts` (limitele ca teste: joacă o dată cele 120 de partide și are un test pe fiecare limită; durează cam 20 s).
+  Jucătorii joacă **mereu fără întăriri**; `LIMITS` nu se ating. `golden.test.ts` fixează trei partide întregi („Amestec”, semințele 1–3) din codul de dinaintea întăririlor:
+  fără nicio întărire, apărarea e cea de azi, pas cu pas; testul nu se schimbă. `flightYield.ts` (nava condusă de un script, care stă jos și nu poate fi lovită, dă cât aduce un zbor în
+  sectorul 1: `MEASURED`) și `flightYield.test.ts` (rulează măsurătoarea și cere ca tot atelierul să coste 25–35 de zboruri) — nu e jucător automat și nu păzește dificultatea zborului.
+  Tabelul mai are două rânduri doar tipărite: „Amestec, cu toate întăririle la plafon” și rândul zborului.
 - `src/render/` — desenarea pe Canvas 2D. Citește starea, nu o modifică. `canvas.ts` (mărimea, ordinea straturilor; singurul care numește
   aspectul și pictează cerul o dată, împărțit cu desenul zborului prin `sky()`), `camera.ts` (scara ecranului și urmărirea navei), `world.ts` (tot ce e în coordonate de lume și ar fi la fel
   în orice aspect: straturile, săritul peste ce nu se vede, cercurile, etichetele, barele, textele plutitoare),
@@ -120,8 +138,11 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   unei partide) și `make-icons.cjs` (`npm run icons`).
 - `.github/workflows/` — `ci.yml` (`npm run check` la fiecare pull request, cu `permissions: contents: read`) și `deploy.yml` (publică pe GitHub Pages la push pe `main`).
 
-## Reguli dure în `src/sim/`
-Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
+## Reguli dure în `src/sim/` și `src/flight/`
+Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă). Testul citește fișierele din `src/sim/`, `src/flight/` și `src/bots/` și refuză
+`Math.random()`, `Date.now()`, `new Date()` și `performance.now()`; același test cere ca nimic din afara lui `src/bots/` să nu importe din el. „Fără DOM”
+și „starea trece prin JSON” sunt reguli ale lui `src/flight/` la fel ca ale lui `src/sim/`, dar nu le citește vreun test de sursă: le păzesc testele zborului
+(dus-întors prin JSON, aceeași sămânță și aceleași comenzi dau aceeași stare).
 - **Fără `Math.random()`, `Date.now()`, `new Date()`, `performance.now()`.** Aleatorul vine din
   `createRng(seed, 'nume-flux')` (`rng.ts`), câte un flux numit pe sistem — altfel o tragere în plus
   într-un loc mută tot ce urmează în altul.
@@ -131,6 +152,10 @@ Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
 - **O verificare întoarce motivul, nu doar „nu”** (`Result` din `result.ts`).
 - **Cât o ofertă e deschisă (`s.offer !== null`), `step` nu schimbă nimic din stare**: simularea stă pe loc până se alege. Alegerea e comanda separată `choose` (`mods.ts`), nu direcția joystickului. Ofertele depind doar de sămânță, de nivel și de modulele navei (fluxul `oferta-<nivel>`).
 - Fără DOM și fără rețea în simulare.
+- **Fără nicio întărire, apărarea e cea de azi, pas cu pas.** Întăririle se țin în starea partidei (`s.ups`), iar regulile le citesc doar de acolo, prin `src/sim/boost.ts`;
+  `src/bots/golden.test.ts` o păzește și nu se schimbă. Ce ține de întăriri nu intră în `LIMITS` și jucătorii automați joacă fără ele.
+- **Zborul nu atinge apărarea:** un zbor nu șterge partida salvată și nu schimbă recordul; ce a strâns trece în rezervă exact o dată (`flightSession.ts`).
+- Cifrele zborului și ale atelierului stau doar în `src/data/flight.ts` și `src/data/workshop.ts`; textele, doar în `src/ui/strings.ts`.
 
 ## Cum se lucrează
 - După fiecare felie: `npm run check` verde → intrare în `DEVLOG.md` → commit. Stagează explicit
@@ -149,9 +174,7 @@ Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
   CI rulează `check` la fiecare pull request; `deploy.yml` publică pe GitHub Pages la push pe `main`;
   `npm run single` dă varianta într-un singur fișier.
 - **Tema de spațiu, în cod (18.11.2026):** planetă, nave, cristale și asteroizi în locul castelului; numele din cod, textele și fontul
-  sunt cele noi, regulile și cifrele neschimbate. `npm run check` (99 de teste) și `npm run smoke` (9 verificări) trec. Schela „aceeași
-  partidă” a fost ștearsă; cifrele ei de la sfârșit sunt în `DEVLOG.md`. Timpul de desen cu 150 de nave așezate în jurul
-  planetei (rândul `SMOKE INFO`): vezi `DEVLOG.md`. Designul temei a fost aprobat de Andrei pe 18.11.2026.
+  sunt cele noi, regulile și cifrele neschimbate. Designul temei a fost aprobat de Andrei pe 18.11.2026.
 - **Publicat:** Andrei a pornit GitHub Pages pe 17.11.2026; faza 1 e la https://andreibesliu.github.io/WorldGuard/ și a încercat-o
   pe telefonul lui (Samsung Galaxy A54): „se simte ok până aici”.
 - **Tema, încercată pe telefon:** Andrei a încercat tema de spațiu pe telefonul lui pe 18.11.2026: „pe telefon, totul arată super bine”.
@@ -159,7 +182,9 @@ Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă).
 - **Faza 2, în cod și publicată (18.11.2026, pull request-ul #14):** pauza (buton, Escape, automată la ieșirea din pagină), salvarea partidei în
   telefon și „Continuă partida”, ecranul aprins cât se joacă, instalarea pe ecranul de pornire și jocul fără internet (service worker generat la build).
   Neîncercată încă de Andrei pe telefon: pe 18.11.2026 a cerut să se meargă mai departe fără să aștepte proba; o va face când se strâng mai multe lucruri.
-- **Faza 3, în cod (18.11.2026):** plasa pentru dificultate (`src/bots/`, `npm run balance`, limitele din design ca teste în `src/bots/net.test.ts`) și reechilibrarea a două cifre, **propuneri până le vede Andrei în joc**: lovitura navei +10 pe nivel (era +6) și viața dușmanului 14 × (1 + t / 45) (era t / 80). Spre minutul 5 un dușman are 107 viață (înainte 66,5), nava de nivelul 5 lovește cu 50 (înainte 34); spre secunda 60 nava de nivelul 1 are nevoie de 4 lovituri pe dușman în loc de 3. Plasa: cinci jucători automați (la faza 3) joacă partide întregi pe 20 de semințe, iar testele pică dacă dificultatea iese din limitele designului; tabelul măsurat, ce nu vede plasa și ce face reechilibrarea cu turelele sunt în `docs/GDD.md`, la „Plasa pentru dificultate” și „Cine a hotărât ce”. `npm run check`: 232 de teste trec; `npm run smoke`: 20 de verificări.
-- **Nava cu module, în cod pe ramură (20.11.2026, în pull request-ul #15, ciornă, neîmbinat, care ține și faza 3):** experiență înainte de nivel, panou de alegere cu trei oferte (jocul stă pe loc cât alegi), nouă module (Undă, Laser, Rachete, Blindaj, Scut, Reparator, Motor, Magnet, Releu) la trei trepte, locuri 2→6, nivel maxim 9, rândul navei în banda de sus, salvarea versiunea 2, jucători automați cu alegere de modul și purtarea „Fără turele”. Designul: `docs/superpowers/specs/2026-11-20-nava-cu-module-design.md`. După valul de reparații de după recenzie: în „Test de viteză” nava pornește la nivelul 3 cu Unda, Laserul și Rachetele la treapta 3, deci testul măsoară cadrele cu cele 150 de nave dușmane și cu armele trăgând (propunere); jucătorii fără turele iau Releul doar dacă nu au altă ofertă (propunere); salvarea respinge nivelul, experiența, modulele peste locuri și oferta peste `OFFERS` stricate. `npm run check`: 364 de teste trec; `npm run smoke`: 26 de verificări; `npm run balance`, raza 120: Nimic 66 s · Amestec 306 s · Doar navă 205 s (66,9%) · Fără navă 219 s (71,6%) · Fără economie 278 s · Fără turele 246 s. **Toate cifrele etapei și câteva alegeri de interfață sunt propuneri până le vede Andrei în joc** (lista e în `docs/GDD.md`, „Cine a hotărât ce”).
-- **Nefăcut încă:** eticheta `hex-td-v0.0.1` — a lui Andrei; proba lui pe telefon pentru fazele 2 și 3 și nava cu module împreună (instalarea, jocul fără internet, pauza, reluarea, ecranul aprins, cum se simte dificultatea nouă, panoul de alegere, banda mai înaltă); cele două cifre de la „Test de viteză” (tema nouă și nava cu module, acum cu cele trei arme la treapta 3 trăgând); hotărârea lui asupra propunerilor.
-- **Urmează:** lista „Scopuri pentru v1” din design e în cod după faza 3; scopul 7 („nicio strategie care ignoră o direcție nu bate un amestec”) e păzit pentru acești jucători automați, nu acoperit în general (vezi „Ce e fragil” și „Ce nu vede plasa” în `docs/GDD.md`). Etapele următoare din spec (dușmani de mai multe feluri și elite cu obiecte de adoptat; tipuri de turele; tipuri de nave) cer fiecare designul ei, cu Andrei.
+- **Faza 3, în cod (18.11.2026):** plasa pentru dificultate (`src/bots/`, `npm run balance`, limitele din design ca teste în `src/bots/net.test.ts`) și reechilibrarea a două cifre, **propuneri până le vede Andrei în joc**: lovitura navei +10 pe nivel (era +6) și viața dușmanului 14 × (1 + t / 45) (era t / 80). Spre minutul 5 un dușman are 107 viață (înainte 66,5), nava de nivelul 5 lovește cu 50 (înainte 34); spre secunda 60 nava de nivelul 1 are nevoie de 4 lovituri pe dușman în loc de 3. Plasa: cinci jucători automați (la faza 3) joacă partide întregi pe 20 de semințe, iar testele pică dacă dificultatea iese din limitele designului; tabelul măsurat, ce nu vede plasa și ce face reechilibrarea cu turelele sunt în `docs/GDD.md`, la „Plasa pentru dificultate” și „Cine a hotărât ce”.
+- **Nava cu module, în cod pe ramură (20.11.2026, în pull request-ul #15, ciornă, neîmbinat, care ține și faza 3):** experiență înainte de nivel, panou de alegere cu trei oferte (jocul stă pe loc cât alegi), nouă module (Undă, Laser, Rachete, Blindaj, Scut, Reparator, Motor, Magnet, Releu) la trei trepte, locuri 2→6, nivel maxim 9, rândul navei în banda de sus, salvarea versiunea 2, jucători automați cu alegere de modul și purtarea „Fără turele”. Designul: `docs/superpowers/specs/2026-11-20-nava-cu-module-design.md`. După valul de reparații de după recenzie: în „Test de viteză” nava pornește la nivelul 3 cu Unda, Laserul și Rachetele la treapta 3, deci testul măsoară cadrele cu cele 150 de nave dușmane și cu armele trăgând (propunere); jucătorii fără turele iau Releul doar dacă nu au altă ofertă (propunere); salvarea respinge nivelul, experiența, modulele peste locuri și oferta peste `OFFERS` stricate. **Toate cifrele etapei și câteva alegeri de interfață sunt propuneri până le vede Andrei în joc** (lista e în `docs/GDD.md`, „Cine a hotărât ce”).
+- **„Explorează galaxia”, în cod pe ramură (21.11.2026, în același pull request #15, ciornă, neîmbinat, care ține acum și faza 3 și nava cu module):** zborul, rezerva, atelierul și întăririle la apărare, cu cartonașele de start, de pauză și de sfârșit. **Ce e publicat pe GitHub Pages e tot faza 2; nimic din etapă (nici nava cu module, nici zborul) n-a fost încercat de Andrei pe telefon.** Cele șapte hotărâri ale lui sunt în `docs/GDD.md`; tot restul (cifrele zborului și ale atelierului, prețurile, formele, textele și câteva purtări hotărâte în construcție) e propunere, grupat acolo, la „Cine a hotărât ce”. Restanțele sunt linii de bifat (`- [ ]`) în `DEVLOG.md`.
+- **Nefăcut încă:** eticheta `hex-td-v0.0.1` — a lui Andrei; proba lui pe telefon (fazele 2 și 3, nava cu module și zborul împreună: instalarea, jocul fără internet, pauza, reluarea, panoul de alegere, un zbor de trei minute cu module, greutatea sectorului 1, dacă prima întărire vine la timp, înălțimea câmpului de zbor); cifrele de la „Test de viteză”; hotărârea lui asupra propunerilor.
+- **Urmează:** lista „Scopuri pentru v1” din design e în cod după faza 3; scopul 7 („nicio strategie care ignoră o direcție nu bate un amestec”) e păzit pentru acești jucători automați, nu acoperit în general (vezi „Ce e fragil” și „Ce nu vede plasa” în `docs/GDD.md`). Etapele următoare din spec (întâi dușmani de mai multe feluri, o singură dată pentru ambele moduri; apoi elite cu obiecte de adoptat, tipuri de turele, tipuri de nave) cer fiecare designul ei, cu Andrei.
+- **Cifre măsurate** (`npm run check`, `npm run smoke`, `npm run balance`, tabelul și rândurile zborului) nu se țin aici, ca să nu rămână în urmă: ultimele sunt în `DEVLOG.md`, în intrarea documentelor la zi.

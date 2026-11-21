@@ -10,7 +10,7 @@
     "test": "vitest run",
     "bundle": "vite build && node scripts/build-sw.mjs",
     "build": "tsc --noEmit && npm run bundle",
-    "check": "npm run typecheck && npm run test && npm run bundle",
+    "check": "npm run typecheck && npm run test && npm run bundle && npm run single",
     "preview": "vite preview",
     "smoke": "npm run bundle && node scripts/smoke.cjs",
     "single": "vite build --config vite.single.config.ts && node scripts/single-file.mjs",
