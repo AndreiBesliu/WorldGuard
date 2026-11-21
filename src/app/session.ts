@@ -1,6 +1,6 @@
 // Stările aplicației (start, joc, pauză, final) și ce se salvează sau se șterge la fiecare trecere.
 // Fără DOM și fără stocare: salvarea vine prin `SessionDeps`.
-import { BALANCE } from '../data/balance'
+import { BALANCE, STRESS_SHIP } from '../data/balance'
 import { spawnFoe } from '../sim/foes'
 import { heroMaxHp } from '../sim/hero'
 import { choose as chooseOffer } from '../sim/mods'
@@ -35,6 +35,7 @@ export function createSession(deps: SessionDeps, seed: number): Session {
   let s: GameState = createGame(seed)
 
   // Testul de viteză: harta rămâne plină, planeta și nava nu cad, iar experiența nu se strânge (fără niveluri, fără panou).
+  // Nava rămâne cu încărcătura de la pornire (`STRESS_SHIP`), deci armele trag tot testul.
   function keepStressed(): void {
     while (s.foes.length < STRESS_FOES) spawnFoe(s)
     s.core.hp = BALANCE.core.hp
@@ -50,8 +51,12 @@ export function createSession(deps: SessionDeps, seed: number): Session {
     start(newSeed, isStress) {
       s = createGame(newSeed)
       stress = isStress
-      if (stress) s.spawnT = 1e9              // în test nu apar dușmani de la sine: numărul rămâne exact STRESS_FOES
-      else deps.clearGame()                   // partida nouă o înlocuiește pe cea salvată
+      if (stress) {
+        s.spawnT = 1e9                        // în test nu apar dușmani de la sine: numărul rămâne exact STRESS_FOES
+        s.hero.lvl = STRESS_SHIP.lvl          // nava pornește cu armele trăgând (STRESS_SHIP), cu viața plină pentru nivelul ei
+        s.hero.mods = STRESS_SHIP.mods.map((id) => ({ id, tier: STRESS_SHIP.tier, t: 0 }))
+        s.hero.hp = heroMaxHp(s)
+      } else deps.clearGame()                 // partida nouă o înlocuiește pe cea salvată
       phase = 'playing'
     },
     resume(saved) {

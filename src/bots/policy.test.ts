@@ -3,7 +3,7 @@ import { BALANCE } from '../data/balance'
 import { CORE } from '../data/layout'
 import { createGame, type GameState, type Pad } from '../sim/state'
 import { addFoe, padOf } from '../sim/testkit'
-import { bought, chooseGoal, GUARD, nextPad, POLICIES, type BotName, type Policy } from './policy'
+import { bought, chooseGoal, GUARD, nextPad, pickOffer, POLICIES, type BotName, type Policy } from './policy'
 
 const pol = (name: BotName): Policy => POLICIES.find((p) => p.name === name)!
 
@@ -30,6 +30,31 @@ describe('purtările', () => {
       ['fara-economie', 'Fără economie', false, ['turret', 'hero']],
       ['fara-turele', 'Fără turele', false, ['economy', 'hero']],
     ])
+  })
+})
+
+describe('Releul la purtările fără turele', () => {
+  // Releul grăbește doar turelele: o purtare care nu cumpără turele îl ia doar dacă nu are altă ofertă.
+  const offer = [{ id: 'magnet', tier: 1 }, { id: 'relay', tier: 1 }, { id: 'engine', tier: 1 }] as const
+  it('cu Releul printre alte oferte: „Doar navă” și „Fără turele” iau altceva, „Amestec” îl ia ca înainte', () => {
+    const s = createGame(1); s.offer = offer.map((o) => ({ ...o }))
+    expect(pickOffer(s, pol('amestec'))).toBe(1)
+    expect(pickOffer(s, pol('fara-economie'))).toBe(1)
+    expect(pickOffer(s, pol('doar-nava'))).toBe(2)          // Motorul, înaintea Magnetului pe listă
+    expect(pickOffer(s, pol('fara-turele'))).toBe(2)
+    s.offer = [{ id: 'wave', tier: 2 }, { id: 'relay', tier: 2 }, { id: 'magnet', tier: 1 }]
+    expect(pickOffer(s, pol('amestec'))).toBe(1)            // Releul e înaintea Undei pe listă
+    expect(pickOffer(s, pol('doar-nava'))).toBe(0)
+    expect(pickOffer(s, pol('fara-turele'))).toBe(0)
+    s.offer = [{ id: 'relay', tier: 2 }, { id: 'wave', tier: 2 }, { id: 'armor', tier: 1 }]
+    for (const p of POLICIES) expect(pickOffer(s, p)).toBe(2)   // Blindajul e mai sus decât Releul la toți
+  })
+  it('cu doar Releul de ales, alegerea nu se blochează', () => {
+    const s = createGame(1); s.offer = [{ id: 'relay', tier: 1 }]
+    for (const p of POLICIES) expect(pickOffer(s, p)).toBe(0)
+    s.offer = [{ id: 'magnet', tier: 1 }, { id: 'relay', tier: 1 }]
+    expect(pickOffer(s, pol('fara-turele'))).toBe(0)
+    expect(pickOffer(s, pol('amestec'))).toBe(1)
   })
 })
 

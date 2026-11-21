@@ -1,7 +1,7 @@
 // Toate cifrele de echilibru ale jocului. Un număr de gameplay scris în altă parte e o greșeală.
 // Unități: secunde, pixeli de lume (lumea e 1100 × 1500), puncte de viață. Vitezele sunt în px/s.
 import type { BuildKind, Res } from '../sim/state'
-import { MOD_IDS } from './modules'
+import { MOD_IDS, type ModId } from './modules'
 
 export const BALANCE = {
   core: { hp: 400 },                         // puncte de viață ale nucleului
@@ -70,6 +70,12 @@ export const BALANCE = {
     beamLife: 0.12, blastLife: 0.3, blockLife: 0.25, // cât trăiesc raza laserului, explozia rachetei și semnul scutului, secunde
   },
 } as const
+
+// „Test de viteză” (propunere): nava cu care se măsoară cadrele. Nu e cifră de joc: partida obișnuită pornește ca în `createGame`.
+// Nivelul 3 dă trei locuri, deci încap cele trei arme, toate la treapta cea mai înaltă, ca să tragă toate.
+export const STRESS_SHIP: { readonly lvl: number; readonly tier: number; readonly mods: readonly ModId[] } = {
+  lvl: 3, tier: 3, mods: ['wave', 'laser', 'missile'],
+}
 
 // Costul de a AJUNGE la nivelul dat (nu cel de a-l păstra).
 const COLLECTOR_COST = [{ crystal: 25, metal: 0 }, { crystal: 40, metal: 15 }, { crystal: 60, metal: 35 }] as const

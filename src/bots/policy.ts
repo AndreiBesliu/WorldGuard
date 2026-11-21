@@ -25,10 +25,15 @@ export const POLICIES: readonly Policy[] = [
   { name: 'fara-turele', label: 'Fără turele', still: false, buy: ['economy', 'hero'], prefer: PREFER },   // doar tipărit, fără limită
 ]
 
-/** Indexul ofertei alese: prima ofertă cu modulul cel mai sus pe `p.prefer`; 0 dacă niciuna nu e pe listă. Doar citește. */
+/**
+ * Indexul ofertei alese: prima ofertă cu modulul cel mai sus pe `p.prefer`; 0 dacă niciuna nu e pe listă. Doar citește.
+ * Releul grăbește doar turelele: o purtare care nu cumpără turele îl ia ultimul, deci doar dacă nu are altă ofertă (propunere).
+ */
 export function pickOffer(s: GameState, p: Policy): number {
   const offer = s.offer ?? []
-  for (const id of p.prefer) {
+  const order = p.buy.includes('turret') || !p.prefer.includes('relay')
+    ? p.prefer : [...p.prefer.filter((id) => id !== 'relay'), 'relay' as const]
+  for (const id of order) {
     const i = offer.findIndex((o) => o.id === id)
     if (i >= 0) return i
   }

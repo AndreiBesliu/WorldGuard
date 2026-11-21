@@ -28,7 +28,7 @@ Referința pentru cum se simte jocul (comportament) este [prototipul de aruncat]
 Hotărârile 1–8 sunt în cuvintele lor de dinainte de tema de spațiu: „eroul” de acolo e, pe ecran, „nava”. Următoarele cinci sunt din 2026-11-17, din [specul temei](superpowers/specs/2026-11-17-tema-spatiu-design.md), secțiunea „Cine a hotărât ce”:
 
 9. Tema jocului devine planetă, spațiu, nave și resurse cosmice.
-10. Se schimbă doar estetica. Fără inerție, fără zbor real: nava se mișcă exact ca eroul de dinainte.
+10. Se schimbă doar estetica. Fără inerție, fără zbor real: nava se mișcă exact ca eroul de dinainte. (Singura excepție, din nava cu module, acceptată de Andrei odată cu documentul etapei pe 2026-11-20: Motorul. Fără Motor, nava se mișcă neschimbat; cu el, mai repede, la alegerea jucătorului; vezi [specul etapei](superpowers/specs/2026-11-20-nava-cu-module-design.md).)
 11. Aspectul jocului este varianta 1, „Orbită”, din pagina cu machete (`docs/machete-tema-spatiu.html`).
 12. Varianta 3, „Colonie”, e păstrată pentru misiuni speciale.
 13. Se schimbă și numele din cod, nu doar ce se vede (abordarea 2 din spec).
@@ -40,19 +40,25 @@ Hotărârile 1–8 sunt în cuvintele lor de dinainte de tema de spațiu: „ero
 16. La fiecare nivel alegi un cartonaș din trei (a ales această variantă dintre trei).
 17. Cât alegi, jocul stă pe pauză, panoul apare pe mijlocul ecranului, iar fundalul e încețoșat. Asta e excepția de la hotărârea 2.
 18. În joc, nivelul, experiența și locurile de module stau în banda de sus („totul în banda de sus”).
-19. Nava are arsenal de mai multe feluri și poartă tot mai multe componente: locurile cresc de la 2 la 6.
+19. Nava are arsenal de mai multe feluri și poate purta tot mai multe componente pe parcurs.
 20. Direcția etapelor următoare: dușmani de mai multe feluri și elite care poartă obiecte de adoptat; turele de mai multe feluri; poate tipuri de nave care se deblochează. Fiecare primește designul ei, cu el.
+
+**Nava cu module: propus de Claude și acceptat de Andrei.** Nu sunt hotărârile lui, dar le-a văzut și le-a acceptat; lista întreagă, cu vorbele ei, e în [specul etapei](superpowers/specs/2026-11-20-nava-cu-module-design.md), secțiunea „Cine a hotărât ce”.
+
+- Acceptate când i-au fost arătate („e ok”, 19.11.2026): experiența vine din orice navă dușmană doborâtă; când bara e plină, cercul navei se aprinde și plătești acolo; într-o partidă bună ajungi la 6–8 niveluri; nava pornește cu 2 locuri (unul ocupat de Undă) și primește câte unul la fiecare două niveluri, până la 6; la nivel pui un modul nou sau întărești unul, până la treapta 3; cele nouă module, între ele Motorul, iar armele trag singure, fiecare în ritmul ei; nivelul singur dă doar puțină viață, puterea vine din module; ordinea etapelor (nava, apoi dușmanii și elitele, apoi turelele, apoi tipurile de nave).
+- Acceptate odată cu documentul (20.11.2026), ca listă de alegeri de verificat: ofertele ca rânduri late în panou; regulile ofertelor, nivelul maxim 9 și experiența în plus care se păstrează; cifrele de pornire ale modulelor și ale experienței (propuneri, de reglat cu plasa); cum se împacă Motorul cu hotărârea 10; ce cifre se pot regla și ce nu, iar țintele de ritm ale nivelurilor sunt intenție, nu limite; încețoșarea în pagină, nu pe canvas; rândul „Fără turele”, doar tipărit, în tabelul jucătorilor automați.
 
 **Propuneri făcute în timpul construcției etapei, care așteaptă să le vadă Andrei în joc.** Nu sunt hotărâri; până le vede, pot fi schimbate.
 
-- Cifrele: pragurile de experiență (6, 9, 11, 13, 20, 24, 28, 34; în design erau 6, 10, 13, 16, …), experiența pe dușman (1 și 4), prețul nivelului navei (cristale 15 + 5 × (n − 2), metal 5 × (n − 2); în design 25 + 15 × (n − 2) și 10 + 15 × (n − 2)), cifrele celor nouă module (cele din design, cu două schimbări: Releul 1,3 / 1,55 / 1,8 în loc de 1,2 / 1,35 / 1,5, iar Magnetul a rămas la 40 / 60 / 80) și viața dușmanului 14 × (1 + t / 33) (înainte t / 45).
+- Cifrele: pragurile de experiență (6, 9, 11, 13, 20, 24, 28, 34; în design erau 6, 10, 13, 16, …), experiența pe dușman (1 și 4), prețul nivelului navei (cristale 15 + 5 × (n − 2), metal 5 × (n − 2); în design 25 + 15 × (n − 2) și 10 + 15 × (n − 2)), cifrele celor nouă module (cele din design, cu o singură schimbare: Releul 1,3 / 1,55 / 1,8 în loc de 1,2 / 1,35 / 1,5; Magnetul e cel din design, 40 / 60 / 80) și viața dușmanului 14 × (1 + t / 33) (înainte t / 45).
 - Cele 400 ms de la deschiderea panoului în care nu se primește nicio alegere (`CHOICE_GRACE_MS`), ca un deget pus pe ecran chiar atunci să nu aleagă fără să vrea.
 - Focusul de la deschiderea panoului stă pe cartonaș, nu pe prima ofertă.
 - Inelul de experiență din bandă: alb cât se umple, galben la „gata”. Macheta aleasă de Andrei îl avea galben tot timpul.
 - Înălțimea benzii: 122 px la 360 px lățime; în „Test de viteză” e mai înaltă (138 px) cu rândul fps.
 - Formele modulelor pe navă și culoarea exploziei.
 - Ceasul Scutului curge și cât nava e doborâtă (celelalte arme nu trag atunci).
-- Regulile noi ale jucătorilor automați: plătesc nivelul navei când e gata și au bani, înaintea luptei, și își termină plata începută.
+- Regulile noi ale jucătorilor automați: plătesc nivelul navei când e gata și au bani, înaintea luptei, și își termină plata începută. Din valul de reparații de după recenzie (21.11.2026): purtările care nu cumpără turele („Doar navă”, „Fără turele”) iau Releul doar dacă nu au altă ofertă, fiindcă Releul grăbește doar turelele.
+- Nava din „Test de viteză” (din valul de reparații de după recenzie, 21.11.2026): pornește la nivelul 3, care îi dă trei locuri, cu Unda, Laserul și Rachetele la treapta 3 și viața plină pentru nivelul ei, ca cifrele de cadre de pe telefon să fie cu toate armele trăgând. Experiența rămâne 0, nava nu urcă niveluri și panoul nu se deschide, numărul de nave dușmane rămâne 150. Partida obișnuită nu se schimbă.
 
 **Propus de Claude și acceptat de Andrei când i-a fost arătat întregul.**
 
@@ -184,7 +190,7 @@ Jocul a eșuat, chiar dacă merge tehnic, dacă:
 - Cât stai pe cercul unei turele, se vede raza ei de tragere.
 - **Cercul navei are trei stări.** Cât nava n-a strâns experiența cerută, nu primește plată și scrie sub nume „experiență 14/40”. Când pragul e atins, cercul se aprinde și își arată prețul; plata merge ca la celelalte cercuri și o plată urcă un singur nivel (dacă experiența ajunge deja pentru următorul, cercul rămâne aprins). La nivelul 9 scrie „Navă · nivel maxim”.
 
-**Experiența și nivelul navei.** Orice navă dușmană doborâtă dă experiență navei, oricine a doborât-o (nava, o turelă sau amândouă) și chiar cât nava e doborâtă: 1 pentru una obișnuită, 4 pentru una grea. Fiecare nivel are pragul lui (vezi „Cifrele jocului”); experiența strânsă peste prag trece la nivelul următor. Nivelul maxim e 9, iar de acolo experiența nu mai contează. Nivelul dă doar viață (+10 și viața navei se umple); puterea vine din module. În „Test de viteză” nu există experiență și niveluri.
+**Experiența și nivelul navei.** Orice navă dușmană doborâtă dă experiență navei, oricine a doborât-o (nava, o turelă sau amândouă) și chiar cât nava e doborâtă: 1 pentru una obișnuită, 4 pentru una grea. Fiecare nivel are pragul lui (vezi „Cifrele jocului”); experiența strânsă peste prag trece la nivelul următor. Nivelul maxim e 9, iar de acolo experiența nu mai contează. Nivelul dă doar viață (+10 și viața navei se umple); puterea vine din module. În „Test de viteză” experiența nu se strânge și nava nu urcă niveluri: pornește la nivelul 3, cu Unda, Laserul și Rachetele la treapta 3, și rămâne așa (propunere).
 
 **Modulele.** Nava are locuri pentru module: 2 la nivelurile 1–2, 3 la 3–4, 4 la 5–6, 5 la 7–8 și 6 la nivelul 9. Pornește cu Unda, arma de azi, la treapta 1, într-unul din locuri. Un modul ocupă un loc oricare i-ar fi treapta (1–3). Sunt nouă module, de trei feluri: arme (Undă, Laser, Rachete), corp (Blindaj, Scut, Reparator) și utilitare (Motor, Magnet, Releu); cifrele sunt în „Cifrele jocului”. Armele trag singure, fiecare cu ceasul ei. Fără Motor, nava se mișcă exact ca înainte. Un modul pus rămâne pus; nu se schimbă și nu se aruncă.
 
@@ -200,7 +206,7 @@ Jocul a eșuat, chiar dacă merge tehnic, dacă:
 | Economie | mina, lângă asteroizii din nord | produce metal singură |
 | Navă | nivelul navei (cere experiență) | mai multă viață, un loc nou de module din când în când și un modul de ales |
 
-**Lupta.** Nava lovește singură, cu Unda, la intervale fixe, toți dușmanii aflați în raza ei într-un arc de aproximativ 143° la treapta 1 (arcul se lărgește cu treapta) în jurul celui mai apropiat și îi împinge înapoi; Laserul și Rachetele, când le are, trag singure în cel mai apropiat dușman. Își reface viața dacă nu e lovită o vreme. Doborâtă, reapare lângă planetă după câteva secunde, timp în care nu strânge, nu plătește și nu trage (ceasul Scutului curge totuși; propunere).
+**Lupta.** Nava lovește singură, cu Unda, la intervale fixe, toți dușmanii aflați în raza ei într-un arc de aproximativ 143° la treapta 1 (arcul se lărgește cu treapta) în jurul celui mai apropiat și îi împinge înapoi; Laserul și Rachetele, când le are, trag singure în cel mai apropiat dușman. Își reface viața dacă nu e lovită o vreme. Doborâtă, reapare lângă planetă după câteva secunde, timp în care nu strânge și nu plătește. Nici Unda, nici Laserul, nici Rachetele nu trag atunci, iar ceasurile lor stau pe loc (repornesc de unde erau când nava reapare); o rachetă plecată înainte își termină zborul și explodează. Releul nu grăbește turelele cât nava e doborâtă. Ceasul Scutului curge totuși (propunere).
 
 **Dușmanii.** Sunt nave. Apar într-un punct la întâmplare de pe marginea hărții și merg drept spre planetă. Ajunse la marginea ei, o lovesc. Dacă nava ta e la mai puțin de 90 de unități, o urmăresc și o lovesc pe ea. Nu atacă turelele sau clădirile. Există două feluri: nava invadatoare, obișnuită, și nava grea, care apare mai rar, mai târziu, cu mai multă viață.
 
@@ -210,7 +216,7 @@ Jocul a eșuat, chiar dacă merge tehnic, dacă:
 
 ## Cifrele jocului
 
-Sunt cifrele de după reechilibrarea din 18.11.2026 (două s-au schimbat față de prototip: lovitura navei pe nivel și viața dușmanului, ambele propuneri până le vede Andrei); cele cu care s-a încheiat prototipul sunt în `DEVLOG.md`. Timpul t e în secunde de la începutul partidei.
+Sunt cifrele de după nava cu module (20.11.2026): pragurile și prețul nivelului navei, experiența, modulele și viața dușmanului 14 × (1 + t / 33) sunt propuneri până le vede Andrei (vezi „Propuneri” de sus). Reechilibrarea din 18.11.2026 și cifrele cu care s-a încheiat prototipul sunt în `DEVLOG.md`. Timpul t e în secunde de la începutul partidei.
 
 | Lucru | Valoare |
 | --- | --- |
@@ -314,7 +320,7 @@ Bucla rulează simularea cu acumulator: cel mult 5 pași pe cadru, restul se aru
 
 ## Plasa pentru dificultate
 
-Șase jucători automați (cinci din faza 3, plus „Fără turele”, doar tipărit) rulează simularea fără browser, pe 20 de semințe fixe fiecare. O comandă tipărește tabelul, iar limitele rulează ca teste și pică build-ul când sunt depășite.
+Sunt șase jucători automați: patru au limită (Nimic, Amestec, Doar navă, Fără navă), iar doi sunt doar tipăriți (Fără economie, din faza 3, și Fără turele, din nava cu module). Toți rulează simularea fără browser, pe 20 de semințe fixe fiecare. O comandă tipărește tabelul, iar limitele rulează ca teste și pică build-ul când sunt depășite.
 
 | Jucător | Ce face | Limită, pe mediana celor 20 de partide |
 | --- | --- | --- |
@@ -327,24 +333,32 @@ Bucla rulează simularea cu acumulator: cel mult 5 pași pe cadru, restul se aru
 
 Tabelul mai are trei coloane de informație, fără limită: nivelul navei la sfârșit (mediana) și secunda la care nava atinge nivelurile 2 și 5 (mediana; „—” când mediana nu le atinge). Țintele de ritm ale nivelurilor din spec (nivelul 2 pe la secunda 40, nivelul 5 pe la minutul 2, nivelul 8 pe la minutul 4) sunt intenție, nu limite: niciun test nu pică din ele.
 
-**Cum sunt făcuți jucătorii automați** (`src/bots/`). Au aceeași purtare și diferă doar prin lista de cumpărături: strâng resursa care le lipsește, plătesc la cercul următor din listă și, când o navă dușmană e la mai puțin de 120 de centrul planetei, lasă totul și luptă cu ea. Niciunul nu repară planeta. Două reguli noi, din etapa cu module (propuneri; au mutat tabelul, deci cifrele de dinainte nu se mai compară cu cele de azi): când nava e gata de nivel și stocul acoperă ce a rămas de plătit la cercul ei, purtările care cumpără nava plătesc acolo înaintea luptei și a restului listei, și un jucător își termină plata începută (cât stă pe un cerc pe care plata curge și mai are cu ce plăti, acel cerc rămâne ținta). Alegerea modulului o face rularea, nu jucătorul automat: la o ofertă deschisă, prima ofertă cu modulul cel mai sus pe lista de preferințe, aceeași pentru toate purtările: Laser, Blindaj, Releu, Undă, Rachete, Scut, Reparator, Motor, Magnet. Un jucător nu stă pe un cerc care nu e ținta lui, ca să nu plătească din greșeală, iar un cerc străin construit îl ocolește împreună cu clădirea lui, ca pe un singur obstacol (altfel nava rămânea în colțul dintre ele). Tabelul depinde de aceste alegeri: dacă purtarea se schimbă, se schimbă și cifrele.
+**Cum sunt făcuți jucătorii automați** (`src/bots/`). Au aceeași purtare și diferă doar prin lista de cumpărături: strâng resursa care le lipsește, plătesc la cercul următor din listă și, când o navă dușmană e la mai puțin de 120 de centrul planetei, lasă totul și luptă cu ea. Niciunul nu repară planeta. Două reguli noi, din etapa cu module (propuneri; au mutat tabelul, deci cifrele de dinainte nu se mai compară cu cele de azi): când nava e gata de nivel și stocul acoperă ce a rămas de plătit la cercul ei, purtările care cumpără nava plătesc acolo înaintea luptei și a restului listei, și un jucător își termină plata începută (cât stă pe un cerc pe care plata curge și mai are cu ce plăti, acel cerc rămâne ținta). Alegerea modulului o face rularea, nu jucătorul automat: la o ofertă deschisă, prima ofertă cu modulul cel mai sus pe lista de preferințe, aceeași pentru toate purtările: Laser, Blindaj, Releu, Undă, Rachete, Scut, Reparator, Motor, Magnet. Purtările care nu cumpără turele („Doar navă”, „Fără turele”) iau Releul ultimul, deci doar dacă nu au altă ofertă: Releul grăbește doar turelele, iar la ele ar fi un loc irosit (propunere, din valul de reparații de după recenzie). Un jucător nu stă pe un cerc care nu e ținta lui, ca să nu plătească din greșeală, iar un cerc străin construit îl ocolește împreună cu clădirea lui, ca pe un singur obstacol (altfel nava rămânea în colțul dintre ele). Tabelul depinde de aceste alegeri: dacă purtarea se schimbă, se schimbă și cifrele.
 
-**Comanda.** `npm run balance` rulează cele 120 de partide (6 jucători × 20 de semințe, cam 15 s) și tipărește tabelul; cu `-- --raze` tipărește și razele de apărare 80 și 160 (cam 40 s). Comanda doar afișează. Limitele rulează ca teste în `src/bots/net.test.ts` și pică build-ul când sunt depășite. Zgomotul tabelului: o schimbare mică de cifre (viața dușmanului cu t / 44 … t / 46 în loc de t / 45) mută „Amestec” între 326 și 344 s și procentele cu până la 3 puncte; un ultim bit diferit în calcule, ca pe altă mașină, îl mută cu cam ±2 s și procentele cu sub un punct.
+**Comanda.** `npm run balance` rulează cele 120 de partide (6 jucători × 20 de semințe, cam 15 s) și tipărește tabelul; cu `-- --raze` tipărește și razele de apărare 80 și 160 (cam 40 s). Comanda doar afișează. Limitele rulează ca teste în `src/bots/net.test.ts` și pică build-ul când sunt depășite. Zgomotul tabelului, măsurat la faza 3 (istorie, nerefăcut cu nava cu module): o schimbare mică de cifre (viața dușmanului cu t / 44 … t / 46 în loc de t / 45, cum era atunci) muta „Amestec” între 326 și 344 s și procentele cu până la 3 puncte; un ultim bit diferit în calcule, ca pe altă mașină, îl muta cu cam ±2 s și procentele cu sub un punct.
 
-**Măsurat cu nava cu module** (`npm run balance`, mediana pe 20 de semințe, raza de apărare 120, 20.11.2026; cifrele rotunjite, procentele din „Amestec”):
+**Măsurat cu nava cu module, după regula Releului** (`npm run balance`, mediana pe 20 de semințe, raza de apărare 120, rulat în valul de reparații de după recenzie, 21.11.2026; cifrele rotunjite, procentele din „Amestec”):
 
 | Jucător | Mediana | Procent din „Amestec” | Verdict | Nivel la sfârșit | Nivel 2 | Nivel 5 |
 | --- | --- | --- | --- | --- | --- | --- |
 | Nimic | 66 s | | în limită | 1 | — | — |
 | Amestec | 306 s | | în limită | 7 | 48 s | 145 s |
-| Doar navă | 199 s | 65,0% | în limită | 2 | 47 s | — |
+| Doar navă | 205 s | 66,9% | în limită | 2,5 | 47 s | — |
 | Fără navă | 219 s | 71,6% | în limită | 1 | — | — |
 | Fără economie | 278 s | | fără limită | 4 | 45 s | — |
-| Fără turele | 235 s | | fără limită | 7 | 48 s | 140 s |
+| Fără turele | 246 s | 80,3% | fără limită | 7 | 48 s | 140 s |
 
-Cifrele astea sunt rezultatul reglajului din etapă (prețul și pragurile navei, viața dușmanului, Releul; vezi „Propuneri” de sus și `DEVLOG.md`), iar rularea de azi a dat exact tabelul din `DEVLOG.md`. „Amestec” ajunge la nivelul 7 (ținta din spec era 6–8), la nivelul 2 la 48 s și la nivelul 5 pe la minutul 2,4. „Doar navă” rămâne la nivelul 2 (cauza nu s-a cercetat mai departe). „Fără turele” ține 235 s, sub „Amestec”: turelele încă merită. Razele 80 și 160, informație: la 80, „Amestec” 290 s, „Doar navă” 65,0%, „Fără navă” 74,2%; la 160, „Amestec” 300 s, „Doar navă” 64,2%, „Fără navă” 73,5% (măsurate la reglaj, vezi `DEVLOG.md`).
+Cifrele astea sunt rezultatul reglajului din etapă (prețul și pragurile navei, viața dușmanului, Releul; vezi „Propuneri” de sus și `DEVLOG.md`) și al regulii Releului la jucătorii fără turele. Înainte de regula Releului, tabelul din încheierea etapei din `DEVLOG.md` avea „Doar navă” 199 s (65,0%) și „Fără turele” 235 s; celelalte rânduri nu s-au mișcat. „Amestec” ajunge la nivelul 7 (ținta din spec era 6–8), la nivelul 2 la 48 s și la nivelul 5 pe la minutul 2,4. „Doar navă” rămâne la nivelul 2 sau 3 (cauza e mai jos, la „Ce nu vede plasa”; „2,5” e mediana a zece partide la nivelul 2 și zece la 3). „Fără turele” ține 246 s, 80,3% din „Amestec”: cu lista de preferințe din cod, turelele valorează cam 20% din cât ține „Amestec”. Razele 80 și 160, informație, rulate tot acum (`npm run balance -- --raze`): la 80, „Amestec” 290 s, „Doar navă” 67,1%, „Fără navă” 74,2%; la 160, „Amestec” 300 s, „Doar navă” 67,6%, „Fără navă” 73,5%.
 
 **Ce nu vede plasa, la nava cu module.** Modulele de corp (Blindaj, Scut, Reparator) nu valorează aproape nimic pentru jucătorii automați, fiindcă nava lor e lovită rar și nu cade niciodată: cu „Amestec”, trei liste de preferințe dau armele întâi 303,7 s, utilitarele întâi 268,6 s și corpul întâi 250,5 s, deci armele bat corpul cu 21%. Cu cifre mult mai tari pentru corp, „corpul întâi” a urcat doar de la 250,5 la 252,8 s (măsurat la reglaj, vezi `DEVLOG.md`). Plasa nu poate spune deci dacă modulele de corp merită într-o partidă de om, unde nava ar putea fi lovită mai des. Releul se citește slab la scara jocului (un punct încercuit), iar la treapta 3 unele forme de pe navă se ating (țeava Laserului iese din inelul Scutului, potcoava Magnetului atinge cutia Rachetei); propuneri de aspect, de arătat lui Andrei.
+
+Tot aici, măsurate în valul de reparații de după recenzie (21.11.2026), cu un script de aruncat peste jucătorii automați din cod, după regula Releului (comanda și ieșirea sunt în raportul valului, nu în repo):
+
+- **De ce „Doar navă” rămâne la nivelul 2 sau 3.** Nivelul 3 cere metal, iar jucătorul e ținut în luptă lângă planetă: pe cele 20 de semințe termină cu 0–5 metal și cu 45–92 de experiență strânsă, deci cu nivelul gata, dar neplătit. Limita „Doar navă ≤ 75%” măsoară deci o navă cu Unda și încă unul sau două module, nu o navă plină.
+- **Plafonul navei singure.** „Doar navă” cu resurse nelimitate (cristalele și metalul puse la 999 la fiecare pas): 242,4 s (79,2% din „Amestec”, nivelul 7,5 la mediană) cu lista de preferințe din cod; 262,9 s (85,9%, nivelul 8) cu armele întâi (Laser, Undă, Rachete, Blindaj, Scut, Reparator, Motor, Magnet, Releu). Nava singură nu bate amestecul nici așa.
+- **Cât valorează turelele depinde de lista de preferințe.** Cu armele întâi, „Fără turele” ține 264,6 s (86,5% din „Amestec”), deci turelele ar valora cam 13%, nu cam 20% ca în tabelul de mai sus.
+
+La recenzia întregii ramuri, înainte de regula Releului, același fel de script dăduse: experiența de la sfârșit a lui „Doar navă” 43–82 (metalul tot 0–5), plafonul navei 236 s (77,2%, nivelul 7) cu lista din cod și 263 s (85,9%, nivelul 8) cu armele întâi, iar „Fără turele” cu armele întâi 264,6 s; cifrele cu armele întâi nu se mișcă la regula Releului, fiindcă acolo Releul e oricum ultimul.
 
 **Măsurat după reechilibrarea din faza 3, înainte de nava cu module** (mediana pe 20 de semințe, raza de apărare 120, 18.11.2026; păstrat ca istorie, cifrele de azi sunt mai sus):
 
@@ -359,6 +373,8 @@ Cifrele astea sunt rezultatul reglajului din etapă (prețul și pragurile navei
 „Amestec” iese puțin peste ținta de 330 s pe care și-o pusese planul fazei (pentru rezervă); limita din design, 360 s, ține. Înainte de reechilibrare, cu mersul de atunci, „Amestec” avea 372 s, peste limita de 360, iar „Doar navă” 67% și „Fără navă” 89%; cu mersul de acum, cifrele vechi dau „Amestec” 382 s.
 
 **Razele 80 și 160** sunt informație, nu țintă. La raza 80: „Amestec” 299,1 s, „Doar navă” 72,3%, „Fără navă” 82,4%. La raza 160: „Amestec” 316,9 s, „Doar navă” 73,9%, „Fără navă” 79,2%.
+
+**Ce e fragil, la nava cu module.** Viața dușmanului 14 × (1 + t / 33) a fost aleasă la reglaj și fiindcă t / 35 pica o regulă de mers a jucătorilor automați, nu o limită de dificultate: „cel mult 10 pași la rând pe un cerc străin” (`FOREIGN_STEPS` în `src/bots/bot.test.ts`), la „Fără turele”, sămânța 17, la 113,92 s (măsurat la reglajul din Task 3 și scris în `DEVLOG.md`; nerefăcut acum). Cine reglează mai departe se poate lovi de un test picat care nu ține de dificultate.
 
 **Ce e fragil** (la faza 3, înainte de nava cu module; vezi mai sus „Ce nu vede plasa” pentru azi). „Amestec” e la 25 s de limita de sus (335 față de 360), iar la raza 160 „Doar navă” e la 73,9%, aproape de limită. Mai important, plasa măsoară mai puțin decât pare. „Doar navă” cumpără o singură dată: în 19 din 20 de partide ia nivelul 2 la secunda 18 și nimic altceva. Toți jucătorii sunt țintuiți lângă planetă în ultima treime a partidei (luptă în 88–95% din pași, iar „Amestec” termină cu 117–164 de cristale necheltuite), deci tabelul măsoară mai ales ce s-a cumpărat în prima jumătate. Raza 120 dă cel mai mic procent pentru „Doar navă” dintre 11 raze între 80 și 200 (la celelalte, 68,1–73,9%), iar o purtare la fel de rezonabilă (nava plecată la peste 200 de planetă se întoarce abia la două nave dușmane) dă „Doar navă” 76,7% din „Amestec”, peste limită. Plafonul navei a urcat cu reechilibrarea: nava de nivelul 2 primită pe gratis din prima secundă ține 80,8% din „Amestec” (înainte 73,7%), cea de nivelul 5, 98,7% (înainte 91,9%). Ce ține: niciuna din 13 variante de „Doar navă” care își amână lupta ca să cumpere mai mult n-a bătut „Amestec” (cel mai sus, 65,1%); deci „Doar navă nu bate amestecul” ține calitativ, dar pragul de 75% nu e robust la purtarea jucătorului automat.
 

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { BALANCE } from '../data/balance'
+import { BALANCE, STRESS_SHIP } from '../data/balance'
+import { heroMaxHp } from '../sim/hero'
+import { slotsAt } from '../sim/mods'
 import { createGame, type GameState } from '../sim/state'
 import { step } from '../sim/step'
 import { STRESS_FOES, createSession } from './session'
@@ -112,6 +114,31 @@ it('testul de viteză: experiența rămâne 0 după 200 de dușmani doborâți �
     x.advance(1, still)
   }
   expect(x.s.kills).toBeGreaterThanOrEqual(200)
-  expect([x.s.hero.xp, x.s.hero.lvl, x.s.offer]).toEqual([0, 1, null])
+  expect([x.s.hero.xp, x.s.hero.lvl, x.s.offer]).toEqual([0, STRESS_SHIP.lvl, null])
+})
+it('testul de viteză: nava pornește cu cele trei arme la treapta 3, în locurile nivelului ei, cu viața plină', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, true)
+  const h = x.s.hero
+  expect(h.mods.map((m) => [m.id, m.tier])).toEqual([['wave', 3], ['laser', 3], ['missile', 3]])
+  expect(h.mods.length).toBeLessThanOrEqual(slotsAt(h.lvl))
+  expect([h.lvl, h.xp, h.hp]).toEqual([3, 0, heroMaxHp(x.s)])
+})
+it('testul de viteză: armele chiar trag, experiența rămâne 0, numărul de dușmani nu se schimbă', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, true)
+  let beams = 0, missiles = 0
+  for (let i = 0; i < 600; i++) {
+    x.advance(1, still)
+    if (x.s.fx.some((f) => f.kind === 'beam')) beams++
+    if (x.s.shots.some((q) => q.kind === 'missile')) missiles++
+    expect(x.s.foes.length).toBe(STRESS_FOES)
+  }
+  expect(beams).toBeGreaterThan(0)
+  expect(missiles).toBeGreaterThan(0)
+  expect([x.s.hero.xp, x.s.hero.lvl, x.s.offer, x.s.mode]).toEqual([0, 3, null, 'playing'])
+})
+it('o partidă obișnuită pornește ca înainte: nivelul 1, doar Unda la treapta 1', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, false)
+  expect(x.s.hero).toEqual(createGame(7).hero)
+  expect([x.s.hero.lvl, x.s.hero.mods.map((m) => [m.id, m.tier])]).toEqual([1, [['wave', 1]]])
 })
 })

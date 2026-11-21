@@ -183,7 +183,8 @@ async function main() {
     check(9, 'testul de viteză are 150 de dușmani și banda arată „fps” și „min”', foes === 150 && fpsText.includes('fps') && fpsText.includes('min'), `dușmani ${foes}, bandă „${fpsText}”`)
 
     // Informativ, nu o verificare: cât durează desenul cu 150 de nave în vedere (mediana a cinci serii de 200 de cadre),
-    // de două ori în aceeași rulare: cu nava de la început (doar Unda) și cu toate cele nouă module la treapta 3, trăgând.
+    // de două ori în aceeași rulare: cu nava testului de viteză (Unda, Laserul și Rachetele la treapta 3, `STRESS_SHIP`)
+    // și cu toate cele nouă module la treapta 3, trăgând.
     // La 1,5 s navele sunt încă la marginea hărții, în afara vederii, iar desenul le sare; de aceea sunt aduse,
     // la fel de fiecare dată, în jurul planetei: nava i la unghiul i × 2,399963 rad și la raza 70 + (i % 5) × 28.
     // Așezarea și cele cinci serii stau într-un singur `evaluate`: bucla jocului nu face niciun pas între ele, deci
@@ -224,7 +225,7 @@ async function main() {
     await shot('05-test.png')
     const armedDraw = await drawInfo(true)
     const f05 = armedDraw.fired
-    console.log(`SMOKE INFO: desen cu 150 de nave în jurul planetei, nava fără module: ${plainDraw.ms.toFixed(2)} ms pe cadru`)
+    console.log(`SMOKE INFO: desen cu 150 de nave în jurul planetei, nava testului de viteză (Undă, Laser, Rachete la treapta 3): ${plainDraw.ms.toFixed(2)} ms pe cadru`)
     console.log(`SMOKE INFO: desen cu 150 de nave în jurul planetei, nava cu toate cele nouă module la treapta 3, trăgând: ${armedDraw.ms.toFixed(2)} ms pe cadru` +
       ` (în cadru: ${f05.beam} raze de laser, ${f05.missile} rachete în zbor, ${f05.blast} explozii; ${f05.foes} nave dușmane; nava ${f05.dead ? 'doborâtă' : 'vie'})`)
 

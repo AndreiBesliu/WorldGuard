@@ -1,5 +1,5 @@
 // Plasa pentru dificultate: limitele din design (docs/GDD.md) ca teste care pică build-ul.
-// Un singur parcurs al celor 100 de partide pentru tot fișierul; fiecare limită e un test separat.
+// Un singur parcurs al celor 120 de partide pentru tot fișierul; fiecare limită e un test separat.
 import { beforeAll, describe, expect, it } from 'vitest'
 import { verdicts, type Verdict } from './limits'
 import { POLICIES, type BotName } from './policy'

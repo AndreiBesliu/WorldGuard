@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { BALANCE } from '../data/balance'
+import { OFFERS } from '../data/modules'
+import { heroMaxHp } from '../sim/hero'
+import { slotsAt, xpNeed } from '../sim/mods'
 import { createRng } from '../sim/rng'
 import { createGame, type Fx, type GameState, type Input, type Offer, type Shot } from '../sim/state'
 import { step } from '../sim/step'
@@ -297,6 +301,40 @@ describe('salvarea', () => {
     expect(why(tweak((o) => { o.state.hero.mods[1].id = 'wave' }))).toBe('altă formă')   // același modul de două ori
     expect(why(tweak((o) => { o.state.hero.mods.shift() }))).toBe('altă formă')           // fără Undă
     expect(why(tweak((o) => { o.state.hero.mods = [] }))).toBe('altă formă')
+  })
+  describe('nivelul, experiența, locurile și lungimea ofertei', () => {
+    const good = packSave(busy(5))                    // nava: nivelul 1, 2 locuri, doar Unda
+    const tweak = (f: (o: any) => void): string => { const o = JSON.parse(good); f(o); return JSON.stringify(o) }
+    const why = (t: string): string => { const r = unpackSave(t); return r.ok ? 'ok' : r.reason }
+    it('nivelul navei în afara 1…nivelul maxim sau neîntreg e respins', () => {
+      expect(why(good)).toBe('ok')
+      expect(why(tweak((o) => { o.state.hero.lvl = 0 }))).toBe('altă formă')
+      expect(why(tweak((o) => { o.state.hero.lvl = BALANCE.hero.maxLevel + 1 }))).toBe('altă formă')
+      expect(why(tweak((o) => { o.state.hero.lvl = 1.5 }))).toBe('altă formă')
+      expect(why(tweak((o) => { o.state.hero.lvl = '1' }))).toBe('altă formă')
+    })
+    it('experiența negativă sau care nu e număr finit e respinsă', () => {
+      expect(why(tweak((o) => { o.state.hero.xp = -1 }))).toBe('altă formă')
+      expect(why(tweak((o) => { o.state.hero.xp = '3' }))).toBe('altă formă')
+      expect(why(tweak((o) => { o.state.hero.xp = 'XP' }).replace('"XP"', '1e999'))).toBe('altă formă')   // JSON.parse dă Infinity
+    })
+    it('mai multe module decât locurile nivelului e respins', () => {
+      expect(why(tweak((o) => { o.state.hero.mods.push({ id: 'laser', tier: 1, t: 0 }, { id: 'armor', tier: 1, t: 0 }) }))).toBe('altă formă')
+    })
+    it('o ofertă cu mai multe elemente decât se oferă e respinsă', () => {
+      const four = [{ id: 'laser', tier: 1 }, { id: 'armor', tier: 1 }, { id: 'magnet', tier: 1 }, { id: 'wave', tier: 2 }]
+      expect(why(tweak((o) => { o.state.offer = four.slice(0, OFFERS) }))).toBe('ok')
+      expect(why(tweak((o) => { o.state.offer = four }))).toBe('altă formă')
+    })
+    it('o partidă adevărată cu experiență peste prag, sau la nivelul maxim, e primită în continuare', () => {
+      const over = busy(5); over.hero.lvl = 2; over.hero.xp = (xpNeed(2) ?? 0) + 5   // surplusul se păstrează până la plată
+      expect(unpackSave(packSave(over))).toEqual({ ok: true, value: over })
+      const top = busy(5); top.hero.lvl = BALANCE.hero.maxLevel; top.hero.xp = 6
+      top.hero.mods = (['wave', 'laser', 'missile', 'armor', 'shield', 'mender'] as const).map((id) => ({ id, tier: 3, t: 0 }))
+      top.hero.hp = heroMaxHp(top)
+      expect(top.hero.mods.length).toBe(slotsAt(top.hero.lvl))
+      expect(unpackSave(packSave(top))).toEqual({ ok: true, value: top })
+    })
   })
   it('o salvare cu 150 de dușmani rămâne mică', () => {
     const s = quietGame(); s.tick = 12000; s.t = 200

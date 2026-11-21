@@ -1,6 +1,7 @@
 // Salvarea partidei: starea trecută prin JSON, cu versiune, verificată la citire. Nu atinge stocarea (asta e în alt modul).
-import { MAX_TIER, MOD_IDS } from '../data/modules'
-import { offerFits } from '../sim/mods'
+import { BALANCE } from '../data/balance'
+import { MAX_TIER, MOD_IDS, OFFERS } from '../data/modules'
+import { offerFits, slotsAt } from '../sim/mods'
 import { fail, ok, type Result } from '../sim/result'
 import { createGame, type GameState } from '../sim/state'
 
@@ -39,16 +40,25 @@ export function unpackSave(text: string | null | undefined): Result<GameState> {
     (state.pads as unknown[]).every((p) => sameKeys(p, refPad) && sameKeys((p as Record<string, unknown>).paid, refPad?.paid)) &&
     (state.nodes as unknown[]).every((n) => sameKeys(n, refNode)) && goodMods((state.hero as Record<string, unknown>).mods)
   if (!inner) return fail('altă formă')
-  // O ofertă pe care `choose` ar refuza-o ar ține partida pe loc pentru totdeauna: panoul n-ar avea ce alege.
+  // Nava: nivelul întreg de la 1 la nivelul maxim, experiența un număr finit, nenegativ (surplusul peste prag e bun),
+  // cel mult atâtea module câte locuri are nivelul.
   const game = state as unknown as GameState
+  const h = game.hero
+  if (!Number.isInteger(h.lvl) || h.lvl < 1 || h.lvl > BALANCE.hero.maxLevel) return fail('altă formă')
+  if (typeof h.xp !== 'number' || !Number.isFinite(h.xp) || h.xp < 0) return fail('altă formă')
+  if (h.mods.length > slotsAt(h.lvl)) return fail('altă formă')
+  // O ofertă pe care `choose` ar refuza-o ar ține partida pe loc pentru totdeauna: panoul n-ar avea ce alege.
   if (game.offer !== null && !game.offer.every((e) => offerFits(game, e).ok)) return fail('altă formă')
   return ok(game)
 }
 
-/** `null`, sau o listă nevidă de oferte cu exact cheile `id` (un modul cunoscut) și `tier` (întreg de la 1 la treapta maximă). */
+/**
+ * `null`, sau o listă nevidă de cel mult `OFFERS` oferte, cu exact cheile `id` (un modul cunoscut) și `tier` (întreg de la 1
+ * la treapta maximă).
+ */
 function goodOffer(v: unknown): boolean {
   if (v === null) return true
-  if (!Array.isArray(v) || v.length === 0) return false   // o listă goală ar ține partida pe loc pentru totdeauna
+  if (!Array.isArray(v) || v.length === 0 || v.length > OFFERS) return false   // o listă goală ar ține partida pe loc pentru totdeauna
   return v.every((e) => sameKeys(e, { id: 0, tier: 0 }) &&
     (MOD_IDS as readonly unknown[]).includes(e.id) && Number.isInteger(e.tier) && e.tier >= 1 && e.tier <= MAX_TIER)
 }
