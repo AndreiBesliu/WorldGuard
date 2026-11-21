@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dragDown, dragMove, dragTake, dragUp, newDrag } from './drag'
+import { dragDown, dragMove, dragReset, dragTake, dragUp, newDrag } from './drag'
 
 describe('condusul cu degetul', () => {
   it('degetul pus nu mișcă nimic', () => {
@@ -21,9 +21,9 @@ describe('condusul cu degetul', () => {
     expect(dragTake(d)).toEqual({ dx: 0, dy: 0 })
     dragMove(d, 2, 305, 400); expect(dragTake(d)).toEqual({ dx: 5, dy: 0 })
   })
-  it('mișcarea nestrânsă la ridicare rămâne de citit, dar nu trece în degetul următor', () => {
+  it('mișcarea nestrânsă a unui deget nu trece în degetul următor', () => {
     const d = newDrag(); dragDown(d, 1, 0, 0); dragMove(d, 1, 10, 0); dragUp(d, 1); dragDown(d, 2, 50, 50)
-    expect(dragTake(d)).toEqual({ dx: 10, dy: 0 })
+    expect(dragTake(d)).toEqual({ dx: 0, dy: 0 })
   })
   it('al doilea deget e ignorat la apăsare, la mișcare și la ridicare', () => {
     const d = newDrag(); dragDown(d, 1, 0, 0)
@@ -35,5 +35,17 @@ describe('condusul cu degetul', () => {
   it('mișcarea fără deget pus nu face nimic', () => {
     const d = newDrag(); dragMove(d, 1, 50, 50)
     expect(dragTake(d)).toEqual({ dx: 0, dy: 0 })
+  })
+  it('o poziție care nu e număr finit e ignorată', () => {
+    const d = newDrag(); dragDown(d, 1, NaN, 5); expect(d.on).toBe(false)
+    dragDown(d, 1, 10, 10); dragMove(d, 1, Infinity, 20); dragMove(d, 1, 5, NaN)
+    dragMove(d, 1, 14, 13)
+    expect(dragTake(d)).toEqual({ dx: 4, dy: 3 })
+  })
+  it('dragReset lasă degetul și golește mișcarea; un deget nou conduce de la zero', () => {
+    const d = newDrag(); dragDown(d, 1, 0, 0); dragMove(d, 1, 30, 30); dragReset(d)
+    expect([d.on, d.id]).toEqual([false, -1]); expect(dragTake(d)).toEqual({ dx: 0, dy: 0 })
+    dragMove(d, 1, 99, 99); expect(dragTake(d)).toEqual({ dx: 0, dy: 0 })
+    dragDown(d, 3, 10, 10); dragMove(d, 3, 12, 10); expect(dragTake(d)).toEqual({ dx: 2, dy: 0 })
   })
 })

@@ -56,7 +56,9 @@ describe('sesiunea zborului', () => {
     expect(over?.explored).toBe(true); expect(over?.sector).toBe(3)
     expect(a.explored).toEqual([3]); expect(a.banked).toEqual([{ crystal: 2, metal: 0 }])
     const b = make(); b.s.start(1, 3); b.s.f.mode = 'down'; b.s.advance(1, still)
-    expect(b.explored).toEqual([])
+    expect(b.explored).toEqual([]); expect(b.banked).toEqual([])
+    const c = make(); c.s.start(1, 3); c.s.f.crystal = 4; c.s.f.metal = 1; c.s.f.mode = 'down'; c.s.advance(1, still)
+    expect(c.explored).toEqual([]); expect(c.banked).toEqual([{ crystal: 4, metal: 1 }])
   })
   it('start pornește socoteala de la zero și întăririle vin din deps', () => {
     const { s, banked } = make(); s.start(1, 1); s.f.crystal = 4; s.pause()
@@ -102,5 +104,13 @@ describe('sesiunea zborului', () => {
     s.start(1, 1); expect(s.quit()).toBe(false); expect(s.phase).toBe('playing')
     s.f.mode = 'down'; s.advance(1, still); expect(s.quit()).toBe(false); expect(s.phase).toBe('over')
     expect(banked).toEqual([])
+  })
+  it('start peste un zbor în curs trece întâi în rezervă ce s-a strâns', () => {
+    const { s, banked } = make(); s.start(1, 1)
+    s.f.crystal = 5; s.f.metal = 2
+    s.start(2, 1)
+    expect(banked).toEqual([{ crystal: 5, metal: 2 }]); expect(s.f.crystal).toBe(0)
+    s.f.crystal = 3; s.f.mode = 'down'; s.advance(1, still)
+    expect(sum(banked)).toEqual({ crystal: 8, metal: 2 })
   })
 })

@@ -45,6 +45,7 @@ export function createFlightSession(deps: FlightDeps): FlightSession {
     get phase() { return phase },
     get f() { return f },
     start(seed, sector) {
+      if (phase === 'playing') flush()          // un zbor în curs își trece întâi strânsul în rezervă
       f = createFlight(seed, sector, deps.ups())
       bankedCrystal = 0; bankedMetal = 0
       phase = 'playing'
