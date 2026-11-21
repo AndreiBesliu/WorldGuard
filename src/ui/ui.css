@@ -173,6 +173,9 @@ body {
 .mode span { font-size: 12.5px; line-height: 1.35; }
 button.mode, .mode-go { font: inherit; border: 0; cursor: pointer; touch-action: manipulation; }
 .mode.main { background: var(--hero); color: var(--night); }
+/* Cu o partidă salvată, „Apără planeta” trece pe al doilea loc (principalul e „Continuă partida”), cu rândul care spune că salvarea se pierde. */
+.mode.alt { background: transparent; color: var(--hero); border: 1.5px solid var(--hero); padding: 11.5px 12.5px; }
+.mode.alt span { color: var(--ink-soft); }
 .mode.second { border: 1.5px solid var(--jet); color: var(--ink); padding: 0; gap: 0; }
 .mode-go { display: grid; gap: 3px; padding: 13px 14px 6px; text-align: left; color: inherit; background: transparent; border-radius: 15px 15px 0 0; }
 .mode.second span { color: var(--ink-soft); }

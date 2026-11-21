@@ -16,6 +16,8 @@ export interface FlightMode {
   readonly session: FlightSession
   /** Profilul de acum (citit din nou, deci cu tot ce a adus ultimul zbor) și sectorul propus: cel mai departe explorat plus unu. */
   startCard(): { profile: Profile; sector: number }
+  /** Sectorul ales pe cartonașul de start (ținut doar aici): cel pornit de „Explorează galaxia”. */
+  sector(): number
   /** O apăsare pe − sau + de pe cartonașul de start: sectorul ales, în margini, și cel mai departe explorat. */
   pick(delta: -1 | 1): { sector: number; farthest: number }
   /** „Sectorul următor” după un sector explorat, „Încă un zbor” (același sector) după o navă doborâtă. */
@@ -48,6 +50,7 @@ export function createFlightMode(doc: Document, input: { drag: Drag; keys(): Inp
       chosen = farthest + 1
       return { profile, sector: chosen }
     },
+    sector: () => chosen,
     pick(delta) {
       chosen = stepSector(chosen, delta, farthest)
       return { sector: chosen, farthest }

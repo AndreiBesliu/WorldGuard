@@ -14,6 +14,15 @@ export function stepSector(sector: number, delta: -1 | 1, farthest: number): num
   return Math.min(top, Math.max(1, n))
 }
 
+/**
+ * Cele două drumuri de pe cartonașul de start. Fără salvare, „Apără planeta” e principalul. Cu o partidă salvată, „Continuă partida”
+ * e principalul, iar „Apără planeta” trece pe stilul secundar și spune că partida salvată se pierde (o partidă nouă o înlocuiește).
+ */
+export function startView(saved: { secs: number } | null): { defendMain: boolean; defendLine: string; continueText: string | null } {
+  if (saved === null) return { defendMain: true, defendLine: STR.defendLine, continueText: null }
+  return { defendMain: false, defendLine: STR.defendFresh, continueText: STR.continueSaved(clock(saved.secs)) }
+}
+
 function el<T extends HTMLElement>(doc: Document, id: string): T {
   const e = doc.getElementById(id)
   if (!e) throw new Error(`lipsește elementul #${id}`)
@@ -22,10 +31,10 @@ function el<T extends HTMLElement>(doc: Document, id: string): T {
 
 export function createCards(doc: Document, on: {
   defend(): void; continue(): void; stress(): void; again(): void; pause(): void; resume(): void; fresh(): void
-  explore(sector: number): void; sector(delta: -1 | 1): void; next(): void; home(): void
+  explore(): void; sector(delta: -1 | 1): void; next(): void; home(): void
 }): {
   showStart(o: { saved: { secs: number } | null; profile: Profile; sector: number }): void
-  /** Sectorul ales, după o apăsare pe − sau +, fără să mute focusul. */
+  /** Sectorul ales (îl ține cine cheamă; cartonașul doar îl arată), după o apăsare pe − sau +, fără să mute focusul. */
   showSector(sector: number, farthest: number): void
   showPause(secs: number): void
   showOver(r: OverInfo): void
@@ -41,7 +50,6 @@ export function createCards(doc: Document, on: {
   const pauseBtns = [el(doc, 'pause'), el(doc, 'flightPause')], resumeBtn = el(doc, 'resume')
   const sectorDown = el(doc, 'sectorDown'), sectorUp = el(doc, 'sectorUp'), nextBtn = el(doc, 'flightNext')
   const put = (id: string, v: string): void => { el(doc, id).textContent = v }
-  let sector = 1
   const bind = (b: HTMLElement, f: () => void): void => onTap(b, f)   // primul deget, al doilea, mausul și tastatura
   bind(startBtn, on.defend)
   bind(continueBtn, on.continue)
@@ -50,7 +58,7 @@ export function createCards(doc: Document, on: {
   for (const b of pauseBtns) bind(b, on.pause)
   bind(resumeBtn, on.resume)
   bind(el(doc, 'fresh'), on.fresh)
-  bind(el(doc, 'explore'), () => on.explore(sector))
+  bind(el(doc, 'explore'), on.explore)          // sectorul îl ține cine cheamă, nu cartonașul
   bind(sectorDown, () => on.sector(-1))
   bind(sectorUp, () => on.sector(1))
   bind(el(doc, 'flightResume'), on.resume)
@@ -70,7 +78,6 @@ export function createCards(doc: Document, on: {
   }
   // − și + stinse la capete: rămân apăsabile (regula le ține în margini), ca focusul de pe ele să nu se piardă.
   const showSector = (n: number, farthest: number): void => {
-    sector = n
     put('sectorN', STR.sectorN(n))
     const low = n <= 1, high = n >= farthest + 1
     sectorDown.classList.toggle('off', low); sectorDown.setAttribute('aria-disabled', String(low))
@@ -80,8 +87,13 @@ export function createCards(doc: Document, on: {
 
   return {
     showStart(o) {
-      continueBtn.hidden = o.saved === null
-      continueBtn.textContent = o.saved === null ? '' : STR.continueSaved(clock(o.saved.secs))
+      const v = startView(o.saved)
+      continueBtn.hidden = v.continueText === null
+      continueBtn.textContent = v.continueText ?? ''
+      continueBtn.classList.toggle('line', v.defendMain)   // fără clasa `line`, butonul galben principal
+      startBtn.classList.toggle('main', v.defendMain)
+      startBtn.classList.toggle('alt', !v.defendMain)
+      put('defendLine', v.defendLine)
       reserve('start', o.profile)
       showSector(o.sector, o.profile.sector)
       show(startVeil, o.saved === null ? startBtn : continueBtn)

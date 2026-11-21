@@ -290,6 +290,8 @@ async function main() {
     const contText = await page.locator('#continue').innerText().catch(() => '')
     const contShown = await visible('#continue')
     const startText = await page.locator('#start strong').innerText().catch(() => '')
+    // Cu salvare, „Continuă partida” e principalul (galben), iar „Apără planeta” e secundar și spune că salvarea se pierde.
+    const look13 = await page.evaluate(() => ({ line: document.getElementById('defendLine').textContent, alt: document.getElementById('start').classList.contains('alt'), main: !document.getElementById('continue').classList.contains('line') }))
     // Apăsat și citit în același pas, înaintea oricărui cadru: starea e exact cea reluată.
     const after = await page.evaluate(() => {
       document.getElementById('continue').click()
@@ -298,10 +300,10 @@ async function main() {
     })
     await page.waitForTimeout(300)
     const c13 = await clockNow()
-    check(13, '„Continuă partida · m:ss” pe cartonașul de start, lângă „Apără planeta”; reluarea pornește de la timpul și stocul salvat',
-      contShown && contText === `Continuă partida · ${savedClock}` && startText === 'Apără planeta' && after.phase === 'playing' &&
+    check(13, '„Continuă partida · m:ss” pe cartonașul de start, ca buton principal, lângă „Apără planeta” secundar, cu rândul „Partidă nouă: cea salvată se pierde.”; reluarea pornește de la timpul și stocul salvat',
+      contShown && contText === `Continuă partida · ${savedClock}` && startText === 'Apără planeta' && look13.line === 'Partidă nouă: cea salvată se pierde.' && look13.alt && look13.main && after.phase === 'playing' &&
       after.t === before.t && after.crystal === 37 && after.metal === 12 && secsOf(c13) >= secsOf(savedClock) && secsOf(c13) <= secsOf(savedClock) + 1,
-      `„${contText}” (${contShown}), start „${startText}”, salvat t ${before.t.toFixed(2)}, reluat t ${after.t.toFixed(2)}, cristale ${after.crystal}, metal ${after.metal}, fază ${after.phase}, ceas ${c13}`)
+      `„${contText}” (${contShown}, principal ${look13.main}), start „${startText}” (secundar ${look13.alt}, rândul „${look13.line}”), salvat t ${before.t.toFixed(2)}, reluat t ${after.t.toFixed(2)}, cristale ${after.crystal}, metal ${after.metal}, fază ${after.phase}, ceas ${c13}`)
     failFast(13)
 
     // 14. „Partidă nouă” din pauză
@@ -945,17 +947,29 @@ async function main() {
       profile: await profileNow(), phase: await page.evaluate(() => window.__wg.mode()),
     }
     await shot('19-sfarsit-zbor.png')
-    await tap('#flightHome')
+    // Escape pe cartonașul de sfârșit nu schimbă nimic; „Sectorul următor” pornește un zbor în sectorul 2. Din el, pauză (care trece
+    // în rezervă ce s-a strâns în cele câteva clipe) și „Renunță la zbor”, înapoi la start.
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+    const esc32 = (await visible('#flightOverVeil')) && !(await visible('#flightPauseVeil')) && (await page.evaluate(() => [window.__wg.mode(), window.__wg.flight().mode].join())) === 'flight,explored'
+    await tap('#flightNext')
+    await page.waitForTimeout(300)
+    const next32 = await page.evaluate(() => { const f = window.__wg.flight(); return { mode: window.__wg.mode(), fm: f.mode, sector: f.sector, t: f.t } })
+    const nextOk32 = next32.mode === 'flight' && next32.fm === 'flying' && next32.sector === 2 && next32.t < 1 && !(await visible('#flightOverVeil'))
+    await page.click('#flightPause')
+    await page.waitForTimeout(200)
+    const g32 = await got()
+    await tap('#quitFlight')
     await page.waitForTimeout(300)
     const r32b = await startReserve()
     const sector32 = await txt('#sectorN')
     const home32 = (await visible('#startVeil')) && (await page.evaluate(() => window.__wg.mode())) === 'defense' && !(await visible('#flightBanner')) && (await visible('#banner'))
-    check(32, 'zborul dus la capăt: „Sector explorat”, „Ai adus acasă” cu ce a strâns zborul, rezerva cu exact atât în plus; „Înapoi la start” arată rezerva crescută cu exact atât și „Sectorul 2”; banda zborului, aceeași înălțime în zbor, în pauza lui (cartonașul „Zbor în pauză”, fără „Partidă nouă”) și la sfârșit',
+    check(32, 'zborul dus la capăt: „Sector explorat”, „Ai adus acasă” cu ce a strâns zborul, rezerva cu exact atât în plus; Escape nu schimbă nimic, „Sectorul următor” pornește sectorul 2; după pauză și renunțare, startul arată rezerva crescută cu exact cât s-a strâns și „Sectorul 2”; pe drumul cu nava doborâtă, „Încă un zbor” reia același sector de la zero, fără să schimbe rezerva, iar „Înapoi la start” duce la start; banda zborului, aceeași înălțime în zbor, în pauza lui (cartonașul „Zbor în pauză”, fără „Partidă nouă”) și la sfârșit',
       end32.mode === 'explored' && end32.crystal > 0 && o32.title === 'Sector explorat' && o32.label === 'Ai adus acasă' && o32.next === 'Sectorul următor' &&
-        same(o32.haul, end32) && same(o32.reserve, plus(r32a, end32)) && same(o32.profile, o32.reserve) && same(r32b, o32.reserve) && sector32 === 'Sectorul 2' && home32 &&
+        same(o32.haul, end32) && same(o32.reserve, plus(r32a, end32)) && same(o32.profile, o32.reserve) && same(r32b, plus(o32.reserve, g32)) && sector32 === 'Sectorul 2' && home32 && esc32 && nextOk32 &&
         pause32 && Math.abs(h31 - h32p) < 0.5 && Math.abs(h31 - h32o) < 0.5,
       `zbor ${end32.mode}, adus ${show(end32)}; cartonaș „${o32.title}” / „${o32.label}” / „${o32.next}”, arătat ${show(o32.haul)}, rezerva ${show(r32a)} → ${show(o32.reserve)} (în profil ${show(o32.profile)}); ` +
-        `pe start ${show(r32b)}, ${sector32}, start ${home32}; pauza zborului ${pause32}; banda ${h31.toFixed(1)} / ${h32p.toFixed(1)} / ${h32o.toFixed(1)} px`)
+        `Escape: cartonașul rămâne ${esc32}; „Sectorul următor”: ${JSON.stringify(next32)}, apoi strâns ${show(g32)}; pe start ${show(r32b)}, ${sector32}, start ${home32}; pauza zborului ${pause32}; banda ${h31.toFixed(1)} / ${h32p.toFixed(1)} / ${h32o.toFixed(1)} px`)
     failFast(32)
 
     // 33. ce s-a strâns ajunge în rezervă exact o dată: pagina reîncărcată după o pauză în zbor; „Renunță la zbor” (din pauză) nu mai
@@ -1024,6 +1038,29 @@ async function main() {
     await page.waitForTimeout(200)
     await shot('19-sfarsit-zbor-360.png')
     console.log(`SMOKE INFO: 19-sfarsit-zbor-360.png arată „${await txt('#flightOverTitle')}” / „${await txt('#flightNext')}”`)
+    // Tot verificarea 32, pe drumul cu nava doborâtă: „Încă un zbor” pornește din nou același sector, cu banda la 5 vieți și strânsul
+    // zborului la 0, iar rezerva nu se schimbă la apăsare; doborâtă din nou, „Înapoi la start” duce la cartonașul de start.
+    const down32 = await page.evaluate(() => ({ title: document.getElementById('flightOverTitle').textContent, sector: window.__wg.flight().sector }))
+    const p32a = await profileNow()
+    await tap('#flightNext')
+    await page.waitForTimeout(300)
+    const again32 = await page.evaluate(() => {
+      const f = window.__wg.flight()
+      return { fm: f.mode, sector: f.sector, t: f.t, crystal: f.crystal, metal: f.metal, hits: document.querySelectorAll('#flHits i.on').length,
+        band: [document.getElementById('flCrystal').textContent, document.getElementById('flMetal').textContent].join(' ') }
+    })
+    const p32b = await profileNow()
+    await page.evaluate(() => { const f = window.__wg.flight(); f.ship.inv = 0; f.ship.hp = 1; f.ship.mods.shield = 0; f.ship.shieldUp = false; f.shots.push({ x: f.ship.x, y: f.ship.y, vx: 0, vy: 0 }) })
+    await page.waitForSelector('#flightOverVeil:not([hidden])', { timeout: 3000 }).catch(() => {})
+    await page.waitForTimeout(200)
+    await tap('#flightHome')
+    await page.waitForTimeout(300)
+    const back32 = (await visible('#startVeil')) && (await page.evaluate(() => window.__wg.mode())) === 'defense'
+    const ok32 = down32.title === 'Nava a fost doborâtă' && again32.fm === 'flying' && again32.sector === down32.sector && again32.t < 1 &&
+      again32.crystal === 0 && again32.metal === 0 && again32.hits === 5 && again32.band === '0 0' && same(p32a, p32b) && back32
+    const r32 = results.find((r) => r.n === 32)
+    r32.ok = r32.ok && ok32
+    r32.detail += `; nava doborâtă în sectorul ${down32.sector} („${down32.title}”), „Încă un zbor”: ${JSON.stringify(again32)}, rezerva ${show(p32a)} → ${show(p32b)}; „Înapoi la start” ${back32}`
     await page.setViewportSize({ width: 390, height: 780 })
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))

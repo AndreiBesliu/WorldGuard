@@ -177,7 +177,7 @@ const cards = createCards(document, {
   pause,
   resume: unpause,
   fresh: () => begin(Date.now() >>> 0, false),
-  explore: fly,
+  explore: () => fly(fm.sector()),
   sector(delta) { const c = fm.pick(delta); cards.showSector(c.sector, c.farthest) },
   next: () => fly(fm.nextSector()),
   home,

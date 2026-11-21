@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { stepSector } from './cards'
+import { startView, stepSector } from './cards'
+import { STR } from './strings'
+
+describe('cartonașul de start, cu și fără partidă salvată', () => {
+  it('fără salvare: „Apără planeta” e butonul principal, cu rândul lui de explicație; „Continuă partida” nu se vede', () => {
+    expect(startView(null)).toEqual({ defendMain: true, defendLine: STR.defendLine, continueText: null })
+  })
+  it('cu salvare: „Continuă partida · m:ss” e principalul, „Apără planeta” trece pe stilul secundar și avertizează că salvarea se pierde', () => {
+    expect(startView({ secs: 161 })).toEqual({ defendMain: false, defendLine: 'Partidă nouă: cea salvată se pierde.', continueText: 'Continuă partida · 2:41' })
+  })
+})
 
 describe('alegerea sectorului de pe cartonașul de start', () => {
   it('− coboară și + urcă cu câte unul, între 1 și cel mai departe explorat plus unu', () => {

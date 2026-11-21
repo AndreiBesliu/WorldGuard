@@ -20,6 +20,8 @@ export interface Strings {
   /** Cartonașul de start: cele două moduri, cu rândul de explicație al fiecăruia, sectorul ales și rezerva. */
   defend: string
   defendLine: string
+  /** Rândul lui „Apără planeta” cât e o partidă salvată: apăsat, o înlocuiește. */
+  defendFresh: string
   explore: string
   exploreLine: string
   sectorN(n: number): string
@@ -101,6 +103,7 @@ export const STR: Strings = {
   hint: 'Ține degetul pe ecran și trage ca să miști nava',
   defend: 'Apără planeta',
   defendLine: 'Strânge, construiește și rezistă cât poți.',
+  defendFresh: 'Partidă nouă: cea salvată se pierde.',
   explore: 'Explorează galaxia',
   exploreLine: 'Zboară trei minute, ferește-te și adu resurse acasă.',
   sectorN: (n) => `Sectorul ${n}`,

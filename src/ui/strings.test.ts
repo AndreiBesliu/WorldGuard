@@ -47,6 +47,7 @@ describe('textele temei de spațiu', () => {
     expect([STR.defend, STR.explore, STR.sectorN(3), STR.reserve, STR.workshop]).toEqual(['Apără planeta', 'Explorează galaxia', 'Sectorul 3', 'Rezerva', 'Atelier'])
     expect(STR.defendLine).toBe('Strânge, construiește și rezistă cât poți.')
     expect(STR.exploreLine).toBe('Zboară trei minute, ferește-te și adu resurse acasă.')
+    expect(STR.defendFresh).toBe('Partidă nouă: cea salvată se pierde.')   // rândul lui „Apără planeta” cât e o partidă salvată
     expect([STR.sectorLess, STR.sectorMore]).toEqual(['Un sector mai aproape', 'Un sector mai departe'])
   })
   it('sfârșitul zborului și pauza lui', () => {
