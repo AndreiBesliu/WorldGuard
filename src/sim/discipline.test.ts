@@ -1,6 +1,6 @@
-// Nucleul `src/sim` și jucătorii automați din `src/bots` trebuie să fie deterministe: fără ceasul mașinii și fără aleator global.
+// Nucleul `src/sim`, regulile zborului din `src/flight` și jucătorii automați din `src/bots` trebuie să fie deterministe: fără ceasul mașinii și fără aleator global.
 // Testul citește sursele și refuză tiparele interzise. Proba lui negativă e ultimul caz de mai jos.
-// Ambele foldere stau aici, într-un singur fișier de test: un test care ar importa `violations` din acest fișier i-ar înregistra testele a doua oară.
+// Toate trei folderele stau aici, într-un singur fișier de test: un test care ar importa `violations` din acest fișier i-ar înregistra testele a doua oară.
 
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve, sep } from 'node:path'
@@ -31,9 +31,9 @@ export function botImports(file: string, source: string, bots: string): string[]
   })
 }
 
-describe('disciplina nucleului src/sim și a jucătorilor din src/bots', () => {
+describe('disciplina nucleului src/sim, a regulilor zborului din src/flight și a jucătorilor din src/bots', () => {
   const sim = dirname(fileURLToPath(import.meta.url))
-  const folders = [['src/sim', sim], ['src/bots', join(sim, '..', 'bots')]] as const
+  const folders = [['src/sim', sim], ['src/flight', join(sim, '..', 'flight')], ['src/bots', join(sim, '..', 'bots')]] as const
 
   for (const [name, dir] of folders) {
     const files = readdirSync(dir).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
