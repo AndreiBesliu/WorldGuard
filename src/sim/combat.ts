@@ -5,6 +5,7 @@ import { atTier, MODS } from '../data/modules'
 import { DT, EPS, type Foe, type GameState, type Mod, type Shot } from './state'
 import { heroArc, heroDamage } from './hero'
 import { hurtFoe } from './foes'
+import { armsFactor } from './boost'
 import { modOf, tierOf } from './mods'
 
 /** Cel mai apropiat dușman viu a cărui margine e la cel mult `range` de (x, y); la egalitate, ultimul din listă. */
@@ -60,7 +61,7 @@ function laser(s: GameState): void {
   if (!m) return
   const f = ready(s, m, MODS.laser.range)
   if (!f) return
-  hurtFoe(s, f, atTier(MODS.laser.dmg, m.tier))
+  hurtFoe(s, f, atTier(MODS.laser.dmg, m.tier) * armsFactor(s))
   s.fx.push({ kind: 'beam', x: s.hero.x, y: s.hero.y, tx: f.x, ty: f.y, t0: s.t })
   m.t = MODS.laser.every
 }
@@ -73,7 +74,7 @@ function missile(s: GameState): void {
   if (!f) return
   s.shots.push({
     x: s.hero.x, y: s.hero.y, tx: f.x, ty: f.y, a: 0, targetId: f.id,
-    dmg: atTier(MODS.missile.dmg, m.tier), kind: 'missile', blast: MODS.missile.blast,
+    dmg: atTier(MODS.missile.dmg, m.tier) * armsFactor(s), kind: 'missile', blast: MODS.missile.blast,
   })
   m.t = MODS.missile.every
 }

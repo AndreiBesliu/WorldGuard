@@ -3,6 +3,7 @@
 import { BALANCE, cost } from '../data/balance'
 import { PAD_R } from '../data/layout'
 import { DT, EPS, type BuildKind, type GameState, type Pad, type Res } from './state'
+import { coreMaxHp } from './boost'
 import { heroMaxHp } from './hero'
 import { heroReady, makeOffer, xpNeed } from './mods'
 
@@ -62,9 +63,9 @@ function payPad(s: GameState, p: Pad): void {
   p.payT -= DT
   while (p.payT <= EPS) {
     if (p.kind === 'repair') {
-      if (s.metal < 1 || s.core.hp >= BALANCE.core.hp - EPS) { p.payT = 0; return }
+      if (s.metal < 1 || s.core.hp >= coreMaxHp(s) - EPS) { p.payT = 0; return }
       s.metal -= 1
-      s.core.hp = Math.min(BALANCE.core.hp, s.core.hp + BALANCE.repair.heal)
+      s.core.hp = Math.min(coreMaxHp(s), s.core.hp + BALANCE.repair.heal)
       p.payT += BALANCE.repair.every
       continue
     }

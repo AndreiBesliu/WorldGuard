@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { POLICIES, type BotName } from './policy'
-import { formatTable, verdicts } from './limits'
+import { boostedLine, formatTable, verdicts } from './limits'
 import { RUN_CAP, type Row } from './run'
 
 const DEFAULTS: Record<BotName, number> = { nimic: 90, amestec: 300, 'doar-nava': 200, 'fara-nava': 250, 'fara-economie': 280, 'fara-turele': 260 }
@@ -96,5 +96,14 @@ describe('tabelul', () => {
     expect(RUN_CAP).toBe(900)
     expect(formatTable(rows({ 'fara-economie': 900 }))).toContain('≥ 900')
     expect(formatTable(rows())).not.toContain('≥ 900')
+  })
+})
+
+describe('rândul cu întăririle la plafon', () => {
+  it('secundele lui și cât e peste „Amestec”, fără verdict', () => {
+    expect(boostedLine(300, 345)).toBe('Amestec, cu toate întăririle la plafon: 345 s (+15,0% față de Amestec)')
+    expect(boostedLine(300, 300.4)).toBe('Amestec, cu toate întăririle la plafon: 300 s (+0,1% față de Amestec)')
+    expect(boostedLine(300, 291)).toBe('Amestec, cu toate întăririle la plafon: 291 s (−3,0% față de Amestec)')
+    expect(boostedLine(300, RUN_CAP)).toBe(`Amestec, cu toate întăririle la plafon: ≥ ${RUN_CAP} s (+200,0% față de Amestec)`)
   })
 })

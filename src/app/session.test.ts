@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BALANCE, STRESS_SHIP } from '../data/balance'
+import { MAX_UPS, NO_UPS, type Ups } from '../data/workshop'
 import { heroMaxHp } from '../sim/hero'
 import { slotsAt } from '../sim/mods'
 import { createGame, type GameState } from '../sim/state'
@@ -7,12 +8,13 @@ import { step } from '../sim/step'
 import { STRESS_FOES, createSession } from './session'
 
 const still = { x: 0, y: 0 }
-const deps = () => {
+const deps = (ups: Ups = NO_UPS) => {
   const calls: string[] = []; const saved: GameState[] = []
   return { calls, saved, d: {
     saveGame: (s: GameState) => { calls.push('save'); saved.push(s) },
     clearGame: () => { calls.push('clear') },
     saveIfRecord: (secs: number) => { calls.push('record ' + secs); return { record: secs, isNew: true } },
+    ups: () => ups,
   } }
 }
 
@@ -135,6 +137,15 @@ it('testul de viteză: armele chiar trag, experiența rămâne 0, numărul de du
   expect(beams).toBeGreaterThan(0)
   expect(missiles).toBeGreaterThan(0)
   expect([x.s.hero.xp, x.s.hero.lvl, x.s.offer, x.s.mode]).toEqual([0, 3, null, 'playing'])
+})
+it('o partidă obișnuită pornește cu întăririle din deps.ups(); testul de viteză, fără ele', () => {
+  const { d } = deps(MAX_UPS); const x = createSession(d, 5)
+  x.start(7, false)
+  expect([x.s.ups, x.s.core.hp, x.s.hero.hp]).toEqual([MAX_UPS, 480, 84])
+  x.start(7, true)
+  expect(x.s.ups).toEqual(NO_UPS)
+  x.advance(60, still)
+  expect(x.s.core.hp).toBe(BALANCE.core.hp)
 })
 it('o partidă obișnuită pornește ca înainte: nivelul 1, doar Unda la treapta 1', () => {
   const { d } = deps(); const x = createSession(d, 5); x.start(7, false)

@@ -1,11 +1,13 @@
 // Salvarea partidei: starea trecută prin JSON, cu versiune, verificată la citire. Nu atinge stocarea (asta e în alt modul).
 import { BALANCE } from '../data/balance'
 import { MAX_TIER, MOD_IDS, OFFERS } from '../data/modules'
+import { NO_UPS, UP_IDS, WORKSHOP } from '../data/workshop'
 import { offerFits, slotsAt } from '../sim/mods'
 import { fail, ok, type Result } from '../sim/result'
 import { createGame, type GameState } from '../sim/state'
 
-export const SAVE_VERSION = 2
+export const SAVE_VERSION = 3
+const V_NO_UPS = 2               // versiunea de dinaintea întăririlor: se primește și capătă `ups` zero
 
 export function packSave(s: GameState): string {
   return JSON.stringify({ v: SAVE_VERSION, state: s })
@@ -24,8 +26,8 @@ export function unpackSave(text: string | null | undefined): Result<GameState> {
   let o: unknown
   try { o = JSON.parse(text) } catch { return fail('stricată') }
   if (!isObject(o) || typeof o.v !== 'number' || !isObject(o.state)) return fail('stricată')
-  if (o.v !== SAVE_VERSION) return fail('altă versiune')
-  const state = o.state
+  if (o.v !== SAVE_VERSION && o.v !== V_NO_UPS) return fail('altă versiune')
+  const state = o.v === V_NO_UPS ? { ...o.state, ups: { ...NO_UPS } } : o.state
   if (state.mode !== 'playing') return fail('partidă terminată')
   const ref = createGame(0) as unknown as Record<string, unknown>
   const len = (r: Record<string, unknown>, k: string): number => (Array.isArray(r[k]) ? (r[k] as unknown[]).length : -1)
@@ -38,7 +40,8 @@ export function unpackSave(text: string | null | undefined): Result<GameState> {
   const refPad = (ref.pads as Record<string, unknown>[])[0], refNode = (ref.nodes as Record<string, unknown>[])[0]
   const inner = sameKeys(state.hero, ref.hero) && sameKeys(state.core, ref.core) &&
     (state.pads as unknown[]).every((p) => sameKeys(p, refPad) && sameKeys((p as Record<string, unknown>).paid, refPad?.paid)) &&
-    (state.nodes as unknown[]).every((n) => sameKeys(n, refNode)) && goodMods((state.hero as Record<string, unknown>).mods)
+    (state.nodes as unknown[]).every((n) => sameKeys(n, refNode)) && goodMods((state.hero as Record<string, unknown>).mods) &&
+    goodUps(state.ups)
   if (!inner) return fail('altă formă')
   // Nava: nivelul întreg de la 1 la nivelul maxim, experiența un număr finit, nenegativ (surplusul peste prag e bun),
   // cel mult atâtea module câte locuri are nivelul.
@@ -74,6 +77,13 @@ function goodMods(v: unknown): boolean {
     typeof e.t === 'number' && Number.isFinite(e.t))
   const ids = v.map((e: { id: unknown }) => e?.id)
   return good && new Set(ids).size === ids.length && ids.includes('wave')
+}
+
+/** Întăririle: exact cheile din atelier, fiecare o treaptă întreagă de la 0 la plafonul ei. */
+function goodUps(v: unknown): boolean {
+  if (!sameKeys(v, NO_UPS)) return false
+  const r = v as Record<string, unknown>
+  return UP_IDS.every((id) => Number.isInteger(r[id]) && (r[id] as number) >= 0 && (r[id] as number) <= WORKSHOP[id].max)
 }
 
 /** Amândouă sunt obiecte (nu liste) cu exact aceleași chei. */

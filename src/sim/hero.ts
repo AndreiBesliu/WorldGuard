@@ -3,18 +3,19 @@
 import { BALANCE } from '../data/balance'
 import { CORE, HOME, WORLD } from '../data/layout'
 import { atTier, MODS } from '../data/modules'
+import { armsFactor, hullHp, reachFactor } from './boost'
 import { modOf, tierOf } from './mods'
 import { DT, EPS, NEVER, type GameState, type Input, type PadKind, type ResNode } from './state'
 
 export function heroMaxHp(s: GameState): number {
   const armor = tierOf(s, 'armor')
-  return BALANCE.hero.hp + BALANCE.hero.hpPerLevel * (s.hero.lvl - 1) + (armor > 0 ? atTier(MODS.armor.hp, armor) : 0)
+  return BALANCE.hero.hp + BALANCE.hero.hpPerLevel * (s.hero.lvl - 1) + (armor > 0 ? atTier(MODS.armor.hp, armor) : 0) + hullHp(s)
 }
 
-/** Lovitura Undei de acum; 0 dacă nava nu o are. */
+/** Lovitura Undei de acum, cu Armamentul; 0 dacă nava nu o are. */
 export function heroDamage(s: GameState): number {
   const wave = tierOf(s, 'wave')
-  return wave > 0 ? atTier(MODS.wave.dmg, wave) : 0
+  return wave > 0 ? atTier(MODS.wave.dmg, wave) * armsFactor(s) : 0
 }
 
 /** Arcul Undei de acum, radiani: sunt loviți dușmanii al căror unghi față de țintă e cel mult atât. */
@@ -53,7 +54,7 @@ function gather(s: GameState): void {
   h.gatherT = Math.max(0, h.gatherT - DT)
   const magnet = tierOf(s, 'magnet')
   let best: ResNode | null = null
-  let bestD: number = magnet > 0 ? atTier(MODS.magnet.reach, magnet) : BALANCE.node.reach
+  let bestD: number = (magnet > 0 ? atTier(MODS.magnet.reach, magnet) : BALANCE.node.reach) * reachFactor(s)
   for (const n of s.nodes) {
     if (n.left <= 0) continue
     const d = Math.hypot(n.x - h.x, n.y - h.y) - BALANCE.node[n.type].r - BALANCE.hero.r

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { MAX_UPS, NO_UPS } from '../data/workshop'
 import { createGame, DT } from '../sim/state'
 import { createBot } from './bot'
 import { POLICIES, type BotName, type Policy } from './policy'
@@ -18,6 +19,11 @@ describe('rularea', () => {
       expect(s.t).toBeLessThan(30 + DT)
     }
     expect(RUN_CAP).toBe(900)
+  })
+  it('playTimed pornește partida cu întăririle date; fără ele, cu niciuna', () => {
+    expect(playTimed(pol('amestec'), 1, 5).s.ups).toEqual(NO_UPS)
+    const g = playTimed(pol('amestec'), 1, 5, undefined, MAX_UPS)
+    expect([g.s.ups, g.s.core.hp]).toEqual([MAX_UPS, 480])
   })
   it('mediana', () => {
     expect(median([3, 1, 2])).toBe(2)

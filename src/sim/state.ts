@@ -3,6 +3,8 @@
 import { BALANCE } from '../data/balance'
 import { CLUSTERS, HOME, LAYOUT_SEED, NODE_GAP, PADS } from '../data/layout'
 import type { ModId } from '../data/modules'
+import { NO_UPS, type Ups } from '../data/workshop'
+import { coreMaxHp, hullHp } from './boost'
 import { createRng } from './rng'
 
 export const DT = 1 / 60
@@ -36,6 +38,7 @@ export interface GameState {
   hero: Hero; nodes: ResNode[]; pads: Pad[]; foes: Foe[]; shots: Shot[]; fx: Fx[]
   spawnT: number; spawnN: number; nextId: number
   offer: Offer[] | null            // ofertele deschise la un nivel nou; cât nu e null, pasul stă pe loc
+  ups: Ups                         // întăririle din atelier cu care a pornit partida; nu se schimbă în timpul ei
 }
 
 /** Așază resursele în grupurile lor, cu un flux propriu: harta nu depinde de sămânța partidei. */
@@ -59,8 +62,9 @@ function layNodes(): ResNode[] {
   return nodes
 }
 
-export function createGame(seed: number): GameState {
-  return {
+/** O partidă nouă, cu întăririle date (fără ele, ca înainte de atelier): planeta și nava pornesc cu viața plină. */
+export function createGame(seed: number, ups: Ups = NO_UPS): GameState {
+  const s: GameState = {
     seed, mode: 'playing', tick: 0, t: 0,
     crystal: BALANCE.start.crystal, metal: BALANCE.start.metal, kills: 0,
     core: { hp: BALANCE.core.hp, hitT: NEVER },
@@ -76,5 +80,9 @@ export function createGame(seed: number): GameState {
     foes: [], shots: [], fx: [],
     spawnT: BALANCE.foe.firstAt, spawnN: 0, nextId: 0,
     offer: null,
+    ups: { ...ups },
   }
+  s.core.hp = coreMaxHp(s)
+  s.hero.hp = BALANCE.hero.hp + hullHp(s)
+  return s
 }

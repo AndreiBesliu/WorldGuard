@@ -51,6 +51,16 @@ export function verdicts(rows: readonly Row[]): Verdict[] {
   })
 }
 
+/**
+ * Rândul de informație de sub tabel: mediana „Amestec” cu toate întăririle la plafon și cât e față de mediana fără ele.
+ * Nu are limită și nu intră în `verdicts`.
+ */
+export function boostedLine(mix: number, boosted: number): string {
+  const d = (boosted / mix - 1) * 100
+  const p = `${d < 0 ? '−' : '+'}${Math.abs(d).toFixed(1).replace('.', ',')}%`
+  return `Amestec, cu toate întăririle la plafon: ${secs(boosted)} (${p} față de Amestec)`
+}
+
 /** Secunda la care nava a atins un nivel; „—” dacă mediana e marginea testului (pe cel puțin jumătate din semințe, neatins). */
 const reachedAt = (x: number) => (x >= RUN_CAP ? '—' : `${Math.round(x)} s`)
 /** Nivelul navei: întreg, sau cu o zecimală când mediana cade între două niveluri. */

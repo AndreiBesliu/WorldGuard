@@ -1,6 +1,6 @@
 // Ce se desenează în coordonate de ecran: indicatorul spre planetă și joystickul.
-import { BALANCE } from '../data/balance'
 import { CORE } from '../data/layout'
+import { coreMaxHp } from '../sim/boost'
 import type { GameState } from '../sim/state'
 import { STICK_R, type Stick } from '../input/joystick'
 import type { Cam, View } from './camera'
@@ -20,7 +20,7 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, s: GameState, cam: Ca
     const hit = s.t - s.core.hitT < 1.2, tone = hit ? C.foe : C.ink
     const pulse = hit ? 1 + Math.sin(s.t * 14) * 0.12 : 1
     disc(ctx, px, py, 18 * pulse, alpha(C.night, 0.88))
-    ctx.beginPath(); ctx.arc(px, py, 15 * pulse, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0.001, s.core.hp / BALANCE.core.hp))
+    ctx.beginPath(); ctx.arc(px, py, 15 * pulse, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0.001, s.core.hp / coreMaxHp(s)))
     ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = tone; ctx.stroke()
     skin.coreIcon(ctx, px, py, tone)
     ctx.fillStyle = tone

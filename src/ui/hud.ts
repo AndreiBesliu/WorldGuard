@@ -1,6 +1,6 @@
 // Banda de sus: cristal, metal, ceas, viața nucleului și rândul navei (nivel, locuri, experiență). DOM-ul se atinge doar când o valoare s-a schimbat.
-import { BALANCE } from '../data/balance'
 import { LOW_FRAC } from '../data/layout'
+import { coreMaxHp } from '../sim/boost'
 import { heroPadView } from '../sim/mods'
 import type { GameState } from '../sim/state'
 import { clock } from './format'
@@ -43,7 +43,7 @@ export function createHud(doc: Document): { sync(s: GameState, o: { hint: boolea
       put('clock', clock(s.t))
       put('coreHp', String(Math.max(0, Math.ceil(s.core.hp))))
       put('fps', o.fps === null ? '' : STR.fpsLabel(o.fps.now, o.fps.min))
-      const frac = Math.min(1, Math.max(0, s.core.hp / BALANCE.core.hp))
+      const frac = Math.min(1, Math.max(0, s.core.hp / coreMaxHp(s)))
       const width = `${Math.round(frac * 100)}%`
       if (shown.fill !== width) { shown.fill = width; fill.style.width = width }
       toggle('low', frac < LOW_FRAC, (on) => meter.classList.toggle('low', on))

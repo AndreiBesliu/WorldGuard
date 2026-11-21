@@ -1,6 +1,8 @@
 // Stările aplicației (start, joc, pauză, final) și ce se salvează sau se șterge la fiecare trecere.
 // Fără DOM și fără stocare: salvarea vine prin `SessionDeps`.
-import { BALANCE, STRESS_SHIP } from '../data/balance'
+import { STRESS_SHIP } from '../data/balance'
+import type { Ups } from '../data/workshop'
+import { coreMaxHp } from '../sim/boost'
 import { spawnFoe } from '../sim/foes'
 import { heroMaxHp } from '../sim/hero'
 import { choose as chooseOffer } from '../sim/mods'
@@ -14,6 +16,7 @@ export interface SessionDeps {
   saveGame(s: GameState): void
   clearGame(): void
   saveIfRecord(secs: number): { record: number; isNew: boolean }
+  ups(): Ups                          // întăririle cu care pornește o partidă obișnuită; testul de viteză pornește fără ele
 }
 export interface OverInfo { secs: number; record: number; isNew: boolean; kills: number }
 export interface Session {
@@ -38,7 +41,7 @@ export function createSession(deps: SessionDeps, seed: number): Session {
   // Nava rămâne cu încărcătura de la pornire (`STRESS_SHIP`), deci armele trag tot testul.
   function keepStressed(): void {
     while (s.foes.length < STRESS_FOES) spawnFoe(s)
-    s.core.hp = BALANCE.core.hp
+    s.core.hp = coreMaxHp(s)
     s.hero.dead = false
     s.hero.hp = heroMaxHp(s)
     s.hero.xp = 0
@@ -49,8 +52,8 @@ export function createSession(deps: SessionDeps, seed: number): Session {
     get s() { return s },
     get stress() { return stress },
     start(newSeed, isStress) {
-      s = createGame(newSeed)
       stress = isStress
+      s = stress ? createGame(newSeed) : createGame(newSeed, deps.ups())
       if (stress) {
         s.spawnT = 1e9                        // în test nu apar dușmani de la sine: numărul rămâne exact STRESS_FOES
         s.hero.lvl = STRESS_SHIP.lvl          // nava pornește cu armele trăgând (STRESS_SHIP), cu viața plină pentru nivelul ei

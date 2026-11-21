@@ -12,7 +12,7 @@ import { parseFlags } from './app/flags'
 import { advance } from './app/loop'
 import { createSession, type OverInfo, type Phase } from './app/session'
 import { registerServiceWorker } from './app/sw'
-import { clearGame, loadGame, saveGame, saveIfRecord } from './app/storage'
+import { clearGame, loadGame, loadProfile, saveGame, saveIfRecord } from './app/storage'
 import { createWake, type WakeNav } from './app/wake'
 import { bindInput } from './input/bind'
 import { createRenderer } from './render/canvas'
@@ -45,7 +45,8 @@ const stage = document.getElementById('stage') as HTMLElement
 const renderer = createRenderer(canvas)
 const hud = createHud(document)
 const flags = parseFlags(location.search)
-const session = createSession({ saveGame, clearGame, saveIfRecord }, flags.seed ?? Date.now() >>> 0)
+// Întăririle se citesc din profil la fiecare partidă nouă (deocamdată nu există atelierul care să le schimbe).
+const session = createSession({ saveGame, clearGame, saveIfRecord, ups: () => loadProfile().ups }, flags.seed ?? Date.now() >>> 0)
 const wake = createWake(navigator as WakeNav)
 // Jocul fără internet, doar în build-ul publicat (`__WG_SW__ && PROD`). Sub `if`, pagina într-un singur fișier
 // (`__WG_SW__` fals) pierde la build apelul cu totul, cu adresa lui `./sw.js` cu tot.

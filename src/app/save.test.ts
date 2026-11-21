@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BALANCE } from '../data/balance'
 import { OFFERS } from '../data/modules'
+import { MAX_UPS, NO_UPS, WORKSHOP } from '../data/workshop'
 import { heroMaxHp } from '../sim/hero'
 import { slotsAt, xpNeed } from '../sim/mods'
 import { createRng } from '../sim/rng'
@@ -31,8 +32,8 @@ function shapeOf(root: unknown): string {
   return [...out].sort().join('\n')
 }
 
-// Forma stării pentru SAVE_VERSION 2.
-const SHAPE_V2 = `
+// Forma stării pentru SAVE_VERSION 3.
+const SHAPE_V3 = `
 core.hitT: number
 core.hp: number
 core: object
@@ -168,6 +169,12 @@ spawnN: number
 spawnT: number
 t: number
 tick: number
+ups.arms: number
+ups.core: number
+ups.hull: number
+ups.kit: number
+ups.reach: number
+ups: object
 `.trim()
 
 describe('salvarea', () => {
@@ -239,8 +246,36 @@ describe('salvarea', () => {
     ]
     const offer: Offer[] = [{ id: 'laser', tier: 1 }]   // o ofertă deschisă, ca felul elementelor să intre în amprentă
     s.shots.push(shot); s.fx.push(...fx); s.offer = offer
-    expect(SAVE_VERSION).toBe(2)
-    expect(shapeOf(s)).toBe(SHAPE_V2)
+    expect(SAVE_VERSION).toBe(3)
+    expect(shapeOf(s)).toBe(SHAPE_V3)
+  })
+  it('o salvare cu versiunea 2 (fără întăriri) e primită și capătă întăririle zero', () => {
+    const a = busy(5)
+    const { ups, ...old } = a
+    expect(ups).toEqual(NO_UPS)
+    const r = unpackSave(JSON.stringify({ v: 2, state: old }))
+    expect(r).toEqual({ ok: true, value: a })
+  })
+  it('întăririle se salvează și se citesc la fel', () => {
+    const a = createGame(11, MAX_UPS)
+    for (const i of script(5 * 60)) step(a, i)
+    const r = unpackSave(packSave(a))
+    expect(r).toEqual({ ok: true, value: a })
+    expect(r.ok && r.value.ups).toEqual(MAX_UPS)
+  })
+  it('întăririle cu altă formă sunt respinse', () => {
+    const good = packSave(busy(5))
+    const tweak = (f: (o: any) => void): string => { const o = JSON.parse(good); f(o); return JSON.stringify(o) }
+    const why = (t: string): string => { const r = unpackSave(t); return r.ok ? 'ok' : r.reason }
+    expect(why(good)).toBe('ok')
+    expect(why(tweak((o) => { o.state.ups.arms = WORKSHOP.arms.max + 1 }))).toBe('altă formă')   // peste plafon
+    expect(why(tweak((o) => { o.state.ups.core = -1 }))).toBe('altă formă')
+    expect(why(tweak((o) => { o.state.ups.reach = 1.5 }))).toBe('altă formă')
+    expect(why(tweak((o) => { o.state.ups.hull = '1' }))).toBe('altă formă')
+    expect(why(tweak((o) => { delete o.state.ups.kit }))).toBe('altă formă')
+    expect(why(tweak((o) => { o.state.ups.extra = 1 }))).toBe('altă formă')
+    expect(why(tweak((o) => { delete o.state.ups }))).toBe('altă formă')                           // la versiunea 3 câmpul e cerut
+    expect(why(tweak((o) => { o.state.ups = [0, 0, 0, 0, 0] }))).toBe('altă formă')
   })
   it('o salvare cu versiunea 1 e respinsă', () => {
     const r = unpackSave(JSON.stringify({ v: 1, state: busy(5) }))

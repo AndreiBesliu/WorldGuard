@@ -1,4 +1,5 @@
 // Rularea jucătorilor automați: partide întregi, fără browser, pe semințe fixe.
+import { NO_UPS, type Ups } from '../data/workshop'
 import { choose } from '../sim/mods'
 import { createGame, type GameState } from '../sim/state'
 import { step } from '../sim/step'
@@ -20,9 +21,9 @@ export function playStep(s: GameState, p: Policy, bot: Bot): void {
   else step(s, bot(s))
 }
 
-/** O partidă întreagă, până cade planeta sau până la `cap` secunde, cu secundele nivelurilor 2 și 5. */
-export function playTimed(p: Policy, seed: number, cap = RUN_CAP, guard = GUARD): Timed {
-  const s = createGame(seed)
+/** O partidă întreagă, până cade planeta sau până la `cap` secunde, cu secundele nivelurilor 2 și 5; pornește cu întăririle `ups`. */
+export function playTimed(p: Policy, seed: number, cap = RUN_CAP, guard = GUARD, ups: Ups = NO_UPS): Timed {
+  const s = createGame(seed, ups)
   const bot = createBot(p, guard)
   let lvl2At = RUN_CAP, lvl5At = RUN_CAP
   while (s.mode === 'playing' && s.t < cap) {
@@ -44,9 +45,9 @@ export function median(xs: readonly number[]): number {
   return v.length % 2 === 1 ? v[m]! : (v[m - 1]! + v[m]!) / 2
 }
 
-/** Timpii pe `SEEDS`, în ordinea semințelor. */
-export function measure(p: Policy, guard = GUARD): Row {
-  const games = SEEDS.map((seed) => playTimed(p, seed, RUN_CAP, guard))
+/** Timpii pe `SEEDS`, în ordinea semințelor, cu întăririle `ups`. */
+export function measure(p: Policy, guard = GUARD, ups: Ups = NO_UPS): Row {
+  const games = SEEDS.map((seed) => playTimed(p, seed, RUN_CAP, guard, ups))
   const times = games.map((g) => g.s.t)
   return {
     name: p.name, label: p.label, times, median: median(times), min: Math.min(...times), max: Math.max(...times),
