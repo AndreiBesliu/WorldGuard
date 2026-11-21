@@ -1077,9 +1077,34 @@ async function main() {
     const upsNow = async () => (await profileNow()).ups
     const buyBtn = (id) => `#shopRows .buy[data-up="${id}"]`
     const noErr = errors.length
+    // Ce se vede și ce e în stocare, ca să se poată cere „nimic nu s-a schimbat”: panoul, fazele celor două moduri, cartonașele de pauză, profilul și salvarea.
+    const snap = () => page.evaluate(() => ({
+      shop: !document.getElementById('shopVeil').hidden, phase: window.__wg.phase(), mode: window.__wg.mode(), fmode: window.__wg.flight().mode,
+      pauseVeils: [!document.getElementById('pauseVeil').hidden, !document.getElementById('flightPauseVeil').hidden],
+      profile: localStorage.getItem('wg.v1.profile'), save: localStorage.getItem('wg.v1.save'),
+    }))
+    // Cu atelierul deschis: Escape, pagina ascunsă și readusă, `pagehide`; după fiecare, totul trebuie să fie ca înainte.
+    const inert = async () => {
+      const a = await snap(), out = []
+      await page.keyboard.press('Escape'); await page.waitForTimeout(100); out.push(await snap())
+      await setVisibility('hidden'); await page.waitForTimeout(100); await setVisibility('visible'); await page.waitForTimeout(200); out.push(await snap())
+      await page.evaluate(() => window.dispatchEvent(new Event('pagehide'))); await page.waitForTimeout(100); out.push(await snap())
+      return { a, same: out.every((s) => JSON.stringify(s) === JSON.stringify(a)) }
+    }
+    // Garda: ambele butoane „Atelier” (și cel ascuns) chemate din cod, cât o partidă sau un zbor e în joc ori pe pauză, nu deschid nimic. Așteptarea de
+    // o secundă scoate clicul din fereastra „același gest” a lui `onTap`, ca proba să nu treacă în gol.
+    const guard = async () => {
+      await page.waitForTimeout(1100)
+      const a = await snap()
+      await page.evaluate(() => { document.getElementById('startWorkshop').click(); document.getElementById('overWorkshop').click() })
+      await page.waitForTimeout(150)
+      const b = await snap()
+      return { ok: !b.shop && JSON.stringify(a) === JSON.stringify(b), phase: `${a.mode}/${a.phase}/${a.fmode}` }
+    }
 
-    // 35. atelierul se deschide de pe cartonașul de start, cu cinci rânduri; o apăsare începută pe „Atelier” nu cumpără în panoul abia apărut;
-    // o apăsare pe Carenă scade rezerva cu prețul și aprinde un punct; două apăsări repezi: o treaptă dacă rezerva nu ajunge pentru amândouă
+    // 35. atelierul se deschide de pe cartonașul de start, cu cinci rânduri; deschis cu degetul, nu cumpără nimic (rezerva rămâne 200 / 60: un
+    // `click` după atingere nu ajunge pe un buton de cumpărat); cu panoul deschis, Escape, pagina ascunsă și `pagehide` nu schimbă nimic; „Înapoi”
+    // păstrează sectorul ales (3, nu cel propus, 4) și pornește zborul în el; o apăsare pe Carenă scade rezerva cu prețul și aprinde un punct; două apăsări repezi: o treaptă dacă rezerva nu ajunge pentru amândouă
     // (după prima: 150 / 50, iar treptele 2 și 3 costă 85 + 145), două dacă ajunge (400 / 100: 50 + 85)
     await putProfile({ crystal: 200, metal: 60 })
     await load()
@@ -1087,6 +1112,7 @@ async function main() {
     await page.waitForTimeout(200)
     const o35 = await shopState()
     await shot('20-atelier.png')
+    const i35 = await inert()
     await tap(buyBtn('hull'))
     await page.waitForTimeout(100)
     const b35 = await shopState(), p35 = await profileNow()
@@ -1096,6 +1122,20 @@ async function main() {
     await tap('#shopBack')
     await page.waitForTimeout(200)
     const back35 = { start: await visible('#startVeil'), shop: await visible('#shopVeil'), reserve: await startReserve() }
+    // „Înapoi” și sectorul: profil cu sectorul 3 explorat (propus: 4), ales 3 cu −, atelierul cu o cumpărătură, „Înapoi”, același sector, apoi zborul în el
+    await putProfile({ crystal: 200, metal: 60, sector: 3 })
+    await load()
+    const sec35a = await txt('#sectorN')
+    await tap('#sectorDown')
+    const sec35b = await txt('#sectorN')
+    await tap('#startWorkshop'); await page.waitForTimeout(200)
+    await tap(buyBtn('reach')); await page.waitForTimeout(100)
+    await tap('#shopBack'); await page.waitForTimeout(200)
+    const sec35c = await txt('#sectorN'), res35c = await startReserve()
+    await tap('#explore'); await page.waitForTimeout(300)
+    const fsec35 = await page.evaluate(() => window.__wg.flight().sector)
+    await page.click('#flightPause'); await page.waitForTimeout(200)
+    await tap('#quitFlight'); await page.waitForTimeout(200)
     await putProfile({ crystal: 400, metal: 100 })
     await load()
     await tap('#startWorkshop'); await page.waitForTimeout(200)
@@ -1107,8 +1147,10 @@ async function main() {
         b35.reserve === '150/50' && b35.dots[0] === 1 && p35.crystal === 150 && p35.metal === 50 && p35.ups.hull === 1 &&
         q35.ups.hull === 2 && q35.crystal === 65 && q35.metal === 35 &&
         back35.start && !back35.shop && same(back35.reserve, { crystal: 65, metal: 35 }) &&
-        r35.ups.hull === 2 && r35.crystal === 265 && r35.metal === 75,
-      `deschis ${JSON.stringify(o35)}; după Carenă ${JSON.stringify(b35)}, profil ${JSON.stringify(p35)}; după două apăsări repezi ${JSON.stringify(q35)}; „Înapoi” ${JSON.stringify(back35)}; cu 400 / 100 după două apăsări: ${JSON.stringify(r35)}`)
+        r35.ups.hull === 2 && r35.crystal === 265 && r35.metal === 75 &&
+        i35.same && i35.a.shop && i35.a.phase === 'ready' && i35.a.mode === 'defense' &&
+        sec35a === 'Sectorul 4' && sec35b === 'Sectorul 3' && sec35c === 'Sectorul 3' && same(res35c, { crystal: 160, metal: 60 }) && fsec35 === 3,
+      `Escape, pagină ascunsă, pagehide: ${i35.same ? 'nimic schimbat' : 'schimbat'} (${JSON.stringify({ ...i35.a, profile: undefined, save: undefined })}); sectorul ${sec35a} → ${sec35b} → după „Înapoi” ${sec35c}, rezerva ${show(res35c)}, zborul în sectorul ${fsec35}; deschis ${JSON.stringify(o35)}; după Carenă ${JSON.stringify(b35)}, profil ${JSON.stringify(p35)}; după două apăsări repezi ${JSON.stringify(q35)}; „Înapoi” ${JSON.stringify(back35)}; cu 400 / 100 după două apăsări: ${JSON.stringify(r35)}`)
     failFast(35)
 
     // 36. întăririle cumpărate: partida de apărare de pe start pornește cu nava la 66 de viață (Carena 1), zborul de pe start cu Laserul
@@ -1123,27 +1165,45 @@ async function main() {
     await tap('#shopBack'); await page.waitForTimeout(200)
     await tap('#start'); await page.waitForTimeout(400)
     const d36 = await page.evaluate(() => ({ hp: window.__wg.state().hero.hp, mode: window.__wg.mode() }))
+    const gd1 = await guard()                                    // partida de apărare în joc
     await page.click('#pause'); await page.waitForTimeout(200)
+    const gd2 = await guard()                                    // partida de apărare pe pauză
     await load()
     await tap('#explore'); await page.waitForTimeout(400)
     const f36 = await page.evaluate(() => { const f = window.__wg.flight(); return { laser: f.ship.mods.laser, missile: f.ship.mods.missile, hp: f.ship.hp } })
+    const gf1 = await guard()                                    // zborul în joc
+    await page.click('#flightPause'); await page.waitForTimeout(200)
+    const gf2 = await guard()                                    // zborul pe pauză
+    await tap('#flightResume'); await page.waitForTimeout(300)
     await page.evaluate(() => { const f = window.__wg.flight(); f.ship.inv = 0; f.ship.hp = 1; f.ship.mods.shield = 0; f.ship.shieldUp = false; f.shots.push({ x: f.ship.x, y: f.ship.y, vx: 0, vy: 0 }) })
     await page.waitForSelector('#flightOverVeil:not([hidden])', { timeout: 3000 }).catch(() => {})
     await page.waitForTimeout(200)
+    const over36a = await page.evaluate(() => ({ sector: document.getElementById('flightOverSector').textContent, title: document.getElementById('flightOverTitle').textContent,
+      label: document.getElementById('flightOverLabel').textContent, haul: [document.getElementById('overCrystal').textContent, document.getElementById('overMetal').textContent].join('/'),
+      next: document.getElementById('flightNext').textContent, fmode: window.__wg.flight().mode }))
     await tap('#overWorkshop'); await page.waitForTimeout(200)
     const o36 = await shopState()
+    const i36 = await inert()                                    // Escape, pagina ascunsă, `pagehide` cu atelierul de la sfârșitul zborului: nimic în plus în rezervă
     await tap(buyBtn('kit')); await page.waitForTimeout(100)
     const k36 = await upsNow(), pr36 = await profileNow()
     await tap('#shopBack'); await page.waitForTimeout(200)
     const back36 = await page.evaluate(() => ({ over: !document.getElementById('flightOverVeil').hidden, shop: !document.getElementById('shopVeil').hidden,
-      reserve: { crystal: Number(document.getElementById('flightOverCrystal').textContent), metal: Number(document.getElementById('flightOverMetal').textContent) } }))
+      reserve: { crystal: Number(document.getElementById('flightOverCrystal').textContent), metal: Number(document.getElementById('flightOverMetal').textContent) },
+      sector: document.getElementById('flightOverSector').textContent, title: document.getElementById('flightOverTitle').textContent,
+      label: document.getElementById('flightOverLabel').textContent, haul: [document.getElementById('overCrystal').textContent, document.getElementById('overMetal').textContent].join('/'),
+      next: document.getElementById('flightNext').textContent }))
     await tap('#flightNext'); await page.waitForTimeout(400)
     const g36 = await page.evaluate(() => { const f = window.__wg.flight(); return { mode: f.mode, laser: f.ship.mods.laser, missile: f.ship.mods.missile } })
     await shot('21-dupa-atelier.png')
     check(36, 'după cumpărături: partida de apărare pornește cu nava la 66 de viață; zborul de pe start cu Laserul (și fără Rachete); atelierul de la sfârșitul zborului se deschide peste cartonașul de sfârșit, cumpără Arsenalul 2, „Înapoi” arată cartonașul cu rezerva nouă, iar „Încă un zbor” pornește cu Laserul și Rachetele',
       u36.hull === 1 && u36.kit === 1 && d36.mode === 'defense' && d36.hp === 66 && f36.laser > 0 && !(f36.missile > 0) &&
-        o36.open && !o36.over && k36.kit === 2 && back36.over && !back36.shop && same(back36.reserve, pr36) && g36.mode === 'flying' && g36.laser > 0 && g36.missile > 0,
-      `ups ${JSON.stringify(u36)}; apărare ${JSON.stringify(d36)}; zbor de pe start ${JSON.stringify(f36)}; atelier de la sfârșit ${JSON.stringify(o36)}, ups ${JSON.stringify(k36)}; „Înapoi” ${JSON.stringify(back36)} față de profil ${show(pr36)}; „Încă un zbor” ${JSON.stringify(g36)}`)
+        o36.open && !o36.over && k36.kit === 2 && back36.over && !back36.shop && same(back36.reserve, pr36) && g36.mode === 'flying' && g36.laser > 0 && g36.missile > 0 &&
+        [gd1, gd2, gf1, gf2].every((g) => g.ok) && gd1.phase === 'defense/playing/flying' && gd2.phase === 'defense/paused/flying' && gf1.phase.startsWith('flight/') && gf1.phase.endsWith('/flying') && gf2.phase.endsWith('/flying') &&
+        over36a.fmode === 'down' && over36a.title === 'Nava a fost doborâtă' && over36a.next === 'Încă un zbor' &&
+        back36.title === over36a.title && back36.sector === over36a.sector && back36.label === over36a.label && back36.haul === over36a.haul && back36.next === over36a.next &&
+        i36.same && i36.a.shop && i36.a.fmode === 'down',
+      `garda (apărare în joc / pe pauză, zbor în joc / pe pauză): ${[gd1, gd2, gf1, gf2].map((g) => `${g.phase} ${g.ok ? 'refuzat' : 'DESCHIS'}`).join(', ')}; ` +
+        `Escape, pagină ascunsă, pagehide la sfârșitul zborului: ${i36.same ? 'nimic schimbat' : 'schimbat'}; cartonașul de sfârșit înainte ${JSON.stringify(over36a)}, după „Înapoi” ${JSON.stringify({ ...back36, reserve: undefined })}; ups ${JSON.stringify(u36)}; apărare ${JSON.stringify(d36)}; zbor de pe start ${JSON.stringify(f36)}; atelier de la sfârșit ${JSON.stringify(o36)}, ups ${JSON.stringify(k36)}; „Înapoi” ${JSON.stringify(back36)} față de profil ${show(pr36)}; „Încă un zbor” ${JSON.stringify(g36)}`)
 
     // 37. profilul stricat de mână: pe start rezerva 0 și 0, iar atelierul are cinci rânduri stinse, fără nicio eroare nouă în consolă
     await putProfile('{"v":1,"crystal":"mult"')

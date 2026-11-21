@@ -129,7 +129,8 @@ export function createCards(doc: Document, on: {
       veils()
       pauseOn(true)
     },
-    // Niciun cartonaș, dar nici butonul de pauză: e pe ecran panoul de alegere, care nu se închide decât alegând.
+    // Niciun cartonaș, dar nici butonul de pauză: e pe ecran un panou care ține locul cartonașelor, fie cel de alegere (nu se închide decât alegând),
+    // fie atelierul (se închide cu „Înapoi”, care arată din nou cartonașul de unde s-a deschis).
     hold() {
       veils()
       pauseOn(false)

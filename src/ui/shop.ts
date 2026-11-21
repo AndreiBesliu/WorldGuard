@@ -47,8 +47,8 @@ export function createShop(doc: Document, onBuy: (id: UpId) => void, onBack: () 
     return e
   }
   const price = (c: Cost): HTMLElement[] => [
-    make('i', 'chip chip-crystal'), make('span', 'buy-n', String(c.crystal)),
-    ...(c.metal > 0 ? [make('i', 'chip chip-metal'), make('span', 'buy-n', String(c.metal))] : []),   // metal 0 nu se arată
+    make('i', 'chip chip-crystal'), make('span', '', String(c.crystal)),
+    ...(c.metal > 0 ? [make('i', 'chip chip-metal'), make('span', '', String(c.metal))] : []),   // metal 0 nu se arată
   ]
   const row = (r: ShopRow, mine: number): { box: HTMLElement; button: HTMLElement | null } => {
     const box = make('div', 'up')

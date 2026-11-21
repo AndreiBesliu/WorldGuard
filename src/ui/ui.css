@@ -11,6 +11,7 @@
   --crystal: #4fe3c1; --crystal-lift: #a8f7e4; --crystal-shade: #22a58c; --crystal-base: #343062;
   --ore: #8d88b5; --ore-shade: #5f5a86; --ore-pit: #4d4973; --ore-fleck: #e9e6ff;
   --metal: #b3aee6;
+  --crystal-on-lit: #0b6b58; --metal-on-lit: #4a4590;   /* semnele cristalului și metalului pe fundal galben, în butonul de preț (propunere) */
   --hull: #dfe6f7; --hull-shade: #8a94b8; --hull-dark: #1a2147; --solar: #3f73d9; --solar-line: #9cc0ff;
   --bolt: #d8fbff;
   --ink: #f1f4ff; --ink-soft: #9fa9c9; --night: #060a1f;
@@ -297,8 +298,8 @@ button.mode, .mode-go { font: inherit; border: 0; cursor: pointer; touch-action:
 }
 .buy:active { transform: translateY(1px); }
 .buy:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
-.buy .chip { width: 9px; height: 9px; background: #0b6b58; }
-.buy .chip-metal { background: #4a4590; }
+.buy .chip { width: 9px; height: 9px; background: var(--crystal-on-lit); }
+.buy .chip-metal { background: var(--metal-on-lit); }
 .buy.poor { background: transparent; color: var(--ink-soft); border-color: var(--line); cursor: default; }
 .buy.poor .chip-crystal { background: var(--crystal); opacity: .6; }
 .buy.poor .chip-metal { background: var(--metal); opacity: .6; }
