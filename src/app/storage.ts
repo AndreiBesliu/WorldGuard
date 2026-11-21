@@ -68,6 +68,9 @@ const copyProfile = (p: Profile): Profile => ({ ...p, ups: { ...p.ups } })
  */
 let kept: { store: Store | null; p: Profile; ahead: boolean } | null = null
 
+/** Doar pentru teste: uită profilul ținut în memorie, ca fiecare test să pornească de la aceeași stare. Jocul nu-l cheamă. */
+export function forgetProfileForTests(): void { kept = null }
+
 /**
  * Profilul jucătorului (rezerva și atelierul). Stocarea e adevărul când se poate citi și ultima scriere a ajuns în ea (așa se vede
  * și ce a scris altă filă); altfel, ultimul profil scris, din memorie. Lipsă sau stricat dau profil gol; unul stricat nu se șterge:

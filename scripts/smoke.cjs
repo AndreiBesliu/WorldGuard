@@ -15,7 +15,8 @@
 // apărare și la zborul de pe start și de după sfârșitul unui zbor, (37) un profil stricat de mână dă start cu rezerva 0, fără erori; capturile `20-atelier` (390 și 360);
 // apoi drumul înapoi la start din apărare: (38) de la final, apoi un zbor, (39) din pauză, la 360 × 640, apoi „Continuă partida” reia aceeași partidă,
 // (40) din pauză, apoi atelierul, (41) fără ?seed=, partida de după întoarcere are altă sămânță; (42) banda zborului la 360 cu 7 vieți și cifre de joc,
-// (43) ecranul rotit cu degetul pe el nu aruncă nava, (44) stocarea refuzată: rezerva și atelierul tot merg (capturile 22, 23, 24 și 15-zbor-412).
+// (43) ecranul rotit cu degetul pe el nu aruncă nava, (44) stocarea refuzată: rezerva și atelierul tot merg (capturile 22, 23, 24 și 15-zbor-412),
+// (45) rândul fps al testului de viteză nu rămâne după „Înapoi la start”, nici în partida reluată cu „Continuă partida”.
 // În afara verificărilor: rândurile `SMOKE INFO` (timpul de desen cu 150 de nave, fără module și cu toate cele nouă trăgând; al zborului
 // în clipa cea mai plină) și capturile modulelor pe navă (10, mărită; 12, la scara jocului), a tragerilor (11), a pictogramei
 // Rachetelor (13, 14), ale zborului (15 și 15-zbor-360, 16 cu nava de elită) și ale cartonașelor și benzii lui (17, 18, 19, la 390 și la 360).
@@ -1420,6 +1421,28 @@ async function main() {
     }
     check(44, 'cu stocarea refuzată (accesul aruncă; scrierea aruncă): după un zbor, rezerva de pe cartonașul de sfârșit e cea adusă (60 / 12), atelierul cumpără Carena (10 / 2, un punct aprins), iar „Înapoi” arată rezerva nouă; nicio eroare',
       refused44.every((r) => r.ok), refused44.map((r) => r.text).join('; '))
+
+    // 45. rândul fps al testului de viteză nu rămâne după „Înapoi la start”: o partidă obișnuită pusă pe pauză (deci salvată), apoi testul de viteză,
+    // pauză, „Înapoi la start”: pe start banda n-are rândul fps și are înălțimea obișnuită; „Continuă partida” reia partida fără eticheta „TEST”
+    await page.setViewportSize({ width: 390, height: 780 })
+    await page.evaluate(() => localStorage.clear())
+    await load()
+    const band45 = () => page.evaluate(() => ({ h: document.getElementById('banner').getBoundingClientRect().height, fps: document.getElementById('fps').textContent }))
+    const base45 = await band45()
+    await tap('#start'); await page.waitForTimeout(400)
+    await tap('#pause'); await page.waitForTimeout(300)
+    await tap('#pauseHome'); await page.waitForTimeout(300)
+    await tap('#stress'); await page.waitForTimeout(1500)
+    const stress45 = await band45()
+    await tap('#pause'); await page.waitForTimeout(300)
+    await tap('#pauseHome'); await page.waitForTimeout(400)
+    const home45 = { ...(await band45()), start: await visible('#startVeil'), cont: await visible('#continue') }
+    await tap('#continue'); await page.waitForTimeout(1200)
+    const resumed45 = { ...(await band45()), phase: await page.evaluate(() => window.__wg.phase()) }
+    check(45, 'după testul de viteză, pauză și „Înapoi la start”: pe start banda n-are rândul fps și are înălțimea obișnuită; „Continuă partida” reia partida fără „TEST” și cu banda obișnuită',
+      stress45.fps.includes('fps') && stress45.h > base45.h && home45.start && home45.cont && home45.fps === '' && Math.abs(home45.h - base45.h) < 0.5 &&
+        resumed45.phase === 'playing' && resumed45.fps === '' && Math.abs(resumed45.h - base45.h) < 0.5,
+      `obișnuit ${JSON.stringify(base45)}, test ${JSON.stringify(stress45)}, start ${JSON.stringify(home45)}, reluat ${JSON.stringify(resumed45)}`)
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))

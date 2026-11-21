@@ -1,12 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { createGame } from '../sim/state'
 import { step } from '../sim/step'
 import { buyStep } from '../workshopMode'
 import { createFlightSession } from './flightSession'
 import { bank, emptyProfile, markExplored, packProfile } from './profile'
-import { PROFILE_KEY, RECORD_KEY, SAVE_KEY, clearGame, loadGame, loadProfile, readRecord, saveGame, saveIfRecord, saveProfile } from './storage'
+import { PROFILE_KEY, RECORD_KEY, SAVE_KEY, clearGame, forgetProfileForTests, loadGame, loadProfile, readRecord, saveGame, saveIfRecord, saveProfile } from './storage'
 
 const mem = (init: Record<string, string> = {}) => { const m = { ...init }; return { getItem: (k: string) => m[k] ?? null, setItem: (k: string, v: string) => { m[k] = v }, removeItem: (k: string) => { delete m[k] } } }
+// Memoria profilului (ultimul profil scris) ține cât modulul: se golește înaintea fiecărui test, ca niciunul să nu depindă de ordine.
+beforeEach(() => { forgetProfileForTests() })
+
 const broken = { getItem: () => { throw new Error('refuzat') }, setItem: () => { throw new Error('plin') }, removeItem: () => { throw new Error('refuzat') } }
 
 it('fără stocare, cu stocare care aruncă sau cu gunoi, recordul e 0 și jocul merge', () => {

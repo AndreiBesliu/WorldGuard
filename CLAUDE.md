@@ -32,7 +32,7 @@ Faptele stabile și regulile proiectului. Se încarcă la fiecare sesiune.
 ## Comenzi
 ```bash
 npm run dev        # Vite, http://localhost:5180
-npm run check      # typecheck + teste + bundle + single — ASTA e poarta înainte de commit (30 s, măsurat)
+npm run check      # typecheck + teste + bundle + single — ASTA e poarta înainte de commit (28 s, măsurat)
 npm test           # Vitest
 npm run bundle     # vite build + scripts/build-sw.mjs (scrie dist/sw.js); `build` = tsc + bundle
 npm run build
@@ -92,7 +92,7 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   (culorile `#rgb` lăsate de micșorarea CSS-ului la build, aduse la `#rrggbb`) și `camera.test.ts`. `ground.ts` nu mai există. Mișcările doar de desen (continente, nori, satelit, flăcări, țeava turelei)
   se calculează din timpul partidei și din stare; nu scriu nimic în stare.
   `flight/` — desenul zborului („Explorează galaxia”), în stilul „Orbită”: `canvas.ts` (`createFlightRenderer`: mărimea canvasului, `fitField` — câmpul de
-  390 × 680 lipit de bandă, deci dușmanii ies de sub ea, la scara cea mai mare la care încape întreg, cu cer în plus dedesubt sau fâșii în lături —, și bucata din mijloc a cerului
+  390 × 680 lipit de bandă, deci dușmanii ies de sub ea, la scara cea mai mare la care încape întreg, cu o fâșie dedesubt sau fâșii în lături, umplute după desen cu culoarea paginii (`outsideField`), deci ce iese din câmp nu se vede —, și bucata din mijloc a cerului
   apărării, împrumutat prin `sky()` de la desenatorul din `render/canvas.ts`: cerul se pictează o singură dată, pentru amândouă), `scene.ts` (stelele care curg, forme pline după `f.t`, și ordinea straturilor în `drawFlight`, cu aspectul `FlightLook` dat ca
   argument), `things.ts` (formele: nava ta cu vârful în sus și modulele pe ea, cele cinci feluri de dușmani cu vârful în jos, focul dușman rotund și
   portocaliu, lucrurile de cules ca pătrate cu chenar în culoarea felului, resursele ca la apărare, raze, rachete, explozii; `FLIGHT_LOOK`). Efectele se
@@ -127,7 +127,7 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   schimbă (ecranul rotit), degetul ținut pe ecran e lăsat (`input.release()`), ca nava să nu sară. Cu `?debug=1`, `window.__wg` are `state()`,
   `phase()`, `run(secunde)` și `drawMs(cadre)`, iar pentru zbor `mode()`, `flight()`, `runFlight(secunde)`, `flightDrawMs(cadre)` și `flightField()`
   (câmpul pe ecran, în px).
-- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 44 de verificări, capturi în `smoke-out/`, plus rânduri `SMOKE INFO` cu timpul de
+- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 45 de verificări, capturi în `smoke-out/`, plus rânduri `SMOKE INFO` cu timpul de
   desen pe cadru cu cele 150 de nave dușmane ale testului de viteză așezate în jurul planetei, ca să fie în vedere, din `window.__wg.drawMs`:
   o dată cu nava testului de viteză (`STRESS_SHIP`: cele trei arme la treapta 3), o dată cu toate cele nouă module la treapta 3 și armele trăgând; capturile `10-nava-module.png` (mărită),
   `11-explozie.png`, `12-nava-la-scara.png`, `13-banda-rachete.png` și `14-panou-rachete.png` nu sunt verificări; verificările 27–29 sunt ale zborului (degetul,
@@ -140,7 +140,8 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   stricat de mână dă start cu rezerva 0), cu capturile `20-atelier.png`, `20-atelier-360.png` și `21-dupa-atelier.png`; verificările 38–41 sunt drumul
   înapoi la start din apărare (de la final, apoi un zbor; din pauză, la 360 × 640, cu cele trei butoane încăpând, apoi „Continuă partida” reia aceeași
   partidă; din pauză, apoi atelierul; fără `?seed=`, partida de după întoarcere are altă sămânță), 42 e banda zborului la 360 cu 151 / 52, 7 vieți și cinci
-  module, 43 ecranul rotit cu degetul pe el, 44 stocarea refuzată (accesul sau scrierea aruncă: rezerva și atelierul tot merg), cu capturile
+  module, 43 ecranul rotit cu degetul pe el, 44 stocarea refuzată (accesul sau scrierea aruncă: rezerva și atelierul tot merg), 45 rândul fps al testului de viteză care nu rămâne după
+  „Înapoi la start” și „Continuă partida”, cu capturile
   `15-zbor-412.png`, `22-final-aparare.png`, `23-pauza-aparare-360.png` și `24-banda-zbor-360-7-vieti.png`; merge doar pe Linux și macOS),
   `single-file.mjs` (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`, care începe cu `<meta charset="utf-8">`, ca diacriticele să fie
   bune și deschis de mână; lipsa lui pică `npm run single`, deci și `check`),
@@ -199,5 +200,5 @@ Păzite de `src/sim/discipline.test.ts` (care are și o probă negativă). Testu
 - **Nefăcut încă:** eticheta `hex-td-v0.0.1` — a lui Andrei; proba lui pe telefon (fazele 2 și 3, nava cu module și zborul împreună: instalarea, jocul fără internet, pauza, reluarea, panoul de alegere, un zbor de trei minute cu module, greutatea sectorului 1, dacă prima întărire vine la timp, înălțimea câmpului de zbor); cifrele de la „Test de viteză”; hotărârea lui asupra propunerilor.
 - **Urmează:** lista „Scopuri pentru v1” din design e în cod după faza 3; scopul 7 („nicio strategie care ignoră o direcție nu bate un amestec”) e păzit pentru acești jucători automați, nu acoperit în general (vezi „Ce e fragil” și „Ce nu vede plasa” în `docs/GDD.md`). Etapele următoare din spec (întâi dușmani de mai multe feluri, o singură dată pentru ambele moduri; apoi elite cu obiecte de adoptat, tipuri de turele, tipuri de nave) cer fiecare designul ei, cu Andrei.
 - **Cifre măsurate:** numărul de teste, tabelul din `npm run balance` și rândurile zborului nu se țin aici, ca să nu rămână în urmă: ultimele sunt în `DEVLOG.md`,
-  în cea mai nouă intrare. Aici rămân doar două, care descriu unelte și se aduc la zi cu ele: numărul de verificări din proba din browser (44) și cât durează
-  `npm run check` (30 s), amândouă măsurate la valul de reparații de după recenzia etapei (21.11.2026).
+  în cea mai nouă intrare. Aici rămân doar două, care descriu unelte și se aduc la zi cu ele: numărul de verificări din proba din browser (45) și cât durează
+  `npm run check` (28 s), amândouă măsurate la retușarea de după recenzia de control a etapei (21.11.2026).

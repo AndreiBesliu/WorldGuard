@@ -14,7 +14,7 @@ reechilibrarea a două cifre (propuneri, până le vede Andrei în joc). Nava cu
 npm install
 npm run dev      # http://localhost:5180
 npm run check    # typecheck + teste + build cu service worker + jocul într-un singur fișier (poarta înainte de commit; CI rulează același lucru)
-npm run smoke    # proba în browser (Playwright, 44 de verificări); nu face parte din `check`
+npm run smoke    # proba în browser (Playwright, 45 de verificări); nu face parte din `check`
 npm run single   # dist-single/world-guard.html: tot jocul într-un singur fișier, fără nicio referință în afară
 npm run balance  # tabelul jucătorilor automați (120 de partide, ~15 s), plus rândul „Amestec cu toate întăririle”, cifra unui zbor condus de script, măsurată pe loc, și câte astfel de zboruri costă tot atelierul; cu `-- --raze` și pentru razele de apărare 80 și 160 (~40 s)
 npm run icons    # desenează din nou pictogramele PNG din public/icons/icon.svg (doar când se schimbă desenul)
@@ -51,7 +51,7 @@ singură, iar tu o ferești de focul dușman conducând-o cu degetul (nava face 
 săgețile sau WASD). Cartonașul de start are cele două moduri, „Apără planeta” și „Explorează galaxia”, rezerva și sectorul ales cu − și +
 (de la 1 până la cel mai departe explorat plus unu, cel mult 999; se propune cel mai departe explorat plus unu). Cartonașele de pauză și de final
 ale apărării au „Înapoi la start”: din pauză partida rămâne salvată și se reia cu „Continuă partida”, iar după final „Apără planeta” pornește o
-partidă nouă. Câmpul zborului stă lipit de banda de sus, deci dușmanii ies de sub ea; pe un ecran înalt cerul în plus rămâne dedesubt.
+partidă nouă. Câmpul zborului stă lipit de banda de sus, deci dușmanii ies de sub ea; pe un ecran înalt rămâne o fâșie dedesubt, umplută cu culoarea paginii, ca și fâșiile din lături de pe un ecran scund, deci ce iese din câmp nu se vede.
 În zbor, banda de sus arată ce a strâns zborul (doar semnul și cifra), viețile navei, drumul prin sector (care devine viața navei de elită), modulele cu treptele lor și pauza; sub ea, un rând scurt spune
 ce ai cules. Pauza zborului are cartonașul ei („Zbor în pauză”, „Continuă”, „Renunță la zbor”); la sfârșit: „Sector explorat” sau „Nava a
 fost doborâtă”, ce ai adus, rezerva, „Sectorul următor” sau „Încă un zbor” și „Înapoi la start”. Ce s-a strâns trece în rezervă exact o dată

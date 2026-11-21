@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { FLIGHT } from '../../data/flight'
-import { fitField } from './canvas'
+import { fitField, outsideField } from './canvas'
 
 const { w: FW, h: FH } = FLIGHT.field
 
@@ -30,6 +30,35 @@ describe('câmpul pe ecran', () => {
     expect(k.y).toBeCloseTo(110, 9)
     expect(k.y + FH * k.scale).toBeCloseTo(640, 9)
     expect(k.x).toBeGreaterThan(0)
+  })
+  // Fâșiile din afara câmpului, sub bandă, umplute cu culoarea paginii: ce iese din câmp nu se mai vede. Se verifică pe o grilă de puncte
+  // că fiecare punct de sub bandă e fie în câmp, fie într-o singură fâșie, iar niciunul din câmp nu e acoperit.
+  const covers = (w: number, h: number, band: number): ReturnType<typeof outsideField> => {
+    const k = fitField(w, h, band), rs = outsideField(w, h, k)
+    const fx1 = k.x + FW * k.scale, fy1 = k.y + FH * k.scale
+    for (let y = band + 0.5; y < h; y += 3) {
+      for (let x = 0.5; x < w; x += 3) {
+        const inField = x > k.x && x < fx1 && y > k.y && y < fy1
+        const hits = rs.filter((r) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h).length
+        expect(hits).toBe(inField ? 0 : 1)
+      }
+    }
+    for (const r of rs) expect(r.y).toBeGreaterThanOrEqual(band - 1e-9)   // deasupra câmpului e banda: nimic de umplut
+    return rs
+  }
+  it('pe un ecran înalt: o singură fâșie, sub câmp, cât tot ecranul în lățime', () => {
+    const rs = covers(412, 892, 123)
+    expect(rs).toHaveLength(1)
+    expect(rs[0]!.x).toBe(0); expect(rs[0]!.w).toBe(412)
+  })
+  it('pe un ecran scund: două fâșii, în lături, de la bandă până jos', () => {
+    const rs = covers(360, 640, 123)
+    expect(rs).toHaveLength(2)
+    for (const r of rs) { expect(r.y).toBeCloseTo(123, 9); expect(r.h).toBeCloseTo(640 - 123, 9) }
+  })
+  it('când câmpul umple tot ce e sub bandă, nu se umple nimic', () => {
+    expect(outsideField(390, 680 + 100, fitField(390, 680 + 100, 100))).toEqual([])
+    expect(outsideField(780, 1360 + 50, fitField(780, 1360 + 50, 50))).toEqual([])
   })
   it('o mărime care nu e bună (zero, NaN, banda peste tot ecranul) dă scara 1 și o așezare cu numere', () => {
     for (const [w, h, b] of [[0, 0, 0], [NaN, 700, 100], [390, 100, 200], [390, 700, NaN]] as const) {

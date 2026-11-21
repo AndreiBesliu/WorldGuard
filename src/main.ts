@@ -125,12 +125,14 @@ function pick(i: number): void {
 
 /** S-a jucat deja o partidă în pagina asta: atunci „Apără planeta” pornește cu sămânță nouă (cu `?seed=`, tot aceea), nu a doua oară aceeași. */
 let played = false
+/** Rândul fps din bandă se golește: la o pornire nouă, la întoarcerea la start și la „Continuă partida”. */
+function clearFps(): void { fps = null; fpsFrames = 0; fpsTime = 0 }
 function begin(seed: number, stress: boolean): void {
   mode = 'defense'
   played = true
   session.start(seed, stress)
   saved = null                                  // „Continuă partida” nu mai e de oferit; din stocare sesiunea o șterge doar la o partidă obișnuită, nu și în testul de viteză
-  fps = null; fpsFrames = 0; fpsTime = 0
+  clearFps()
   playing()
 }
 function pause(): void {
@@ -167,6 +169,7 @@ function home(): void {
   mode = 'defense'
   session.leave()
   saved = loadGame()
+  clearFps()                                    // rândul fps e doar al testului de viteză: nu rămâne pe start
   stopped()
   cards.showStart({ saved: saved === null ? null : { secs: Math.floor(saved.t) }, ...fm.startCard() })
 }
@@ -206,6 +209,7 @@ const cards = createCards(document, {
     session.resume(saved)
     saved = null
     played = true
+    clearFps()                                  // plasă: partida reluată nu e test de viteză
     playing()
   },
   stress: () => begin(played ? freshSeed() : session.s.seed, true),

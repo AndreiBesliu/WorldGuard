@@ -799,3 +799,15 @@ Recenzia întregii etape a găsit trei lucruri importante între bucăți (niciu
 
 - [ ] de arătat lui Andrei, pe ecranele înalte: cu câmpul lipit de bandă, sub câmp rămâne cer, iar ce iese din câmp pe jos (focul dușman ratat, dușmanii trecuți, asteroizii) se mai vede acolo pe ultimele 20–50 de unități, până iese din joc (citit din `FLIGHT.*.gone`, nemăsurat pe ecran).
 - [ ] hotărârea lui Andrei asupra propunerilor valului: plafonul sectorului, câmpul lipit de bandă, banda zborului fără cuvinte la resurse, „Înapoi la start” pe pauza și pe finalul apărării, sămânța nouă după prima partidă.
+
+## 21.11.2026 — „Explorează galaxia”: retușările de după recenzia de control
+
+Recenzia de control a valului de mai sus l-a găsit în regulă și a lăsat trei mărunte.
+
+- **Rândul fps al testului de viteză rămânea după „Înapoi la start”** (pe start, „TEST · 60 fps · min 60” și banda mai înaltă; în partida reluată cu „Continuă partida”, eticheta „TEST” înghețată). `src/main.ts`: `clearFps()` golește rândul la o pornire nouă, la întoarcerea la start și, ca plasă, la „Continuă partida”. Verificarea 45 (nouă) face drumul test de viteză → pauză → „Înapoi la start” → „Continuă partida”; pe codul de dinainte a picat cu `start {"h":138,"fps":"TEST · 60 fps · min 60"}` față de banda obișnuită de 122 px.
+- **În afara câmpului zborului nu se mai desenează nimic** (propunere): după desen, fâșiile de sub bandă din afara câmpului (dedesubt pe ecranele înalte, în lături pe cele scunde) se umplu cu culoarea paginii (`--edge`), cu umpleri simple (`outsideField` în `src/render/flight/canvas.ts`; fără decupaj, fără gradient). Ce iese din câmp pe jos nu mai dispare la vedere. Teste în `src/render/flight/canvas.test.ts`.
+- **`src/app/storage.test.ts` nu mai depinde de ordinea testelor:** memoria profilului se golește înaintea fiecărui test (`forgetProfileForTests`, chemat doar din teste). Fiecare test trece și rulat singur, și tot fișierul în ordine amestecată (`--sequence.shuffle`).
+- **Cifrele, rulate acum:** `npm run check` — 57 de fișiere de test, 659 de teste trec, 28,1 s; `npm run smoke` — „SMOKE OK (45 verificări)”.
+
+- [x] de arătat lui Andrei, pe ecranele înalte: cu câmpul lipit de bandă, sub câmp rămâne cer, iar ce iese din câmp pe jos (focul dușman ratat, dușmanii trecuți, asteroizii) se mai vede acolo pe ultimele 20–50 de unități, până iese din joc (citit din `FLIGHT.*.gone`, nemăsurat pe ecran). — închisă de această intrare: fâșia de sub câmp e umplută cu culoarea paginii, deci nu se mai vede nimic acolo.
+- [ ] hotărârea lui Andrei asupra fâșiilor din afara câmpului umplute cu culoarea paginii (propunere).
