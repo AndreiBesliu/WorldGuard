@@ -100,6 +100,38 @@ body {
 .ship.ready .ring-fill { stroke: var(--hero); }
 .ship.ready .xp { color: var(--hero); font-weight: 700; }
 
+/* Banda din zbor (propunere de așezare, după macheta 3): stocul zborului și viețile; drumul prin sector, care devine viața navei
+   de elită; modulele cu treptele lor și pauza. Are aceeași înălțime în zbor, în pauza lui și pe cartonașul lui de sfârșit:
+   butonul de pauză ascuns își păstrează locul, iar rândul „ai cules” stă sub bandă, în afara așezării. */
+.banner.fl { display: flex; flex-direction: column; align-items: stretch; gap: 9px; }
+.fl-row { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.fl-row .stock { align-self: baseline; }
+.fl-hits { margin-left: auto; display: flex; gap: 5px; }
+.fl-hits i { box-sizing: border-box; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--hero); }
+.fl-hits i.on { background: var(--hero); }
+.fl-way { gap: 10px; font-size: 10.5px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.fl-way span:first-child { min-width: 5.5em; white-space: nowrap; }
+.fl-way span:last-child { min-width: 3.2em; text-align: right; }
+.fl-track { flex: 1; height: 8px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.fl-track i { display: block; height: 100%; width: 0; border-radius: 99px; background: var(--ink); }
+.fl-way.elite { color: var(--foe); }
+.fl-way.elite .fl-track i { background: var(--foe); }
+.fl-ship { min-height: 32px; padding-bottom: 7px; }
+.fl-mods { display: flex; gap: 10px; }
+.fslot {
+  position: relative; box-sizing: border-box; width: 30px; height: 30px; border-radius: 9px; border: 1.5px solid currentColor;
+  display: grid; place-items: center;
+}
+.fslot svg { width: 17px; height: 17px; }
+.fdots { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); display: flex; gap: 2px; }
+.fdots i { width: 4px; height: 4px; border-radius: 50%; background: var(--track); }
+.fdots i.on { background: currentColor; }
+.fl .pause { margin: -7px -6px -7px auto; }
+.fl-toast {
+  position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); margin: 0; white-space: nowrap;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 5px 13px; font-weight: 500; font-size: 13px;
+}
+
 .hint {
   position: absolute; left: 0; right: 0; bottom: calc(20% + env(safe-area-inset-bottom, 0px)); margin: 0; text-align: center; pointer-events: none;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -123,9 +155,48 @@ body {
   display: flex; flex-direction: column; gap: 16px;
 }
 .card h1 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1.08; text-wrap: balance; }
-.rules { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 14.5px; line-height: 1.4; }
-.rules li { display: grid; grid-template-columns: 11px 1fr; gap: 11px; align-items: start; }
-.rules .chip { margin-top: 5px; }
+/* Cartonașul de start (propunere de așezare, după macheta 1): rezerva, apoi cele două moduri, fiecare cu rândul lui de explicație;
+   zborul are sub nume sectorul ales, cu − și +. */
+.eyebrow { font-size: 10.5px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--hero); }
+.card-head { display: flex; flex-direction: column; gap: 6px; }
+.card-head h1 { font-size: 26px; }   /* „Nava a fost doborâtă” pe un singur rând la 360 px, ca în macheta 4 */
+.reserve { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; background: var(--card); border-radius: 14px; padding: 10px 12px; }
+.res { display: inline-flex; align-items: baseline; gap: 6px; font-size: 10.5px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.res b { font-family: var(--font-display); font-weight: 800; font-size: 18px; line-height: 1; color: var(--ink); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.res .chip { width: 10px; height: 10px; }
+.pill {
+  margin-left: auto; font: inherit; font-weight: 500; font-size: 13px; color: var(--ink); background: transparent;
+  border: 1.5px solid var(--line); border-radius: 99px; padding: 5px 12px; cursor: pointer;
+}
+.mode { display: grid; gap: 3px; border-radius: 16px; padding: 13px 14px; text-align: left; }
+.mode strong { font-family: var(--font-display); font-weight: 800; font-size: 19px; line-height: 1.1; }
+.mode span { font-size: 12.5px; line-height: 1.35; }
+button.mode, .mode-go { font: inherit; border: 0; cursor: pointer; touch-action: manipulation; }
+.mode.main { background: var(--hero); color: var(--night); }
+.mode.second { border: 1.5px solid var(--jet); color: var(--ink); padding: 0; gap: 0; }
+.mode-go { display: grid; gap: 3px; padding: 13px 14px 6px; text-align: left; color: inherit; background: transparent; border-radius: 15px 15px 0 0; }
+.mode.second span { color: var(--ink-soft); }
+.sector { display: flex; align-items: center; gap: 10px; padding: 4px 14px 12px; }
+.sector b { font-weight: 500; color: var(--jet); font-variant-numeric: tabular-nums; min-width: 6.5em; text-align: center; }
+/* − și +: țintă de 40 × 40 px, cercul desenat de 30; semnele sunt din CSS, nu text. */
+.step {
+  position: relative; box-sizing: border-box; width: 40px; height: 40px; margin: -5px; padding: 0; border: 0; background: transparent;
+  cursor: pointer; touch-action: manipulation;
+}
+.step::before, .step::after { content: ''; position: absolute; left: 50%; top: 50%; background: var(--ink); border-radius: 1px; }
+.step::before { width: 12px; height: 2px; transform: translate(-50%, -50%); }
+.step.more::after { width: 2px; height: 12px; transform: translate(-50%, -50%); }
+.step { --ring: inset 0 0 0 5px var(--night), inset 0 0 0 6.5px var(--line); box-shadow: var(--ring); border-radius: 50%; }
+.step.off { opacity: .35; cursor: default; }
+.haul-block { display: flex; flex-direction: column; gap: 8px; }
+.haul { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.haul div { background: var(--card); border-radius: 14px; padding: 11px 12px; display: grid; gap: 3px; }
+.haul span { font-size: 10.5px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.haul b { font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+.haul .cr b { color: var(--crystal); }
+.haul .me b { color: var(--metal); }
+.mode:focus-visible, .mode-go:focus-visible, .step:focus-visible, .pill:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.mode:active, .mode-go:active { transform: translateY(1px); }
 .result { display: flex; flex-direction: column; gap: 2px; }
 .result span, .facts dt { font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-soft); }
 .result b { font-family: var(--font-display); font-weight: 800; font-size: 52px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--hero); }
@@ -142,6 +213,8 @@ body {
 }
 /* Al doilea drum de pe un cartonaș („Partidă nouă”): la fel de mare, dar fără plin, ca să nu se ia drept cel principal. */
 .go.alt { color: var(--hero); background: transparent; border: 1px solid var(--hero); padding: 13px 17px; }
+/* Un drum liniștit, dar la fel de mare („Continuă partida”, „Înapoi la start”). */
+.go.line { color: var(--ink); background: transparent; border: 1.5px solid var(--line); padding: 12.5px 16.5px; font-size: 16px; }
 .go:active { transform: translateY(1px); }
 .go:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 

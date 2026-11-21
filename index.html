@@ -20,6 +20,7 @@
       <symbol id="i-engine" viewBox="0 0 24 24"><g class="ico"><path d="M5 6l6 6-6 6M13 6l6 6-6 6"/></g></symbol>
       <symbol id="i-magnet" viewBox="0 0 24 24"><g class="ico"><path d="M6 4v8a6 6 0 0 0 12 0V4h-4v8a2 2 0 0 1-4 0V4z"/></g></symbol>
       <symbol id="i-relay" viewBox="0 0 24 24"><g class="ico"><path d="M12 21V11M8 21h8"/><circle cx="12" cy="8.5" r="2"/><path d="M7 13a7 7 0 0 1 0-9M17 13a7 7 0 0 0 0-9"/></g></symbol>
+      <symbol id="i-gun" viewBox="0 0 24 24"><g class="ico"><path d="M7 19v-8M12 19V4M17 19v-8"/><path d="M5 21h14"/></g></symbol>
       <symbol id="i-lock" viewBox="0 0 24 24"><g class="ico"><rect x="6" y="11" width="12" height="9" rx="2"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3"/></g></symbol>
     </svg>
     <div class="stage" id="stage">
@@ -45,6 +46,20 @@
             <span class="xp" id="xpText"></span>
           </div>
         </div>
+        <!-- Banda din zbor: ia locul celei de sus cât se zboară; rândul „ai cules” stă sub ea, fără să-i schimbe înălțimea. -->
+        <div class="banner fl" id="flightBanner" hidden>
+          <div class="fl-row">
+            <div class="stock"><i class="chip chip-crystal"></i><b id="flCrystal"></b><span data-str="crystal"></span></div>
+            <div class="stock"><i class="chip chip-metal"></i><b id="flMetal"></b><span data-str="metal"></span></div>
+            <span class="fl-hits" id="flHits"></span>
+          </div>
+          <div class="fl-row fl-way" id="flWay"><span id="flLabel"></span><span class="fl-track"><i id="flFill"></i></span><span id="flPct"></span></div>
+          <div class="fl-row fl-ship">
+            <div class="fl-mods" id="flMods"></div>
+            <button class="pause off" id="flightPause" type="button" data-str-aria="pause" tabindex="-1"></button>
+          </div>
+        </div>
+        <p class="fl-toast" id="flToast" hidden></p>
       </div>
 
       <p class="hint" id="hint" hidden><span data-str="hint"></span></p>
@@ -52,15 +67,61 @@
       <div class="veil" id="startVeil" hidden>
         <div class="card">
           <h1 data-str="title"></h1>
-          <ul class="rules">
-            <li><i class="chip chip-ink"></i><span data-str="ruleMove"></span></li>
-            <li><i class="chip chip-crystal"></i><span data-str="ruleGather"></span></li>
-            <li><i class="chip chip-hero"></i><span data-str="ruleInvest"></span></li>
-            <li><i class="chip chip-foe"></i><span data-str="ruleFight"></span></li>
-          </ul>
-          <button class="go" id="continue" type="button" hidden></button>
-          <button class="go" id="start" type="button" data-str="start"></button>
+          <div class="reserve">
+            <span class="res"><i class="chip chip-crystal"></i><b id="startCrystal"></b><span data-str="crystal"></span></span>
+            <span class="res"><i class="chip chip-metal"></i><b id="startMetal"></b><span data-str="metal"></span></span>
+            <button class="pill" id="startWorkshop" type="button" data-str="workshop" hidden></button>
+          </div>
+          <button class="mode main" id="start" type="button"><strong data-str="defend"></strong><span data-str="defendLine"></span></button>
+          <div class="mode second">
+            <button class="mode-go" id="explore" type="button"><strong data-str="explore"></strong><span data-str="exploreLine"></span></button>
+            <div class="sector">
+              <button class="step less" id="sectorDown" type="button" data-str-aria="sectorLess"></button>
+              <b id="sectorN"></b>
+              <button class="step more" id="sectorUp" type="button" data-str-aria="sectorMore"></button>
+            </div>
+          </div>
+          <button class="go line" id="continue" type="button" hidden></button>
           <button class="go quiet" id="stress" type="button" data-str="stress"></button>
+        </div>
+      </div>
+
+      <div class="veil" id="flightPauseVeil" hidden>
+        <div class="card">
+          <h1 data-str="flightPauseTitle"></h1>
+          <div class="haul-block">
+            <span class="eyebrow" data-str="flightSoFar"></span>
+            <div class="haul">
+              <div class="cr"><span data-str="crystal"></span><b id="pauseCrystal"></b></div>
+              <div class="me"><span data-str="metal"></span><b id="pauseMetal"></b></div>
+            </div>
+          </div>
+          <button class="go" id="flightResume" type="button" data-str="resume"></button>
+          <button class="go alt" id="quitFlight" type="button" data-str="quitFlight"></button>
+        </div>
+      </div>
+
+      <div class="veil" id="flightOverVeil" hidden>
+        <div class="card">
+          <div class="card-head">
+            <span class="eyebrow" id="flightOverSector"></span>
+            <h1 id="flightOverTitle"></h1>
+          </div>
+          <div class="haul-block">
+            <span class="eyebrow" id="flightOverLabel"></span>
+            <div class="haul">
+              <div class="cr"><span data-str="crystal"></span><b id="overCrystal"></b></div>
+              <div class="me"><span data-str="metal"></span><b id="overMetal"></b></div>
+            </div>
+          </div>
+          <div class="reserve">
+            <span class="res" data-str="reserve"></span>
+            <span class="res"><i class="chip chip-crystal"></i><b id="flightOverCrystal"></b></span>
+            <span class="res"><i class="chip chip-metal"></i><b id="flightOverMetal"></b></span>
+            <button class="pill" id="overWorkshop" type="button" data-str="workshop" hidden></button>
+          </div>
+          <button class="go" id="flightNext" type="button"></button>
+          <button class="go line" id="flightHome" type="button" data-str="backHome"></button>
         </div>
       </div>
 

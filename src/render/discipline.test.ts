@@ -45,6 +45,10 @@ describe('disciplina desenului', () => {
   it('gradient și decupaj doar la cer și la nucleu', () => {
     expect(offenders(files, COSTLY, ['orbit/scene.ts'])).toEqual([])
   })
+  it('cerul se pictează într-un singur loc (desenatorul apărării), iar zborul îl împrumută de acolo', () => {
+    expect(offenders(files, /paintSky\(\)(?!\s*:)/, ['canvas.ts'])).toEqual([])   // chemarea, nu semnătura din `skin.ts` și `orbit/scene.ts`
+    expect(files['flight/canvas.ts']).not.toMatch(/paintSky/)
+  })
   it('tiparul celor costisitoare prinde și gradientul conic și filtrul, dar nu metoda filter a listelor', () => {
     const probe = { 'a.ts': 'ctx.createConicGradient(0, 0, 0)', 'b.ts': "ctx.filter = 'blur(2px)'", 'c.ts': 'xs.filter((x) => x)' }
     expect(offenders(probe, COSTLY)).toEqual(['a.ts', 'b.ts'])

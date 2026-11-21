@@ -27,7 +27,7 @@ function el<T extends HTMLElement>(doc: Document, id: string): T {
 }
 
 export function createHud(doc: Document): { sync(s: GameState, o: { hint: boolean; fps: { now: number; min: number } | null }): void; bottom(): number } {
-  const banner = el(doc, 'banner'), field = el(doc, 'field'), meter = el(doc, 'meter'), fill = el(doc, 'coreFill'), hintEl = el(doc, 'hint')
+  const box = el(doc, 'hud'), banner = el(doc, 'banner'), field = el(doc, 'field'), meter = el(doc, 'meter'), fill = el(doc, 'coreFill'), hintEl = el(doc, 'hint')
   const ship = el(doc, 'ship'), ring = el<HTMLElement>(doc, 'xpRing'), slotsEl = el(doc, 'shipSlots')
   const text: Record<string, HTMLElement> = {}
   for (const id of ['crystal', 'metal', 'clock', 'coreHp', 'fps', 'level', 'xpText']) text[id] = el(doc, id)
@@ -57,6 +57,7 @@ export function createHud(doc: Document): { sync(s: GameState, o: { hint: boolea
       if (shown.slots !== key) { shown.slots = key; slotsEl.replaceChildren(...row.slots.map((x) => slotElement(doc, x))) }
       toggle('hint', o.hint, (on) => { hintEl.hidden = !on })
     },
-    bottom: () => banner.getBoundingClientRect().bottom - field.getBoundingClientRect().top,
+    // Marginea de jos a benzii de acum (a apărării sau a zborului, care o înlocuiește cât se zboară); rândul „ai cules” nu intră.
+    bottom: () => box.getBoundingClientRect().bottom - field.getBoundingClientRect().top,
   }
 }

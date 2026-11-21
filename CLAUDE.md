@@ -59,7 +59,7 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   `policy.ts` (cele șase purtări, `POLICIES`, lista de preferințe `prefer` și `pickOffer` pentru alegerea modulului, unde purtările fără turele iau Releul ultimul, și alegerea țintei: luptă, plată, strâns, acasă; `heldPad` ține plata începută), `nav.ts` (mersul drept spre țintă, cu ocolire când nu se mai apropie, ieșirea de pe cercurile străine și ocolitul unui cerc străin construit împreună cu clădirea lui, ca un singur obstacol), `bot.ts` (`createBot`: starea în, `Input` afară), `run.ts` (`playOne`, `playStep` care alege oferta la nevoie, `measure`, `measureAll`; `SEEDS` = 1…20, `RUN_CAP` = 900 s),
   `limits.ts` (limitele din design ca date, `verdicts`, `formatTable` cu coloanele de nivel), `table.ts` (tipărește tabelul pentru `npm run balance`; construit cu `vite.balance.config.ts` în `dist-balance/`, ignorat de git) și `net.test.ts` (limitele ca teste: joacă o dată cele 120 de partide și are un test pe fiecare limită; durează cam 20 s).
 - `src/render/` — desenarea pe Canvas 2D. Citește starea, nu o modifică. `canvas.ts` (mărimea, ordinea straturilor; singurul care numește
-  aspectul și pictează cerul o dată), `camera.ts` (scara ecranului și urmărirea navei), `world.ts` (tot ce e în coordonate de lume și ar fi la fel
+  aspectul și pictează cerul o dată, împărțit cu desenul zborului prin `sky()`), `camera.ts` (scara ecranului și urmărirea navei), `world.ts` (tot ce e în coordonate de lume și ar fi la fel
   în orice aspect: straturile, săritul peste ce nu se vede, cercurile, etichetele, barele, textele plutitoare),
   `overlay.ts` (indicatorul spre planetă și joystickul, în coordonate de ecran), `palette.ts` (culorile citite o dată din variabilele CSS),
   `skin.ts` (interfața `Skin`: formele de pe canvas care diferă de la un aspect la altul, între ele nava cu modulele ei în `hero`, racheta în `shot`,
@@ -68,35 +68,45 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   `scene.ts` — cerul și planeta, **singurul loc cu gradient și decupaj**; `things.ts` — resurse, clădiri, nave (a ta cu formele modulelor și inelul Scutului), raze, rachete, explozii, doar forme pline și linii).
   `world.ts` desenează stratul razelor peste inelul planetei: exploziile, raza laserului, apoi rachetele și razele turelelor.
   Testele: `derive.test.ts`, `world.test.ts` (ordinea straturilor; `drawWorld` cu `ORBIT` peste o stare bogată, și peste una cu toate cele nouă module, nu schimbă starea),
-  `discipline.test.ts` (fără `shadowBlur`; gradient de orice fel, decupaj și `ctx.filter` doar în `orbit/scene.ts`; citește și `flight/`), `palette.test.ts`
+  `discipline.test.ts` (fără `shadowBlur`; gradient de orice fel, decupaj și `ctx.filter` doar în `orbit/scene.ts`; `paintSky()` chemat doar din `canvas.ts`; citește și `flight/`), `palette.test.ts`
   (culorile `#rgb` lăsate de micșorarea CSS-ului la build, aduse la `#rrggbb`) și `camera.test.ts`. `ground.ts` nu mai există. Mișcările doar de desen (continente, nori, satelit, flăcări, țeava turelei)
   se calculează din timpul partidei și din stare; nu scriu nimic în stare.
   `flight/` — desenul zborului („Explorează galaxia”), în stilul „Orbită”: `canvas.ts` (`createFlightRenderer`: mărimea canvasului, `fitField` — câmpul de
   390 × 680 sub bandă, lipit de jos, la scara cea mai mare la care încape întreg, cu cer în plus deasupra sau fâșii în lături —, și bucata din mijloc a cerului
-  pictat de `orbit/scene.ts`), `scene.ts` (stelele care curg, forme pline după `f.t`, și ordinea straturilor în `drawFlight`, cu aspectul `FlightLook` dat ca
+  apărării, împrumutat prin `sky()` de la desenatorul din `render/canvas.ts`: cerul se pictează o singură dată, pentru amândouă), `scene.ts` (stelele care curg, forme pline după `f.t`, și ordinea straturilor în `drawFlight`, cu aspectul `FlightLook` dat ca
   argument), `things.ts` (formele: nava ta cu vârful în sus și modulele pe ea, cele cinci feluri de dușmani cu vârful în jos, focul dușman rotund și
   portocaliu, lucrurile de cules ca pătrate cu chenar în culoarea felului, resursele ca la apărare, raze, rachete, explozii; `FLIGHT_LOOK`). Efectele se
   citesc după timpul zborului (`f.t − e.t0`), deci după sfârșit rămân înghețate. Testele (`things.test.ts`, `scene.test.ts`, `canvas.test.ts`) cer ca
   fiecare fel de lucru din stare să fie chiar desenat, nu doar să nu arunce.
 - `src/input/` — comenzile: `joystick.ts` (logica joystickului, fără DOM, testată), `drag.ts` (condusul cu degetul din zbor, fără DOM, testat), `bind.ts` (singurul cu DOM: pointer și taste; la apărare leagă joystickul, în zbor degetul, cu pozițiile împărțite la scara câmpului; `pickIndex`, fără DOM și testată, spune ce ofertă aleg tastele 1–3; `flightKeys` dă mișcarea tastelor în zbor, `FLIGHT.drive.keys` = 255 de unități pe secundă după înmulțirea regulilor cu 1,2).
 - `src/ui/` — textele (în română, într-un singur modul `strings.ts`, fixate de `strings.test.ts`), banda de sus (`hud.ts`: `shipRow` fără DOM dă rândul navei, cu inelul de experiență, după `heroPadView` din `src/sim/mods.ts`, citit și de cercul navei de pe canvas; banda are aceeași înălțime în start, joc, pauză, panou și final, iar în testul de viteză e mai înaltă cu rândul fps, verificarea 26 din proba din browser), locurile navei (`slots.ts`, aceleași în bandă și în panou),
-  cartonașele de start (cu „Continuă partida”), de pauză și de final (`cards.ts`), panoul de alegere de la un nivel nou al navei
+  banda din zbor (`flightHud.ts`: `flightRow` fără DOM — ce a strâns zborul, viețile, drumul prin sector care devine viața navei de elită, modulele cu treptele
+  lor și rândul „ai cules”, cât efectul `took` trăiește după timpul zborului —, iar `createFlightHud` o pune în locul benzii apărării cât `mode` e `'flight'`,
+  cu aceeași înălțime în zbor, în pauza lui și la sfârșit, verificarea 32; rândul „ai cules” stă sub bandă, în afara așezării),
+  cartonașele (`cards.ts`): de start (cele două moduri, „Apără planeta” și „Explorează galaxia”, rezerva, sectorul ales cu − și +, prin `stepSector`, fără DOM,
+  de la 1 până la cel mai departe explorat plus unu, și „Continuă partida”), de pauză și de final ale apărării, de pauză („Zbor în pauză”) și de sfârșit
+  ale zborului; butonul „Atelier” e în pagină, ascuns; panoul de alegere de la un nivel nou al navei
   (`choice.ts`: `choiceView` fără DOM, `createChoice` în pagină; la deschidere focusul stă pe cartonaș, nu pe o ofertă, și nicio alegere nu trece
   în primele `CHOICE_GRACE_MS` = 400 ms, propunere; pictogramele modulelor sunt `<symbol>` în `index.html`), apăsarea butoanelor (`tap.ts`: la atingere, la ridicarea
   degetului deasupra butonului, și pentru al doilea deget; cu mausul și tastatura, la `click`; o singură pornire pe gest), formatul ceasului (`format.ts`) și stilurile (`ui.css`; variabilele de culoare au nume pe roluri,
   fontul titlului e Exo 2).
-- `src/main.ts` — legătura dintre ele: nu ține stări, le ia din sesiuni (apărarea și zborul, `src/app/flightSession.ts`); un singur ciclu de cadre, cu modul de
-  joc ales (`mode`); pauza (buton, Escape, pagina ascunsă), în ambele moduri; ecranul aprins, înregistrarea service worker-ului (doar în build, cu `__WG_SW__`).
-  Zborul trece în profil (`bank`, `markExplored`) ce aduce și nu atinge partida de apărare salvată, nici recordul; deocamdată pornește doar cu
-  `?debug=1&zbor=N` (sectorul N), folosește cartonașul de pauză al apărării și se întoarce la cartonașul de start. Cu `?debug=1`, `window.__wg` are `state()`,
+- `src/main.ts` — legătura dintre ele: nu ține stări, le ia din sesiuni (apărarea și zborul); alege modul de joc (`mode`), arată cartonașele și ține
+  singurul ciclu de cadre; pauza (buton, Escape, pagina ascunsă, `pagehide`), în fiecare mod doar pe al lui; ecranul aprins, înregistrarea service worker-ului
+  (doar în build, cu `__WG_SW__`). `src/flightMode.ts` — legarea zborului, fără ciclu de cadre: sesiunea lui (`src/app/flightSession.ts`), care trece în profil
+  (`bank`, `markExplored`) ce aduce, exact o dată; banda lui; sectorul ales și cel de după un zbor încheiat. Un zbor pornește de pe cartonașul de start,
+  de pe cartonașul lui de sfârșit sau cu `?debug=1&zbor=N` (sectorul N), niciodată peste o partidă de apărare în curs, și nu atinge partida de apărare
+  salvată, nici recordul. Cu `?debug=1`, `window.__wg` are `state()`,
   `phase()`, `run(secunde)` și `drawMs(cadre)`, iar pentru zbor `mode()`, `flight()`, `runFlight(secunde)`, `flightDrawMs(cadre)` și `flightField()`
   (câmpul pe ecran, în px).
-- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 29 de verificări, capturi în `smoke-out/`, plus rânduri `SMOKE INFO` cu timpul de
+- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 34 de verificări, capturi în `smoke-out/`, plus rânduri `SMOKE INFO` cu timpul de
   desen pe cadru cu cele 150 de nave dușmane ale testului de viteză așezate în jurul planetei, ca să fie în vedere, din `window.__wg.drawMs`:
   o dată cu nava testului de viteză (`STRESS_SHIP`: cele trei arme la treapta 3), o dată cu toate cele nouă module la treapta 3 și armele trăgând; capturile `10-nava-module.png` (mărită),
   `11-explozie.png`, `12-nava-la-scara.png`, `13-banda-rachete.png` și `14-panou-rachete.png` nu sunt verificări; verificările 27–29 sunt ale zborului (degetul,
-  câmpul întreg sub bandă la 360 × 640 și 390 × 780, pauza la pagina ascunsă), cu un rând `SMOKE INFO` pentru desenul zborului în clipa cea mai plină și
-  capturile `15-zbor.png`, `15-zbor-360.png` și `16-zbor-elita.png`; merge doar pe Linux și macOS), `single-file.mjs` (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`),
+  câmpul întreg sub bandă la 360 × 640 și 390 × 780, pauza la pagina ascunsă), cu un rând `SMOKE INFO` pentru desenul zborului în clipa cea mai plină (cu
+  lucruri de cules, resurse, un nor și o lovitură oprită de Scut în cadru) și capturile `15-zbor.png`, `15-zbor-360.png` și `16-zbor-elita.png`; verificările
+  30–34 sunt drumul întreg de pe cartonașe (cartonașul de start, zborul pornit de pe el cu banda lui și condusul cu al doilea deget, degetul pus din nou și
+  `pointercancel`, zborul dus la capăt și rezerva, ce s-a strâns ajunge în rezervă exact o dată, partida de apărare salvată rămâne), cu capturile
+  `17-start.png`, `18-banda-zbor.png` și `19-sfarsit-zbor.png`, și la 360 × 640 (`-360`); merge doar pe Linux și macOS), `single-file.mjs` (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`),
   `sw-template.js` și `build-sw.mjs` (service worker-ul scris de mână; după `vite build`, `build-sw.mjs` pune în el lista fișierelor din
   `dist` și o versiune din SHA-256-ul lor și scrie `dist/sw.js`; o versiune nouă se activează la următoarea pornire, niciodată în timpul
   unei partide) și `make-icons.cjs` (`npm run icons`).

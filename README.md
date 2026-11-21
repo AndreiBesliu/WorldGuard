@@ -14,7 +14,7 @@ reechilibrarea a două cifre (propuneri, până le vede Andrei în joc). Nava cu
 npm install
 npm run dev      # http://localhost:5180
 npm run check    # typecheck + teste + build cu service worker (poarta înainte de commit; CI rulează același lucru)
-npm run smoke    # proba în browser (Playwright, 29 de verificări); nu face parte din `check`
+npm run smoke    # proba în browser (Playwright, 34 de verificări); nu face parte din `check`
 npm run single   # dist-single/world-guard.html: tot jocul într-un singur fișier, fără nicio referință în afară
 npm run balance  # tabelul jucătorilor automați (120 de partide, ~15 s); cu `-- --raze` și pentru razele de apărare 80 și 160 (~40 s)
 npm run icons    # desenează din nou pictogramele PNG din public/icons/icon.svg (doar când se schimbă desenul)
@@ -48,10 +48,15 @@ cu raze de laser, rachete în zbor și explozii în cadru.
 
 **„Explorează galaxia” (în lucru, pe ramură):** al doilea mod, un zbor de trei minute văzut de sus, în care nava înaintează și trage
 singură, iar tu o ferești de focul dușman conducând-o cu degetul (nava face mișcarea degetului, de 1,2 ori mai mare; pe calculator,
-săgețile sau WASD). Regulile și desenul există; cartonașele, banda din zbor și atelierul vin după. Deocamdată zborul pornește doar cu
-`?debug=1&zbor=1` (sectorul 1; `zbor=N` pentru sectorul N); pauza folosește cartonașul de la apărare, iar la sfârșit jocul se întoarce
-la cartonașul de start. Ce s-a strâns trece în rezervă. Cu `?debug=1`, `window.__wg` are și `mode()`, `flight()`, `runFlight(secunde)`,
-`flightDrawMs(cadre)` și `flightField()`; proba din browser tipărește un rând `SMOKE INFO` cu timpul de desen al zborului în clipa cea mai plină.
+săgețile sau WASD). Cartonașul de start are cele două moduri, „Apără planeta” și „Explorează galaxia”, rezerva și sectorul ales cu − și +
+(de la 1 până la cel mai departe explorat plus unu; se propune cel mai departe explorat plus unu). În zbor, banda de sus arată ce a strâns
+zborul, viețile navei, drumul prin sector (care devine viața navei de elită), modulele cu treptele lor și pauza; sub ea, un rând scurt spune
+ce ai cules. Pauza zborului are cartonașul ei („Zbor în pauză”, „Continuă”, „Renunță la zbor”); la sfârșit: „Sector explorat” sau „Nava a
+fost doborâtă”, ce ai adus, rezerva, „Sectorul următor” sau „Încă un zbor” și „Înapoi la start”. Ce s-a strâns trece în rezervă exact o dată
+(la pauză și la sfârșit). Un zbor nu atinge partida de apărare salvată și nici recordul. Atelierul vine după (butonul lui e deja în pagină,
+ascuns). Cu `?debug=1&zbor=N` zborul pornește direct, în sectorul N. Cu `?debug=1`, `window.__wg` are și `mode()`, `flight()`,
+`runFlight(secunde)`, `flightDrawMs(cadre)` și `flightField()`; proba din browser tipărește un rând `SMOKE INFO` cu timpul de desen al zborului
+în clipa cea mai plină.
 
 Designul: [`docs/GDD.md`](docs/GDD.md). Regulile proiectului: [`CLAUDE.md`](CLAUDE.md).
 Jocul vechi (tower defense pe hexagoane) a rămas la commit-ul `ec73b9e`.

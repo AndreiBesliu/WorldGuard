@@ -15,12 +15,9 @@ describe('textele temei de spațiu', () => {
     expect(STR.overKills).toBe('Nave doborâte')
     expect(STR.fieldLabel).toBe('Zona de joc')
   })
-  it('regulile de pe cartonașul de start', () => {
+  it('indiciul de mers; cele patru rânduri de reguli de pe cartonașul de start nu mai sunt', () => {
     expect(STR.hint).toBe('Ține degetul pe ecran și trage ca să miști nava')
-    expect(STR.ruleMove).toBe('Ține degetul pe ecran și trage. Nava merge încotro tragi.')
-    expect(STR.ruleGather).toBe('Stai lângă cristale și asteroizi ca să strângi cristale și metal.')
-    expect(STR.ruleInvest).toBe('Oprește-te pe un cerc punctat ca să investești în turele, colector, mină sau navă.')
-    expect(STR.ruleFight).toBe('Nava lovește singură ce e aproape. Partida ține până cade planeta.')
+    for (const k of ['ruleMove', 'ruleGather', 'ruleInvest', 'ruleFight', 'start']) expect(k in STR, k).toBe(false)
   })
   it('textele pauzei și ale reluării', () => {
     expect([STR.pause, STR.pauseTitle, STR.pauseSoFar]).toEqual(['Pauză', 'Pauză', 'Ai rezistat până acum'])
@@ -45,6 +42,36 @@ describe('textele temei de spațiu', () => {
   it('experiența și nivelul din bandă și de pe cercul navei', () => {
     expect([STR.xpOf(14, 40), STR.levelReady(4), STR.levelMax]).toEqual(['experiență 14/40', 'Nivel 4 gata', 'Nivel maxim'])
     expect(STR.xpOf(34, 34).length).toBeLessThanOrEqual(18)   // încape în bandă la 360 px, lângă inel și locuri
+  })
+  it('cartonașul de start: cele două moduri, sectorul și rezerva', () => {
+    expect([STR.defend, STR.explore, STR.sectorN(3), STR.reserve, STR.workshop]).toEqual(['Apără planeta', 'Explorează galaxia', 'Sectorul 3', 'Rezerva', 'Atelier'])
+    expect(STR.defendLine).toBe('Strânge, construiește și rezistă cât poți.')
+    expect(STR.exploreLine).toBe('Zboară trei minute, ferește-te și adu resurse acasă.')
+    expect([STR.sectorLess, STR.sectorMore]).toEqual(['Un sector mai aproape', 'Un sector mai departe'])
+  })
+  it('sfârșitul zborului și pauza lui', () => {
+    expect([STR.explored, STR.heroDown, STR.broughtHome, STR.gotSoFar]).toEqual(['Sector explorat', 'Nava a fost doborâtă', 'Ai adus acasă', 'Ai apucat să strângi'])
+    expect([STR.nextSector, STR.flyAgain, STR.backHome]).toEqual(['Sectorul următor', 'Încă un zbor', 'Înapoi la start'])
+    expect([STR.flightPauseTitle, STR.flightSoFar, STR.quitFlight]).toEqual(['Zbor în pauză', 'Ai strâns până acum', 'Renunță la zbor'])
+  })
+  it('banda din zbor: modulele, nava de elită și rândul „ai cules”', () => {
+    expect(STR.flightMods).toEqual({ gun: 'Tun', laser: 'Laser', missile: 'Rachete', shield: 'Scut', magnet: 'Magnet' })
+    expect(STR.flightMods.laser).toBe(STR.mods.laser.name)   // aceleași nume ca la apărare, nu scrise de două ori
+    expect(STR.elite).toBe('Elită')
+    expect(STR.tookRepair).toBe('Reparație · +1 viață')
+    expect(STR.tookNew('Scut')).toBe('Scut · nou')
+    expect(STR.tookTier('Tun', 2)).toBe('Tun · treapta 2')
+    expect(STR.tookMaxed('Laser', 5)).toBe('Laser e la maxim · +5 cristale')
+  })
+  it('textele noi din butoane și din bandă au cel mult 28 de caractere', () => {
+    const names = Object.values(STR.flightMods)
+    const lines = [STR.defend, STR.explore, STR.sectorN(99), STR.reserve, STR.workshop, STR.explored, STR.heroDown, STR.broughtHome, STR.gotSoFar,
+      STR.nextSector, STR.flyAgain, STR.backHome, STR.flightPauseTitle, STR.flightSoFar, STR.quitFlight, STR.elite, STR.tookRepair,
+      ...names.flatMap((n) => [STR.tookNew(n), STR.tookTier(n, 3)])]
+    for (const l of lines) expect(l.length, l).toBeLessThanOrEqual(28)
+    // Rândul pentru un modul deja la maxim are forma cerută și trece de 28 („Rachete e la maxim · +5 cristale” are 32); stă pe un rând
+    // al lui, sub bandă, nu într-un buton: cel mult 32.
+    for (const n of names) expect(STR.tookMaxed(n, 5).length).toBeLessThanOrEqual(32)
   })
   it('niciun text nu mai pomenește tema veche', () => {
     const all = JSON.stringify(STR, (_k, v) => (typeof v === 'function' ? v('x', 1) : v)).toLowerCase()

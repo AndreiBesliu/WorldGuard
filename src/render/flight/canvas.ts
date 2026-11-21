@@ -4,7 +4,6 @@
 import { FLIGHT } from '../../data/flight'
 import { WORLD } from '../../data/layout'
 import type { FlightState } from '../../flight/state'
-import { paintSky } from '../orbit/scene'
 import { palette } from '../palette'
 import { drawFlight, type Area } from './scene'
 
@@ -23,10 +22,11 @@ export function fitField(w: number, h: number, hudBottom: number): Fit {
 const SKY_X = (WORLD.w - FLIGHT.field.w) / 2
 const SKY_Y = (WORLD.h - FLIGHT.field.h) / 2
 
-export function createFlightRenderer(canvas: HTMLCanvasElement): {
+/** `sky` dă cerul pictat al apărării (`createRenderer(...).sky`): se pictează o singură dată și se împarte între cele două desenatoare;
+ *  cine îl ține îl aruncă și îl pictează din nou când trebuie (pagina ascunsă, contextul pierdut). */
+export function createFlightRenderer(canvas: HTMLCanvasElement, sky: () => HTMLCanvasElement): {
   resize(hudBottom: number): void
   frame(f: FlightState, frameDt: number): void
-  refresh(): void
   scale(): number
   fit(): Fit
 } {
@@ -34,13 +34,8 @@ export function createFlightRenderer(canvas: HTMLCanvasElement): {
   if (!ctx) throw new Error('canvas 2D indisponibil')
   let w = 0, h = 0, dpr = 1
   let fit: Fit = { scale: 1, x: 0, y: 0 }
-  let sky: HTMLCanvasElement | null = null
-  // Cerul pictat se aruncă și se pictează din nou la cadrul următor: telefonul poate pierde ce era pe canvas cât pagina a stat ascunsă.
-  const refresh = (): void => { sky = null }
-  canvas.addEventListener('contextrestored', refresh)
 
   return {
-    refresh,
     resize(hudBottom) {
       const r = canvas.getBoundingClientRect()
       w = r.width; h = r.height
@@ -53,14 +48,14 @@ export function createFlightRenderer(canvas: HTMLCanvasElement): {
     frame(f) {
       if (!w || !h) return
       const C = palette(), k = fit.scale
-      sky ??= paintSky()
+      const back = sky()
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.globalAlpha = 1
       ctx.fillStyle = C.edge; ctx.fillRect(0, 0, w, h)
       ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * fit.x, dpr * fit.y)
       const area: Area = { l: -fit.x / k, t: -fit.y / k, r: (w - fit.x) / k, b: (h - fit.y) / k }
       const aw = area.r - area.l, ah = area.b - area.t
-      ctx.drawImage(sky, SKY_X + area.l, SKY_Y + area.t, aw, ah, area.l, area.t, aw, ah)
+      ctx.drawImage(back, SKY_X + area.l, SKY_Y + area.t, aw, ah, area.l, area.t, aw, ah)
       drawFlight(ctx, f, area)
     },
     scale: () => fit.scale,

@@ -10,18 +10,16 @@ import '@fontsource/rubik/latin-700.css'
 import '@fontsource/rubik/latin-ext-700.css'
 import './ui/ui.css'
 import { parseFlags } from './app/flags'
-import { createFlightSession } from './app/flightSession'
 import { advance } from './app/loop'
-import { bank, markExplored } from './app/profile'
 import { createSession, type OverInfo, type Phase } from './app/session'
 import { registerServiceWorker } from './app/sw'
-import { clearGame, loadGame, loadProfile, saveGame, saveIfRecord, saveProfile } from './app/storage'
+import { clearGame, loadGame, loadProfile, saveGame, saveIfRecord } from './app/storage'
 import { createWake, type WakeNav } from './app/wake'
 import { FLIGHT } from './data/flight'
 import type { FlightInput, FlightState } from './flight/state'
 import { stepFlight } from './flight/step'
-import { bindInput, flightKeys } from './input/bind'
-import { dragTake } from './input/drag'
+import { createFlightMode } from './flightMode'
+import { bindInput } from './input/bind'
 import { createRenderer } from './render/canvas'
 import { createFlightRenderer } from './render/flight/canvas'
 import { DT, type GameState } from './sim/state'
@@ -58,20 +56,16 @@ declare global {
 const canvas = document.getElementById('field') as HTMLCanvasElement
 const stage = document.getElementById('stage') as HTMLElement
 const renderer = createRenderer(canvas)
-const flightView = createFlightRenderer(canvas)
+const flightView = createFlightRenderer(canvas, renderer.sky)   // cerul se pictează o dată, de desenatorul apărării, și se împarte
 const hud = createHud(document)
 const flags = parseFlags(location.search)
+/** Sămânța unei partide sau a unui zbor nou: `?seed=` dacă e dat, altfel din ceas. */
+const freshSeed = (): number => flags.seed ?? Date.now() >>> 0
 // Întăririle se citesc din profil la fiecare partidă nouă (deocamdată nu există atelierul care să le schimbe).
-const session = createSession({ saveGame, clearGame, saveIfRecord, ups: () => loadProfile().ups }, flags.seed ?? Date.now() >>> 0)
-// Zborul: rezerva și sectorul explorat se scriu în profilul din stocare, citit din nou la fiecare scriere.
-const flight = createFlightSession({
-  ups: () => loadProfile().ups,
-  bank: (haul) => saveProfile(bank(loadProfile(), haul)),
-  explored: (sector) => saveProfile(markExplored(loadProfile(), sector)),
-})
+const session = createSession({ saveGame, clearGame, saveIfRecord, ups: () => loadProfile().ups }, freshSeed())
 let mode: Mode = 'defense'
 /** Faza modului de joc de acum. */
-const phaseNow = (): Phase => (mode === 'flight' ? flight.phase : session.phase)
+const phaseNow = (): Phase => (mode === 'flight' ? fm.session.phase : session.phase)
 const wake = createWake(navigator as WakeNav)
 // Jocul fără internet, doar în build-ul publicat (`__WG_SW__ && PROD`). Sub `if`, pagina într-un singur fișier
 // (`__WG_SW__` fals) pierde la build apelul cu totul, cu adresa lui `./sw.js` cu tot.
@@ -80,6 +74,8 @@ if (__WG_SW__) registerServiceWorker(navigator, import.meta.env.PROD)
 // În zbor, degetul conduce nava (în unități de câmp), doar cât se zboară; joystickul nu merge.
 const input = bindInput(canvas, () => phaseNow() === 'playing' && (mode === 'flight' || !choice.open), (i) => choice.key(i),
   { on: () => mode === 'flight', scale: () => flightView.scale() })
+// Zborul: sesiunea, banda, profilul și sectorul ales (`flightMode.ts`); aici doar se alege modul și se arată cartonașele.
+const fm = createFlightMode(document, input)
 const still = { x: 0, y: 0 }
 const STILL_FLIGHT: FlightInput = { dx: 0, dy: 0 }
 let saved = loadGame()
@@ -133,35 +129,35 @@ function begin(seed: number, stress: boolean): void {
   playing()
 }
 function pause(): void {
-  if (mode === 'flight') {
-    if (!flight.pause()) return                 // pauza trece în rezervă ce s-a strâns
+  if (mode === 'flight') {                      // în zbor, pauza (butonul, Escape, pagina ascunsă) lucrează doar pe zbor
+    if (!fm.session.pause()) return             // pauza trece în rezervă ce s-a strâns
     stopped()
-    cards.showPause(Math.floor(flight.f.t))     // până la cartonașul zborului, cel de la apărare
+    cards.showFlightPause(fm.session.f)
     return
   }
   if (!session.pause()) return
   stopped()
   cards.showPause(Math.floor(session.s.t))
 }
-function unpause(): void { if (mode === 'flight' ? flight.unpause() : session.unpause()) playing() }
+function unpause(): void { if (mode === 'flight' ? fm.session.unpause() : session.unpause()) playing() }
 
-/** Un zbor în sectorul dat. Nu atinge partida de apărare salvată și nici recordul. */
+/**
+ * Un zbor în sectorul dat. Pornește doar de pe un cartonaș (de start sau de sfârșit al zborului) ori cu `?debug=1&zbor=N`, deci
+ * fără o partidă de apărare în curs; dacă totuși ar fi una (în joc sau pe pauză), zborul nu pornește: altfel ar rămâne în curs
+ * în spatele lui. Nu atinge partida de apărare salvată și nici recordul.
+ */
 function fly(sector: number): void {
+  if (session.phase === 'playing' || session.phase === 'paused') return
   mode = 'flight'
-  flight.start(flags.seed ?? Date.now() >>> 0, sector)
+  fm.begin(freshSeed(), sector)
   playing()                                     // `playing` lasă degetul (și mișcarea strânsă) și cere ecranul aprins
 }
-/** Înapoi la cartonașul de start, cu „Continuă partida” dacă partida de apărare e salvată. */
+/** Înapoi la cartonașul de start (din zbor: „Renunță la zbor” sau „Înapoi la start”), cu rezerva citită acum și sectorul propus. */
 function home(): void {
+  if (mode === 'flight') fm.end()
   mode = 'defense'
   stopped()
-  cards.showStart(saved === null ? null : { secs: Math.floor(saved.t) })
-}
-/** Mișcarea navei pentru pașii acestui cadru: degetul (citit doar când se fac pași, altfel s-ar pierde) și tastele. */
-function flightMove(steps: number): FlightInput {
-  if (steps === 0) return STILL_FLIGHT
-  const d = dragTake(input.drag), k = flightKeys(input.keys(), steps * DT)
-  return { dx: d.dx + k.dx, dy: d.dy + k.dy }
+  cards.showStart({ saved: saved === null ? null : { secs: Math.floor(saved.t) }, ...fm.startCard() })
 }
 function ended(r: OverInfo): void {
   stopped()
@@ -169,7 +165,7 @@ function ended(r: OverInfo): void {
 }
 
 const cards = createCards(document, {
-  start: () => begin(session.s.seed, false),    // prima partidă folosește sămânța deja așezată în zona de joc
+  defend: () => begin(session.s.seed, false),   // prima partidă folosește sămânța deja așezată în zona de joc
   continue() {
     if (saved === null) return
     session.resume(saved)
@@ -180,13 +176,14 @@ const cards = createCards(document, {
   again: () => begin(Date.now() >>> 0, false),
   pause,
   resume: unpause,
-  fresh() {
-    if (mode === 'flight') { flight.quit(); home(); return }   // „Partidă nouă” în zborul pus pe pauză: înapoi la start
-    begin(Date.now() >>> 0, false)
-  },
+  fresh: () => begin(Date.now() >>> 0, false),
+  explore: fly,
+  sector(delta) { const c = fm.pick(delta); cards.showSector(c.sector, c.farthest) },
+  next: () => fly(fm.nextSector()),
+  home,
 })
 const choice = createChoice(document, pick)
-cards.showStart(saved === null ? null : { secs: Math.floor(saved.t) })
+home()
 
 window.addEventListener('keydown', (e) => {
   if (e.code !== 'Escape' || e.repeat || choice.open) return   // panoul de alegere nu se închide cu Escape
@@ -196,7 +193,7 @@ window.addEventListener('keydown', (e) => {
 // Pauza automată: jucătorul a ieșit din pagină (alt program, ecran stins, pagină închisă). Pauza salvează partida.
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') { pause(); return }
-  renderer.refresh(); flightView.refresh()      // la revenire: cerul se pictează din nou, iar primul cadru nu sare
+  renderer.refresh()                            // la revenire: cerul (al amândurora) se pictează din nou, iar primul cadru nu sare
   last = performance.now(); acc = 0
   redraw()
 })
@@ -206,7 +203,7 @@ canvas.addEventListener('contextrestored', redraw)
 function resize(): void { const b = hud.bottom(); renderer.resize(b); flightView.resize(b); redraw() }
 const sizes = new ResizeObserver(resize)
 sizes.observe(stage)
-sizes.observe(document.getElementById('banner') as HTMLElement)   // banda crește când apare textul fps sau se schimbă un font
+sizes.observe(document.getElementById('hud') as HTMLElement)      // banda crește când apare textul fps, se schimbă un font sau vine banda zborului
 resize()
 
 if (flags.debug) {
@@ -225,13 +222,13 @@ if (flags.debug) {
       return (performance.now() - t0) / frames
     },
     mode: () => mode,
-    flight: () => flight.f,
-    runFlight(seconds) { for (let i = 0, n = Math.round(seconds / DT); i < n; i++) stepFlight(flight.f, STILL_FLIGHT) },
+    flight: () => fm.session.f,
+    runFlight(seconds) { for (let i = 0, n = Math.round(seconds / DT); i < n; i++) stepFlight(fm.session.f, STILL_FLIGHT) },
     flightDrawMs(frames) {
       const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
       const t0 = performance.now()
       for (let i = 0; i < frames; i++) {
-        flightView.frame(flight.f, 0)
+        flightView.frame(fm.session.f, 0)
         ctx.getImageData(0, 0, 1, 1)
       }
       return (performance.now() - t0) / frames
@@ -249,14 +246,16 @@ function frame(now: number): void {
   const frameDt = Math.min(0.1, Math.max(0, (now - last) / 1000))
   last = now
   if (mode === 'flight') {
-    if (flight.phase === 'playing') {
+    if (fm.session.phase === 'playing') {
       const r = advance(acc, frameDt)
       acc = r.acc
-      if (flight.advance(r.steps, flightMove(r.steps)) !== null) { home(); return }   // sfârșitul: până la cartonașul zborului, cel de start
+      const end = fm.advance(r.steps)
+      if (end !== null) { stopped(); cards.showFlightOver(end, loadProfile()) }   // imediat, peste cadrul înghețat; profilul, după ce s-a trecut în rezervă
     } else if (now > drawUntil) {
       return
     }
-    flightView.frame(flight.f, frameDt)
+    flightView.frame(fm.session.f, frameDt)
+    fm.sync()
     return
   }
   let camDt = frameDt                           // cât timp „a trecut” pentru cameră
