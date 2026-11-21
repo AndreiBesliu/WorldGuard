@@ -1,0 +1,794 @@
+<!doctype html>
+<html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"></head><body style="margin:0">
+<title>Explorează galaxia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@800&family=Rubik:wght@400;500;600&display=swap">
+<style>
+/* Un singur ecran: canvasul umple tot, banda de sus și cartonașele plutesc peste el. Culorile sunt cele din World Guard. */
+:root {
+  --sky: #0c1236; --sky-deep: #090c26; --edge: #05071a;
+  --star: #ffffff; --star-cool: #c9dcff; --star-warm: #ffe9c9;
+  --hero: #ffcf4a; --hero-shade: #b8860b; --jet: #8fe9ff;
+  --foe: #ff4d6d; --foe-shade: #a81f44; --foe-jet: #ffb347; --foe-glass: #3a0c1e;
+  --crystal: #4fe3c1; --crystal-lift: #a8f7e4; --metal: #b3aee6;
+  --ore: #8d88b5; --ore-shade: #5f5a86; --ore-fleck: #e9e6ff;
+  --hull: #dfe6f7; --hull-shade: #8a94b8; --hull-dark: #1a2147; --bolt: #d8fbff;
+  --ink: #f1f4ff; --ink-soft: #9fa9c9; --night: #060a1f;
+  --panel: rgba(6, 10, 31, .86); --veil: rgba(6, 10, 31, .62);
+  --card: rgba(241, 244, 255, .07); --track: rgba(241, 244, 255, .16); --line: rgba(241, 244, 255, .14);
+  --font-display: "Exo 2", "Rubik", system-ui, sans-serif;
+  --font-ui: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--edge); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.4;
+  overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.stage { position: relative; height: 100%; overflow: hidden; }
+#c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+.hud {
+  position: absolute; inset: 0 0 auto; pointer-events: none; display: grid; gap: 8px; justify-items: center;
+  padding-block: 10px 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.hud-in {
+  width: min(100%, 420px); display: grid; gap: 8px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 10px 14px;
+}
+.row { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.res { display: inline-flex; align-items: baseline; gap: 6px; color: var(--ink-soft); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.res b { font-family: var(--font-display); font-weight: 800; font-size: 19px; line-height: 1; color: var(--ink); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.res i { width: 9px; height: 9px; align-self: center; flex: none; }
+.gem { background: var(--crystal); transform: rotate(45deg); border-radius: 2px; }
+.hex { background: var(--metal); clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); width: 11px; height: 10px; }
+.pips { margin-left: auto; display: inline-flex; gap: 5px; }
+.pips span { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--hero); }
+.pips span.on { background: var(--hero); }
+.bar { gap: 10px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.bar .track { flex: 1; height: 8px; border-radius: 99px; background: var(--track); overflow: hidden; min-width: 0; }
+.bar .fill { height: 100%; width: 0; border-radius: 99px; background: var(--ink); }
+.bar.elite .fill { background: var(--foe); }
+.bar.elite #barLabel { color: var(--foe); }
+#barNum { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); letter-spacing: 0; }
+.mods { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 99px;
+  border: 1.5px solid var(--kind); color: var(--kind); font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; line-height: 1.3;
+}
+.chip i { display: inline-flex; gap: 3px; }
+.chip i b { width: 5px; height: 5px; border-radius: 50%; background: var(--track); }
+.chip i b.on { background: var(--kind); }
+.k-weapon { --kind: var(--hero); }
+.k-body { --kind: var(--jet); }
+.k-utility { --kind: var(--metal); }
+.toast { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 6px 14px; font-weight: 600; white-space: nowrap; }
+
+.note {
+  position: absolute; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 9px 16px; pointer-events: none; white-space: nowrap;
+}
+
+.veil {
+  position: absolute; inset: 0; display: grid; place-items: center; overflow-y: auto; background: var(--veil);
+  padding-block: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.card {
+  width: min(100%, 360px); display: grid; gap: 14px;
+  background: var(--night); border: 1px solid var(--line); border-radius: 24px; padding: 22px 20px 20px;
+}
+.eyebrow { margin: 0; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--hero); font-weight: 600; }
+.card h1 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1.08; text-wrap: balance; }
+.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; color: var(--ink-soft); font-size: 14px; }
+.rules b { color: var(--ink); font-weight: 500; }
+.field { display: grid; gap: 8px; }
+.field > span { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg button {
+  font: inherit; color: var(--ink); text-align: left; cursor: pointer;
+  background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 9px 12px; display: grid; gap: 2px;
+}
+.seg button strong { font-weight: 600; }
+.seg button small { color: var(--ink-soft); font-size: 12px; line-height: 1.3; }
+.seg button[aria-pressed="true"] { border-color: var(--hero); background: rgba(255, 207, 74, .1); }
+.go {
+  font: inherit; font-family: var(--font-display); font-weight: 800; font-size: 18px; cursor: pointer;
+  color: var(--night); background: var(--hero); border: 0; border-radius: 14px; padding: 14px 16px;
+}
+.seg button:focus-visible, .go:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.haul { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; }
+.haul div { background: var(--card); border-radius: 14px; padding: 12px; display: grid; gap: 4px; }
+.haul dt { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.haul dd { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+.haul .cr dd { color: var(--crystal); }
+.haul .me dd { color: var(--metal); }
+.facts { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--ink-soft); }
+.facts b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+</style>
+
+<div class="stage">
+  <canvas id="c" aria-label="Zona de zbor"></canvas>
+
+  <header class="hud" id="hud" hidden>
+    <div class="hud-in">
+      <div class="row">
+        <span class="res"><i class="gem"></i><b id="cr">0</b> cristale</span>
+        <span class="res"><i class="hex"></i><b id="me">0</b> metal</span>
+        <span class="pips" id="pips" role="img" aria-label="Viața navei"></span>
+      </div>
+      <div class="row bar" id="bar">
+        <span id="barLabel">Sector</span>
+        <div class="track"><div class="fill" id="barFill"></div></div>
+        <span id="barNum">0%</span>
+      </div>
+      <div class="mods" id="mods" aria-label="Modulele navei"></div>
+    </div>
+    <p class="toast" id="toast" hidden></p>
+  </header>
+
+  <p class="note" id="note" hidden>Atinge ecranul ca să continui</p>
+
+  <section class="veil" id="startVeil">
+    <div class="card">
+      <p class="eyebrow">Prototip de aruncat · varianta 2</p>
+      <h1>Explorează galaxia</h1>
+      <ul class="rules">
+        <li><b>Nava înaintează și trage singură.</b> Tu doar o conduci.</li>
+        <li><b>Ferește-te</b> de focul dușman și de asteroizi. Nava ține cinci lovituri.</li>
+        <li><b>Navele gri de transport</b> lasă în urmă arme și module. Zboară peste ele: se pun singure pe navă, iar a doua oară se întăresc.</li>
+        <li><b>Strânge</b> cristalele și metalul. După trei minute te așteaptă o navă de elită.</li>
+      </ul>
+      <div class="field">
+        <span id="ctlLabel1">Cum conduci nava</span>
+        <div class="seg" role="group" aria-labelledby="ctlLabel1">
+          <button type="button" id="dragA" data-mode="drag" aria-pressed="true"><strong>Cu degetul</strong><small>Nava urmează mișcarea degetului.</small></button>
+          <button type="button" id="stickA" data-mode="stick" aria-pressed="false"><strong>Cu joystick</strong><small>Ca la apărarea planetei.</small></button>
+        </div>
+      </div>
+      <button type="button" class="go" id="start">Începe zborul</button>
+    </div>
+  </section>
+
+  <section class="veil" id="endVeil" hidden>
+    <div class="card">
+      <p class="eyebrow" id="endEyebrow">Ai adus acasă</p>
+      <h1 id="endTitle">Sector explorat</h1>
+      <dl class="haul">
+        <div class="cr"><dt>Cristale</dt><dd id="endCr">0</dd></div>
+        <div class="me"><dt>Metal</dt><dd id="endMe">0</dd></div>
+      </dl>
+      <p class="facts"><span>Nave doborâte <b id="endKills">0</b></span><span>Timp <b id="endTime">0:00</b></span><span>Module <b id="endMods">Tun 1</b></span></p>
+      <div class="field">
+        <span id="ctlLabel2">Cum conduci nava</span>
+        <div class="seg" role="group" aria-labelledby="ctlLabel2">
+          <button type="button" id="dragB" data-mode="drag" aria-pressed="true"><strong>Cu degetul</strong><small>Nava urmează mișcarea degetului.</small></button>
+          <button type="button" id="stickB" data-mode="stick" aria-pressed="false"><strong>Cu joystick</strong><small>Ca la apărarea planetei.</small></button>
+        </div>
+      </div>
+      <button type="button" class="go" id="again">Încă un zbor</button>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  'use strict'
+  const $ = (id) => document.getElementById(id)
+  const cssVar = getComputedStyle(document.documentElement)
+  const col = (name) => cssVar.getPropertyValue('--' + name).trim()
+  const C = {
+    sky: col('sky'), skyDeep: col('sky-deep'), edge: col('edge'), star: col('star'), starCool: col('star-cool'), starWarm: col('star-warm'),
+    hero: col('hero'), heroShade: col('hero-shade'), jet: col('jet'), foe: col('foe'), foeShade: col('foe-shade'), foeJet: col('foe-jet'),
+    foeGlass: col('foe-glass'), crystal: col('crystal'), crystalLift: col('crystal-lift'), metal: col('metal'), ore: col('ore'),
+    oreShade: col('ore-shade'), oreFleck: col('ore-fleck'), hull: col('hull'), hullShade: col('hull-shade'), hullDark: col('hull-dark'),
+    bolt: col('bolt'), ink: col('ink'), night: col('night'),
+  }
+
+  // ——— Cifrele prototipului (toate de încercat, niciuna hotărâtă) ———
+  const VW = 390                       // lățimea câmpului, în unități de joc
+  const DT = 1 / 60
+  const SECTOR = 170                   // secunde până apare nava de elită: cu lupta, un zbor ține cam trei minute
+  const SHIP = { hp: 5, hitR: 6, inv: 1.2, fireEvery: 0.11, boltSpeed: 780, boltDmg: 4, collect: 22, magnet: 85, pick: 27 }
+  const DRAG = { gain: 1.2, max: 1100 }   // cât se mișcă nava față de deget și viteza ei cea mai mare, unități/s
+  const STICK = { r: 48, speed: 255, dead: 0.12 }
+  const FOES = {
+    drone: { r: 13, hp: 14, vy: 95, fire: 1.7, drop: 1 },
+    weaver: { r: 13, hp: 20, vy: 75, fire: 2.1, drop: 1, amp: 70, freq: 1.6 },
+    gunship: { r: 20, hp: 70, vy: 60, fire: 1.9, drop: 4 },
+    cargo: { r: 17, hp: 34, vy: 62, fire: 0, drop: 0 },
+    elite: { r: 34, hp: 1400, vy: 45, fire: 1.3, drop: 24 },
+  }
+  const SHOT = { r: 5, down: 185, aim: 170, fan: 160, ring: 120, burst: 180 }
+  // Modulele din zbor: fiecare are trei trepte; un modul cules a doua oară urcă o treaptă.
+  const MODS = {
+    gun: { name: 'Tun', kind: 'weapon', fan: [null, [-0.1, 0, 0.1], [-0.2, -0.1, 0, 0.1, 0.2]] },
+    laser: { name: 'Laser', kind: 'weapon', every: 0.9, range: 300, dmg: [14, 22, 32] },
+    missile: { name: 'Rachete', kind: 'weapon', every: 2.4, range: 430, speed: 320, blast: 50, dmg: [12, 18, 26] },
+    shield: { name: 'Scut', kind: 'body', recharge: [6, 4.5, 3] },
+    magnet: { name: 'Magnet', kind: 'utility', reach: [45, 90, 135] },
+  }
+  const MOD_KEYS = ['gun', 'laser', 'missile', 'shield', 'magnet']
+  const MAX_TIER = 3
+
+  // ——— Pagina ———
+  const cv = $('c'), ctx = cv.getContext('2d')
+  let cssW = 390, cssH = 780, dpr = 1, scale = 1, offX = 0, VH = 780, bgGrad = null
+  function resize() {
+    const r = cv.getBoundingClientRect()
+    cssW = Math.max(200, r.width); cssH = Math.max(300, r.height)
+    dpr = Math.min(window.devicePixelRatio || 1, 2)
+    cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr)
+    const fieldW = Math.min(cssW, cssH / 1.5)          // pe un ecran lat, câmpul rămâne în picioare, pe mijloc
+    scale = fieldW / VW; offX = (cssW - fieldW) / 2; VH = cssH / scale
+    bgGrad = ctx.createLinearGradient(0, 0, 0, VH)
+    bgGrad.addColorStop(0, C.sky); bgGrad.addColorStop(1, C.skyDeep)
+    if (g) clampShip()
+  }
+
+  // ——— Hazardul și ajutoarele ———
+  let seed = (Date.now() & 0x7fffffff) || 7
+  function rnd() { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 }
+  const lerp = (a, b, k) => a + (b - a) * k
+  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v)
+  function sweep(arr) { let n = 0; for (let i = 0; i < arr.length; i++) { const o = arr[i]; if (!o.gone) arr[n++] = o } arr.length = n }
+
+  // ——— Fundalul: trei straturi de stele care curg în jos ———
+  const stars = []
+  for (let layer = 0; layer < 3; layer++) {
+    for (let i = 0; i < 30; i++) {
+      stars.push({ x: rnd() * VW, y: rnd() * 1000, s: 1 + layer * 0.7, v: 22 + layer * 38, a: 0.35 + layer * 0.25, c: i % 5 === 0 ? C.starWarm : i % 3 === 0 ? C.starCool : C.star })
+    }
+  }
+  function stepStars(dt) { for (const st of stars) { st.y += st.v * dt; if (st.y > VH + 4) { st.y = -4; st.x = rnd() * VW } } }
+
+  // ——— Starea unui zbor ———
+  let g = null, phase = 'ready', paused = false, mode = 'drag', god = false
+  const ctl = { active: false, id: -1, px: 0, py: 0, x: 0, y: 0, sx: 0, sy: 0 }
+  const keys = new Set()
+  function newGame() {
+    g = {
+      t: 0,
+      ship: { x: VW / 2, y: VH * 0.8, hp: SHIP.hp, inv: 0, fireT: 0.3, dead: false, mods: { gun: 1, laser: 0, missile: 0, shield: 0, magnet: 0 }, laserT: 0, missileT: 0, shieldT: 0, shieldUp: false, blockT: -9 },
+      bolts: [], foes: [], shots: [], asteroids: [], drops: [], puffs: [], picks: [], missiles: [], beams: [],
+      crystal: 0, metal: 0, kills: 0, flash: 0, toast: '', toastUntil: 0,
+      next: { drone: 1.2, asteroid: 10, weaver: 24, gunship: 50, cargo: 5, escort: 0 },
+      elite: null, eliteSpawned: false, endT: -1, result: '',
+    }
+  }
+  function shipBounds() { return { x0: 18, x1: VW - 18, y0: VH * 0.3, y1: VH - 34 } }
+  function clampShip() { const b = shipBounds(), s = g.ship; s.x = clamp(s.x, b.x0, b.x1); s.y = clamp(s.y, b.y0, b.y1) }
+
+  function addFoe(kind, x) {
+    const d = FOES[kind], k = Math.min(1, g.t / SECTOR)
+    const hp = kind === 'elite' || kind === 'cargo' ? d.hp : Math.round(d.hp * (1 + 0.8 * k))   // dușmanii se întăresc spre capătul sectorului
+    const f = { kind, x, x0: x, y: -d.r - 6, r: d.r, hp, max: hp, age: 0, ph: rnd() * 6.28, fireT: 0.7 + rnd() * 0.8, hitT: -9, dir: rnd() < 0.5 ? -1 : 1, stay: 0, leaving: false, sway: 0, pat: 0, spin: 0, gone: false }
+    g.foes.push(f); return f
+  }
+  function addAsteroid() {
+    const r = 14 + rnd() * 11, shape = []
+    for (let i = 0; i < 8; i++) shape.push(0.78 + rnd() * 0.32)
+    g.asteroids.push({ x: 24 + rnd() * (VW - 48), y: -r - 4, vx: (rnd() - 0.5) * 34, vy: 55 + rnd() * 32, r, hp: r * 1.5, rot: rnd() * 6.28, vr: (rnd() - 0.5) * 1.6, shape, hitT: -9, gone: false })
+  }
+  function puff(x, y, r, color, life) { g.puffs.push({ x, y, r, color, t: 0, life: life || 0.35, gone: false }) }
+  function drop(x, y, kind, n, spread) {
+    for (let i = 0; i < n; i++) g.drops.push({ x: x + (rnd() - 0.5) * spread, y: y + (rnd() - 0.5) * spread, kind, wob: rnd() * 6.28, gone: false })
+  }
+  function shoot(x, y, ang, speed) { g.shots.push({ x, y, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, gone: false }) }
+
+  // Ce lasă o navă de transport: mai des ceva ce nava încă nu are; reparație doar când e de reparat
+  function pickKind() {
+    const s = g.ship, open = MOD_KEYS.filter((k) => s.mods[k] < MAX_TIER)
+    if (s.hp < SHIP.hp && rnd() < (s.hp <= 2 ? 0.5 : 0.22)) return 'repair'
+    if (open.length === 0) return s.hp < SHIP.hp ? 'repair' : null
+    const fresh = open.filter((k) => s.mods[k] === 0)
+    const from = fresh.length > 0 && rnd() < 0.65 ? fresh : open
+    return from[Math.floor(rnd() * from.length)]
+  }
+  function say(text) { g.toast = text; g.toastUntil = g.t + 1.6 }
+  function take(kind) {
+    const s = g.ship
+    if (kind === 'repair') { s.hp = Math.min(SHIP.hp, s.hp + 1); say('Reparație · +1 viață'); return }
+    if (s.mods[kind] >= MAX_TIER) { g.crystal += 5; say(MODS[kind].name + ' e la maxim · +5 cristale'); return }
+    const tier = ++s.mods[kind]
+    if (kind === 'shield' && tier === 1) s.shieldUp = true
+    say(MODS[kind].name + (tier === 1 ? ' · nou' : ' · treapta ' + tier))
+  }
+
+  function fireFoe(f) {
+    const s = g.ship, d = FOES[f.kind], toShip = Math.atan2(s.y - f.y, s.x - f.x), jitter = 0.85 + rnd() * 0.3
+    if (f.kind === 'drone') { shoot(f.x, f.y + f.r, Math.PI / 2, SHOT.down); f.fireT = d.fire * jitter }
+    else if (f.kind === 'weaver') { shoot(f.x, f.y + f.r, toShip, SHOT.aim); f.fireT = d.fire * jitter }
+    else if (f.kind === 'gunship') { for (const a of [-0.28, 0, 0.28]) shoot(f.x, f.y + f.r, toShip + a, SHOT.fan); f.fireT = d.fire * jitter }
+    else {
+      const angry = f.hp < f.max / 2, step = f.pat % 3
+      if (step === 0) {
+        const n = angry ? 18 : 14; f.spin += 0.22
+        for (let i = 0; i < n; i++) shoot(f.x, f.y, f.spin + (i / n) * Math.PI * 2, SHOT.ring)
+        f.fireT = d.fire * (angry ? 0.8 : 1)
+      } else {
+        for (const a of [-0.3, -0.15, 0, 0.15, 0.3]) shoot(f.x, f.y + f.r * 0.6, toShip + a, SHOT.burst)
+        f.fireT = step === 1 ? 0.42 : d.fire * (angry ? 0.8 : 1)
+      }
+      f.pat++
+    }
+  }
+
+  function killFoe(f) {
+    f.gone = true
+    const d = FOES[f.kind]
+    if (f.kind === 'cargo') {
+      puff(f.x, f.y, f.r * 1.8, C.hull, 0.4)
+      const kind = pickKind()
+      if (kind) g.picks.push({ x: f.x, y: f.y, kind, wob: 0, gone: false }); else drop(f.x, f.y, 'crystal', 5, 30)
+      return
+    }
+    g.kills++
+    puff(f.x, f.y, f.r * 1.9, C.foeJet, 0.4); puff(f.x, f.y, f.r * 1.1, C.ink, 0.25)
+    if (f.kind === 'elite') {
+      drop(f.x, f.y, 'crystal', d.drop, 110)
+      for (let i = 0; i < 6; i++) puff(f.x + (rnd() - 0.5) * 80, f.y + (rnd() - 0.5) * 60, 30 + rnd() * 30, i % 2 ? C.foeJet : C.ink, 0.5 + rnd() * 0.3)
+      for (const sh of g.shots) { sh.gone = true; puff(sh.x, sh.y, 9, C.foeJet, 0.25) }
+      g.endT = g.t + 3.4; g.result = 'explored'
+    } else drop(f.x, f.y, 'crystal', d.drop, d.drop > 1 ? 34 : 6)
+  }
+  function hitFoe(f, dmg) { if (f.gone) return; f.hp -= dmg; f.hitT = g.t; if (f.hp <= 0) killFoe(f) }
+  function hitAsteroid(r, dmg) {
+    if (r.gone) return
+    r.hp -= dmg; r.hitT = g.t
+    if (r.hp <= 0) { r.gone = true; puff(r.x, r.y, r.r * 1.7, C.ore, 0.4); drop(r.x, r.y, 'metal', r.r > 19 ? 2 : 1, 16) }
+  }
+  function nearestFoe(x, y, range) {
+    let best = null, bd = range
+    for (const f of g.foes) {
+      if (f.gone || f.kind === 'cargo' && f.y < 30 || f.y < 12 || f.y > y + 30) continue
+      const d = Math.hypot(f.x - x, f.y - y)
+      if (d < bd) { bd = d; best = f }
+    }
+    return best
+  }
+
+  function hurtShip() {
+    const s = g.ship
+    if (s.dead || s.inv > 0 || god) return
+    if (s.shieldUp) {                               // Scutul oprește lovitura și se reîncarcă
+      s.shieldUp = false; s.shieldT = MODS.shield.recharge[s.mods.shield - 1]; s.inv = 0.45; s.blockT = g.t
+      puff(s.x, s.y, 34, C.jet, 0.35)
+      return
+    }
+    s.hp--; s.inv = SHIP.inv; g.flash = 0.22
+    if (s.hp <= 0) {
+      s.dead = true
+      puff(s.x, s.y, 46, C.hero, 0.6); puff(s.x, s.y, 28, C.ink, 0.4)
+      g.endT = g.t + 1.5; g.result = 'down'
+    } else puff(s.x, s.y, 26, C.ink, 0.3)
+  }
+
+  // ——— Un pas de joc ———
+  function moveShip(dt) {
+    const s = g.ship; if (s.dead) return
+    const b = shipBounds()
+    if (ctl.active && mode === 'drag') {
+      const tx = ctl.sx + (ctl.x - ctl.px) * DRAG.gain, ty = ctl.sy + (ctl.y - ctl.py) * DRAG.gain
+      const cx = clamp(tx, b.x0, b.x1), cy = clamp(ty, b.y0, b.y1)
+      if (cx !== tx) ctl.sx += cx - tx          // la margine, ancora se mută: întoarcerea degetului se simte imediat
+      if (cy !== ty) ctl.sy += cy - ty
+      const dx = cx - s.x, dy = cy - s.y, dist = Math.hypot(dx, dy), max = DRAG.max * dt
+      if (dist > max) { s.x += (dx / dist) * max; s.y += (dy / dist) * max } else { s.x = cx; s.y = cy }
+    } else if (ctl.active && mode === 'stick') {
+      let vx = (ctl.x - ctl.px) / STICK.r, vy = (ctl.y - ctl.py) / STICK.r
+      const len = Math.hypot(vx, vy)
+      if (len > 1) { vx /= len; vy /= len }
+      if (len > STICK.dead) { s.x += vx * STICK.speed * dt; s.y += vy * STICK.speed * dt }
+    }
+    let kx = 0, ky = 0
+    if (keys.has('ArrowLeft') || keys.has('KeyA')) kx -= 1
+    if (keys.has('ArrowRight') || keys.has('KeyD')) kx += 1
+    if (keys.has('ArrowUp') || keys.has('KeyW')) ky -= 1
+    if (keys.has('ArrowDown') || keys.has('KeyS')) ky += 1
+    if (kx || ky) { const l = Math.hypot(kx, ky); s.x += (kx / l) * STICK.speed * dt; s.y += (ky / l) * STICK.speed * dt }
+    s.x = clamp(s.x, b.x0, b.x1); s.y = clamp(s.y, b.y0, b.y1)
+  }
+
+  function arsenal(dt) {
+    const s = g.ship, m = s.mods
+    s.fireT -= dt
+    if (s.fireT <= 0) {
+      s.fireT += SHIP.fireEvery
+      const fan = MODS.gun.fan[m.gun - 1]
+      if (!fan) g.bolts.push({ x: s.x - 7, y: s.y - 12, vx: 0, gone: false }, { x: s.x + 7, y: s.y - 12, vx: 0, gone: false })
+      else for (const a of fan) g.bolts.push({ x: s.x + a * 45, y: s.y - 12, vx: Math.sin(a) * SHIP.boltSpeed, gone: false })
+    }
+    if (m.laser > 0) {
+      s.laserT -= dt
+      if (s.laserT <= 0) {
+        const f = nearestFoe(s.x, s.y, MODS.laser.range)
+        if (f) { s.laserT = MODS.laser.every; g.beams.push({ x1: s.x, y1: s.y - 14, x2: f.x, y2: f.y, t: 0, gone: false }); hitFoe(f, MODS.laser.dmg[m.laser - 1]) }
+        else s.laserT = 0.1
+      }
+    }
+    if (m.missile > 0) {
+      s.missileT -= dt
+      if (s.missileT <= 0) {
+        const f = nearestFoe(s.x, s.y, MODS.missile.range)
+        if (f) { s.missileT = MODS.missile.every; g.missiles.push({ x: s.x, y: s.y - 10, vx: 0, vy: -220, target: f, gone: false }) }
+        else s.missileT = 0.2
+      }
+    }
+    if (m.shield > 0 && !s.shieldUp) { s.shieldT -= dt; if (s.shieldT <= 0) s.shieldUp = true }
+  }
+
+  function boom(x, y) {
+    const R = MODS.missile.blast, dmg = MODS.missile.dmg[g.ship.mods.missile - 1]
+    puff(x, y, R, C.hero, 0.3); puff(x, y, R * 0.6, C.ink, 0.22)
+    for (const f of g.foes) if (!f.gone && Math.hypot(f.x - x, f.y - y) < R + f.r * 0.5) hitFoe(f, dmg)
+    for (const r of g.asteroids) if (!r.gone && Math.hypot(r.x - x, r.y - y) < R + r.r * 0.5) hitAsteroid(r, dmg)
+  }
+
+  function spawn() {
+    const t = g.t, k = Math.min(1, t / SECTOR), nx = g.next
+    const calm = t > SECTOR * 0.5 - 1 && t < SECTOR * 0.5 + 6          // o clipă de liniște la jumătatea drumului
+    if (t < SECTOR) {
+      if (t >= nx.cargo) { nx.cargo = t + 14 + rnd() * 4; addFoe('cargo', 60 + rnd() * (VW - 120)) }
+      if (!calm) {
+        if (t >= nx.drone) {
+          nx.drone = t + lerp(1.7, 0.75, k) * (0.8 + 0.4 * rnd())
+          const x = 30 + rnd() * (VW - 60); addFoe('drone', x)
+          if (k > 0.15 && rnd() < 0.35) addFoe('drone', VW - x)
+        }
+        if (t >= nx.asteroid) { nx.asteroid = t + lerp(2.8, 1.8, k) * (0.7 + 0.6 * rnd()); addAsteroid() }
+        if (t >= nx.weaver) { nx.weaver = t + lerp(3.6, 2.0, k) * (0.8 + 0.4 * rnd()); addFoe('weaver', 80 + rnd() * (VW - 160)) }
+        if (t >= nx.gunship) {
+          let alive = 0; for (const f of g.foes) if (f.kind === 'gunship') alive++
+          if (alive < (k > 0.6 ? 3 : 2)) { nx.gunship = t + lerp(10, 6.5, k); addFoe('gunship', 70 + rnd() * (VW - 140)) } else nx.gunship = t + 1
+        }
+      }
+    } else if (!g.eliteSpawned) {
+      if (t >= SECTOR + 2.5) { g.eliteSpawned = true; g.elite = addFoe('elite', VW / 2); nx.escort = t + 7 }
+    } else if (g.elite && !g.elite.gone && t >= nx.escort) {
+      nx.escort = t + 5.5
+      const x = 40 + rnd() * 110; addFoe('drone', x); addFoe('drone', VW - x)
+    }
+  }
+
+  function step(dt) {
+    g.t += dt
+    const s = g.ship
+    if (s.inv > 0) s.inv -= dt
+    if (g.flash > 0) g.flash -= dt
+    moveShip(dt)
+    if (!s.dead && g.result !== 'explored') arsenal(dt)
+    spawn()
+
+    for (const f of g.foes) {
+      const d = FOES[f.kind]; f.age += dt
+      if (f.kind === 'drone' || f.kind === 'cargo') f.y += d.vy * dt
+      else if (f.kind === 'weaver') { f.y += d.vy * dt; f.x = clamp(f.x0 + Math.sin(f.age * d.freq + f.ph) * d.amp, 16, VW - 16) }
+      else if (f.kind === 'gunship') {
+        if (f.leaving) f.y += 130 * dt
+        else if (f.y < VH * 0.2) f.y += d.vy * dt
+        else { f.x += f.dir * 32 * dt; if (f.x < 50) f.dir = 1; else if (f.x > VW - 50) f.dir = -1; f.stay += dt; if (f.stay > 9) f.leaving = true }
+      } else if (f.y < VH * 0.17) f.y += d.vy * dt
+      else { f.sway += dt; f.x = VW / 2 + Math.sin(f.sway * 0.55) * 105 }
+      if (f.kind !== 'cargo' && !s.dead && f.y > 24 && f.y < VH * 0.62 && s.y - f.y > 110) { f.fireT -= dt; if (f.fireT <= 0) fireFoe(f) }
+      if (f.y > VH + 50) f.gone = true
+      if (!f.gone && !s.dead && Math.hypot(f.x - s.x, f.y - s.y) < f.r * 0.75 + SHIP.hitR) {
+        hurtShip()
+        if (f.kind !== 'elite') hitFoe(f, 12)
+      }
+    }
+    for (const r of g.asteroids) {
+      r.x += r.vx * dt; r.y += r.vy * dt; r.rot += r.vr * dt
+      if (r.y > VH + 40 || r.x < -40 || r.x > VW + 40) r.gone = true
+      else if (!s.dead && Math.hypot(r.x - s.x, r.y - s.y) < r.r * 0.85 + SHIP.hitR) { r.gone = true; puff(r.x, r.y, r.r * 1.6, C.ore, 0.35); hurtShip() }
+    }
+    for (const b of g.bolts) {
+      b.y -= SHIP.boltSpeed * dt; b.x += b.vx * dt
+      if (b.y < -20 || b.x < -10 || b.x > VW + 10) { b.gone = true; continue }
+      for (const f of g.foes) {
+        if (f.gone || Math.abs(b.x - f.x) > f.r + 3 || Math.abs(b.y - f.y) > f.r + 6) continue
+        b.gone = true; hitFoe(f, SHIP.boltDmg)
+        break
+      }
+      if (b.gone) continue
+      for (const r of g.asteroids) {
+        if (r.gone || Math.abs(b.x - r.x) > r.r + 2 || Math.abs(b.y - r.y) > r.r + 5) continue
+        b.gone = true; hitAsteroid(r, SHIP.boltDmg)
+        break
+      }
+    }
+    for (const mi of g.missiles) {
+      if (!mi.target || mi.target.gone) mi.target = nearestFoe(mi.x, mi.y + 60, 500)
+      if (mi.target) {
+        const dx = mi.target.x - mi.x, dy = mi.target.y - mi.y, d = Math.hypot(dx, dy) || 1, steer = Math.min(1, 7 * dt)
+        mi.vx += ((dx / d) * MODS.missile.speed - mi.vx) * steer; mi.vy += ((dy / d) * MODS.missile.speed - mi.vy) * steer
+      }
+      mi.x += mi.vx * dt; mi.y += mi.vy * dt
+      if (mi.y < -30 || mi.y > VH + 30 || mi.x < -30 || mi.x > VW + 30) { mi.gone = true; continue }
+      for (const f of g.foes) {
+        if (f.gone || f.kind === 'cargo' && f !== mi.target) continue
+        if (Math.hypot(f.x - mi.x, f.y - mi.y) < f.r + 5) { mi.gone = true; boom(mi.x, mi.y); break }
+      }
+    }
+    for (const sh of g.shots) {
+      sh.x += sh.vx * dt; sh.y += sh.vy * dt
+      if (sh.y > VH + 20 || sh.y < -30 || sh.x < -20 || sh.x > VW + 20) sh.gone = true
+      else if (!s.dead && Math.hypot(sh.x - s.x, sh.y - s.y) < SHOT.r + SHIP.hitR) { sh.gone = true; hurtShip() }
+    }
+    const reach = SHIP.magnet + (s.mods.magnet > 0 ? MODS.magnet.reach[s.mods.magnet - 1] : 0)
+    for (const d of g.drops) {
+      d.wob += dt * 3
+      const dx = s.x - d.x, dy = s.y - d.y, dist = Math.hypot(dx, dy)
+      if (!s.dead && dist < SHIP.collect) { d.gone = true; if (d.kind === 'crystal') g.crystal++; else g.metal++; continue }
+      if (!s.dead && dist < reach) { d.x += (dx / dist) * 340 * dt; d.y += (dy / dist) * 340 * dt }
+      else d.y += 75 * dt
+      if (d.y > VH + 20) d.gone = true
+    }
+    for (const p of g.picks) {                       // armele și modulele nu vin singure: trebuie să zbori peste ele
+      p.wob += dt; p.y += 62 * dt
+      if (!s.dead && Math.hypot(p.x - s.x, p.y - s.y) < SHIP.pick) { p.gone = true; puff(p.x, p.y, 30, C.ink, 0.3); take(p.kind) }
+      else if (p.y > VH + 30) p.gone = true
+    }
+    for (const be of g.beams) { be.t += dt; if (be.t >= 0.12) be.gone = true }
+    for (const p of g.puffs) { p.t += dt; if (p.t >= p.life) p.gone = true }
+    sweep(g.foes); sweep(g.asteroids); sweep(g.bolts); sweep(g.shots); sweep(g.drops); sweep(g.puffs); sweep(g.picks); sweep(g.missiles); sweep(g.beams)
+    if (g.endT > 0 && g.t >= g.endT) finish()
+  }
+
+  // ——— Desenul ———
+  function poly(pts) { ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.closePath() }
+  const KIND_COLOR = { weapon: 'hero', body: 'jet', utility: 'metal' }
+  function glyph(kind, color) {
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    ctx.beginPath()
+    if (kind === 'gun') { for (const x of [-5, 0, 5]) { ctx.moveTo(x, 5); ctx.lineTo(x, x === 0 ? -6 : -3) } ctx.stroke() }
+    else if (kind === 'laser') { ctx.moveTo(-6, 6); ctx.lineTo(4, -4); ctx.stroke(); ctx.beginPath(); ctx.arc(5, -5, 2.4, 0, 6.2832); ctx.fill() }
+    else if (kind === 'missile') { poly([0, -7, 4, 2, 0, 0, -4, 2]); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 3.5); ctx.lineTo(0, 7); ctx.stroke() }
+    else if (kind === 'shield') { ctx.arc(0, 0, 6, 0, 6.2832); ctx.stroke() }
+    else if (kind === 'magnet') { ctx.moveTo(-5, -6); ctx.lineTo(-5, 1); ctx.arc(0, 1, 5, Math.PI, 0, true); ctx.lineTo(5, -6); ctx.stroke() }
+    else { ctx.moveTo(-6, 0); ctx.lineTo(6, 0); ctx.moveTo(0, -6); ctx.lineTo(0, 6); ctx.stroke() }
+  }
+  function drawPick(p) {
+    const color = p.kind === 'repair' ? C.crystal : C[KIND_COLOR[MODS[p.kind].kind]]
+    const pulse = 0.5 + 0.5 * Math.sin(p.wob * 6)
+    ctx.save(); ctx.translate(p.x, p.y + Math.sin(p.wob * 3) * 2)
+    ctx.globalAlpha = 0.25 + 0.3 * pulse; ctx.lineWidth = 2; ctx.strokeStyle = color
+    ctx.beginPath(); ctx.arc(0, 0, 19 + 4 * pulse, 0, 6.2832); ctx.stroke(); ctx.globalAlpha = 1
+    ctx.beginPath(); ctx.roundRect(-13, -13, 26, 26, 8); ctx.fillStyle = C.night; ctx.fill(); ctx.lineWidth = 2.2; ctx.strokeStyle = color; ctx.stroke()
+    glyph(p.kind, color)
+    ctx.restore()
+  }
+  function drawShip() {
+    const s = g.ship; if (s.dead) return
+    if (s.inv > 0 && Math.floor(s.inv * 12) % 2 === 0) ctx.globalAlpha = 0.35
+    const fl = 0.6 + 0.4 * Math.sin(g.t * 34), m = s.mods
+    ctx.save(); ctx.translate(s.x, s.y)
+    poly([-4.5, 9, 0, 14 + 10 * fl, 4.5, 9]); ctx.fillStyle = C.jet; ctx.fill()
+    poly([-2.2, 9, 0, 11 + 5 * fl, 2.2, 9]); ctx.fillStyle = C.star; ctx.fill()
+    if (m.missile > 0) { ctx.fillStyle = C.hull; ctx.fillRect(-16, 0, 4.5, 8 + 2 * m.missile); ctx.fillRect(11.5, 0, 4.5, 8 + 2 * m.missile) }
+    poly([0, -18, 13, 12, 0, 6, -13, 12]); ctx.fillStyle = C.hero; ctx.fill()
+    ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.strokeStyle = C.heroShade; ctx.stroke()
+    if (m.laser > 0) { ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.strokeStyle = C.hull; ctx.beginPath(); ctx.moveTo(0, -16); ctx.lineTo(0, -22 - 3 * m.laser); ctx.stroke(); ctx.beginPath(); ctx.arc(0, -22 - 3 * m.laser, 2.2, 0, 6.2832); ctx.fillStyle = C.jet; ctx.fill() }
+    if (m.gun > 1) { ctx.fillStyle = C.hull; ctx.fillRect(-9.5, -4, 3, 7); ctx.fillRect(6.5, -4, 3, 7) }
+    ctx.beginPath(); ctx.ellipse(0, -3, 3.6, 5.2, 0, 0, 6.2832); ctx.fillStyle = C.hullDark; ctx.fill()
+    ctx.beginPath(); ctx.arc(0, 0, 2.4, 0, 6.2832); ctx.fillStyle = C.ink; ctx.fill()   // punctul care contează la lovituri
+    ctx.globalAlpha = 1
+    if (s.shieldUp) { ctx.globalAlpha = 0.75; ctx.lineWidth = 1.4 + 0.7 * m.shield; ctx.strokeStyle = C.jet; ctx.beginPath(); ctx.arc(0, -2, 25, 0, 6.2832); ctx.stroke() }
+    ctx.restore(); ctx.globalAlpha = 1
+  }
+  function drawFoe(f) {
+    const hit = g.t - f.hitT < 0.07
+    ctx.save(); ctx.translate(f.x, f.y)
+    const fl = 0.6 + 0.4 * Math.sin(g.t * 30 + f.ph)
+    if (f.kind === 'drone' || f.kind === 'weaver') {
+      poly([-4, -9, 0, -12 - 8 * fl, 4, -9]); ctx.fillStyle = C.foeJet; ctx.fill()
+      if (f.kind === 'drone') poly([0, 15, 12, -10, 0, -5, -12, -10]); else poly([0, 15, 8, 0, 15, -9, 0, -5, -15, -9, -8, 0])
+      ctx.fillStyle = hit ? C.ink : C.foe; ctx.fill(); ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.strokeStyle = C.foeShade; ctx.stroke()
+      ctx.beginPath(); ctx.ellipse(0, 2, 3, 4.4, 0, 0, 6.2832); ctx.fillStyle = C.foeGlass; ctx.fill()
+    } else if (f.kind === 'cargo') {                 // nava de transport: gri, nu trage, duce un modul
+      poly([-5, -15, 0, -18 - 7 * fl, 5, -15]); ctx.fillStyle = C.jet; ctx.fill()
+      ctx.beginPath(); ctx.roundRect(-14, -15, 28, 31, 7); ctx.fillStyle = hit ? C.ink : C.hull; ctx.fill()
+      ctx.lineWidth = 2.2; ctx.strokeStyle = C.hullShade; ctx.stroke()
+      ctx.fillStyle = C.hero; ctx.fillRect(-14, -3, 28, 6)
+      ctx.fillStyle = C.hullDark; ctx.fillRect(-6, 7, 12, 5)
+    } else if (f.kind === 'gunship') {
+      poly([-8, -15, 0, -19 - 9 * fl, 8, -15]); ctx.fillStyle = C.foeJet; ctx.fill()
+      ctx.fillStyle = C.hull; ctx.fillRect(-18, 2, 5, 17); ctx.fillRect(13, 2, 5, 17)
+      poly([0, 21, 16, 8, 21, -8, 10, -17, -10, -17, -21, -8, -16, 8]); ctx.fillStyle = hit ? C.ink : C.foe; ctx.fill()
+      ctx.lineWidth = 2.4; ctx.lineJoin = 'round'; ctx.strokeStyle = C.foeShade; ctx.stroke()
+      ctx.beginPath(); ctx.ellipse(0, 3, 5, 7, 0, 0, 6.2832); ctx.fillStyle = C.foeGlass; ctx.fill()
+    } else {
+      poly([-14, -24, 0, -30 - 12 * fl, 14, -24]); ctx.fillStyle = C.foeJet; ctx.fill()
+      ctx.fillStyle = C.hull; ctx.fillRect(-33, 0, 7, 26); ctx.fillRect(26, 0, 7, 26); ctx.fillRect(-4, 20, 8, 20)
+      poly([0, 34, 22, 20, 36, -4, 26, -26, -26, -26, -36, -4, -22, 20]); ctx.fillStyle = hit ? C.ink : C.foe; ctx.fill()
+      ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.strokeStyle = C.foeShade; ctx.stroke()
+      ctx.beginPath(); ctx.arc(0, 0, 13, 0, 6.2832); ctx.fillStyle = C.foeGlass; ctx.fill()
+      ctx.beginPath(); ctx.arc(0, 0, 6, 0, 6.2832); ctx.fillStyle = f.hp < f.max / 2 ? C.foeJet : C.hull; ctx.fill()
+    }
+    ctx.restore()
+    if (f.kind === 'gunship' && f.hp < f.max) {
+      ctx.fillStyle = C.hullDark; ctx.fillRect(f.x - 16, f.y - 30, 32, 4)
+      ctx.fillStyle = C.foe; ctx.fillRect(f.x - 16, f.y - 30, 32 * Math.max(0, f.hp / f.max), 4)
+    }
+  }
+  function drawAsteroid(r) {
+    ctx.save(); ctx.translate(r.x, r.y); ctx.rotate(r.rot)
+    ctx.beginPath()
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * 6.2832, rr = r.r * r.shape[i]; if (i) ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr) }
+    ctx.closePath(); ctx.fillStyle = g.t - r.hitT < 0.07 ? C.oreFleck : C.ore; ctx.fill()
+    ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.strokeStyle = C.oreShade; ctx.stroke()
+    ctx.fillStyle = C.oreFleck; ctx.fillRect(-r.r * 0.3, -r.r * 0.2, 3, 3); ctx.fillRect(r.r * 0.2, r.r * 0.25, 2.5, 2.5)
+    ctx.restore()
+  }
+  function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.fillStyle = C.edge; ctx.fillRect(0, 0, cssW, cssH)
+    ctx.save()
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offX, 0)
+    ctx.beginPath(); ctx.rect(0, 0, VW, VH); ctx.clip()
+    ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, VW, VH)
+    for (const st of stars) { ctx.globalAlpha = st.a; ctx.fillStyle = st.c; ctx.fillRect(st.x, st.y, st.s, st.s * (1 + st.v / 60)) }
+    ctx.globalAlpha = 1
+    if (g) {
+      for (const d of g.drops) {
+        const bob = Math.sin(d.wob) * 1.5
+        if (d.kind === 'crystal') { poly([d.x, d.y - 8 + bob, d.x + 6, d.y + bob, d.x, d.y + 8 + bob, d.x - 6, d.y + bob]); ctx.fillStyle = C.crystal; ctx.fill(); poly([d.x, d.y - 8 + bob, d.x + 6, d.y + bob, d.x, d.y + bob]); ctx.fillStyle = C.crystalLift; ctx.fill() }
+        else { ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = (i / 6) * 6.2832; if (i) ctx.lineTo(d.x + Math.cos(a) * 6.5, d.y + bob + Math.sin(a) * 6.5); else ctx.moveTo(d.x + 6.5, d.y + bob) } ctx.closePath(); ctx.fillStyle = C.metal; ctx.fill() }
+      }
+      for (const r of g.asteroids) drawAsteroid(r)
+      for (const f of g.foes) drawFoe(f)
+      for (const p of g.picks) drawPick(p)
+      ctx.lineCap = 'round'; ctx.lineWidth = 3; ctx.strokeStyle = C.bolt; ctx.beginPath()
+      for (const b of g.bolts) { ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.vx * 0.014, b.y + 11) }
+      ctx.stroke()
+      for (const be of g.beams) {
+        const k = 1 - be.t / 0.12
+        ctx.globalAlpha = 0.35 * k; ctx.lineWidth = 7; ctx.strokeStyle = C.jet; ctx.beginPath(); ctx.moveTo(be.x1, be.y1); ctx.lineTo(be.x2, be.y2); ctx.stroke()
+        ctx.globalAlpha = k; ctx.lineWidth = 2.4; ctx.strokeStyle = C.bolt; ctx.beginPath(); ctx.moveTo(be.x1, be.y1); ctx.lineTo(be.x2, be.y2); ctx.stroke()
+      }
+      ctx.globalAlpha = 1
+      for (const mi of g.missiles) {
+        ctx.save(); ctx.translate(mi.x, mi.y); ctx.rotate(Math.atan2(mi.vy, mi.vx) + Math.PI / 2)
+        poly([-2.6, 5, 0, 12, 2.6, 5]); ctx.fillStyle = C.foeJet; ctx.fill()
+        poly([0, -8, 3.2, 5, -3.2, 5]); ctx.fillStyle = C.hull; ctx.fill()
+        ctx.restore()
+      }
+      drawShip()
+      ctx.fillStyle = C.foeJet; ctx.beginPath()
+      for (const sh of g.shots) { ctx.moveTo(sh.x + SHOT.r + 1.5, sh.y); ctx.arc(sh.x, sh.y, SHOT.r + 1.5, 0, 6.2832) }
+      ctx.fill()
+      ctx.fillStyle = C.ink; ctx.beginPath()
+      for (const sh of g.shots) { ctx.moveTo(sh.x + 2.6, sh.y); ctx.arc(sh.x, sh.y, 2.6, 0, 6.2832) }
+      ctx.fill()
+      for (const p of g.puffs) {
+        const k = p.t / p.life
+        ctx.globalAlpha = (1 - k) * 0.8; ctx.lineWidth = 3 * (1 - k) + 1; ctx.strokeStyle = p.color
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (0.3 + 0.7 * k), 0, 6.2832); ctx.stroke()
+      }
+      ctx.globalAlpha = 1
+      if (ctl.active && mode === 'stick' && phase === 'flying') {
+        let vx = ctl.x - ctl.px, vy = ctl.y - ctl.py; const len = Math.hypot(vx, vy)
+        if (len > STICK.r) { vx = (vx / len) * STICK.r; vy = (vy / len) * STICK.r }
+        ctx.globalAlpha = 0.4; ctx.lineWidth = 2; ctx.strokeStyle = C.ink; ctx.beginPath(); ctx.arc(ctl.px, ctl.py, STICK.r, 0, 6.2832); ctx.stroke()
+        ctx.globalAlpha = 0.32; ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(ctl.px + vx, ctl.py + vy, 20, 0, 6.2832); ctx.fill()
+        ctx.globalAlpha = 1
+      }
+      if (g.flash > 0) { ctx.globalAlpha = Math.min(0.35, g.flash * 1.6); ctx.fillStyle = C.foe; ctx.fillRect(0, 0, VW, VH); ctx.globalAlpha = 1 }
+    }
+    ctx.restore()
+  }
+
+  // ——— Banda de sus: pagina se atinge doar când s-a schimbat ceva ———
+  const pips = $('pips')
+  for (let i = 0; i < SHIP.hp; i++) pips.appendChild(document.createElement('span'))
+  const shown = { cr: -1, me: -1, hp: -1, bar: -1, elite: null, mods: '', toast: '' }
+  function modsText() { const m = g.ship.mods; return MOD_KEYS.filter((k) => m[k] > 0).map((k) => MODS[k].name + ' ' + m[k]).join(' · ') }
+  function hud() {
+    if (shown.cr !== g.crystal) { shown.cr = g.crystal; $('cr').textContent = String(g.crystal) }
+    if (shown.me !== g.metal) { shown.me = g.metal; $('me').textContent = String(g.metal) }
+    if (shown.hp !== g.ship.hp) {
+      shown.hp = g.ship.hp
+      for (let i = 0; i < pips.children.length; i++) pips.children[i].className = i < g.ship.hp ? 'on' : ''
+      pips.setAttribute('aria-label', 'Viața navei: ' + Math.max(0, g.ship.hp) + ' din ' + SHIP.hp)
+    }
+    const elite = g.eliteSpawned
+    const frac = elite ? (g.elite && !g.elite.gone ? Math.max(0, g.elite.hp / g.elite.max) : 0) : Math.min(1, g.t / SECTOR)
+    const pct = Math.round(frac * 100)
+    if (shown.elite !== elite) { shown.elite = elite; $('bar').classList.toggle('elite', elite); $('barLabel').textContent = elite ? 'Elită' : 'Sector' }
+    if (shown.bar !== pct) { shown.bar = pct; $('barFill').style.width = pct + '%'; $('barNum').textContent = pct + '%' }
+    const key = modsText()
+    if (shown.mods !== key) {
+      shown.mods = key
+      const box = $('mods'); box.textContent = ''
+      for (const k of MOD_KEYS) {
+        const tier = g.ship.mods[k]; if (tier === 0) continue
+        const chip = document.createElement('span'); chip.className = 'chip k-' + MODS[k].kind; chip.append(MODS[k].name)
+        const dots = document.createElement('i')
+        for (let i = 1; i <= MAX_TIER; i++) { const dot = document.createElement('b'); if (i <= tier) dot.className = 'on'; dots.appendChild(dot) }
+        chip.appendChild(dots); box.appendChild(chip)
+      }
+    }
+    const toast = g.t < g.toastUntil ? g.toast : ''
+    if (shown.toast !== toast) { shown.toast = toast; $('toast').textContent = toast; $('toast').hidden = toast === '' }
+  }
+
+  // ——— Fazele ———
+  function setMode(m) {
+    mode = m
+    for (const id of ['dragA', 'dragB', 'stickA', 'stickB']) { const b = $(id); b.setAttribute('aria-pressed', String(b.dataset.mode === m)) }
+    try { localStorage.setItem('explorare.comanda', m) } catch (e) { /* fără stocare: alegerea ține doar acum */ }
+  }
+  function begin() {
+    newGame(); ctl.active = false; paused = false; phase = 'flying'
+    shown.cr = shown.me = shown.hp = shown.bar = -1; shown.elite = null; shown.mods = ''; shown.toast = ''
+    $('startVeil').hidden = true; $('endVeil').hidden = true; $('hud').hidden = false; $('note').hidden = true; $('toast').hidden = true
+    hud()
+    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}) } catch (e) { /* ecranul se poate stinge */ }
+  }
+  function finish() {
+    phase = 'over'; ctl.active = false
+    g.toastUntil = 0; hud()                      // banda rămâne cu cifrele de la sfârșit, nu cu cele de dinaintea ultimului pas
+    const explored = g.result === 'explored'
+    $('endTitle').textContent = explored ? 'Sector explorat' : 'Nava a fost doborâtă'
+    $('endEyebrow').textContent = explored ? 'Ai adus acasă' : 'Ai apucat să strângi'
+    $('endCr').textContent = String(g.crystal); $('endMe').textContent = String(g.metal); $('endKills').textContent = String(g.kills)
+    const secs = Math.floor(g.t); $('endTime').textContent = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0')
+    $('endMods').textContent = modsText()
+    $('endVeil').hidden = false
+    $('again').focus({ preventScroll: true })
+  }
+
+  // ——— Comenzile ———
+  let last = 0, acc = 0
+  function toField(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left - offX) / scale, y: (e.clientY - r.top) / scale } }
+  cv.addEventListener('pointerdown', (e) => {
+    if (phase !== 'flying') return
+    if (paused) { paused = false; $('note').hidden = true; last = 0 }
+    if (ctl.active) return
+    const p = toField(e)
+    ctl.active = true; ctl.id = e.pointerId; ctl.px = ctl.x = p.x; ctl.py = ctl.y = p.y; ctl.sx = g.ship.x; ctl.sy = g.ship.y
+    try { cv.setPointerCapture(e.pointerId) } catch (err) { /* fără captură merge la fel cât degetul rămâne pe canvas */ }
+    e.preventDefault()
+  })
+  cv.addEventListener('pointermove', (e) => { if (ctl.active && e.pointerId === ctl.id) { const p = toField(e); ctl.x = p.x; ctl.y = p.y } })
+  function lift(e) { if (ctl.active && e.pointerId === ctl.id) ctl.active = false }
+  cv.addEventListener('pointerup', lift); cv.addEventListener('pointercancel', lift)
+  cv.addEventListener('contextmenu', (e) => e.preventDefault())
+  window.addEventListener('keydown', (e) => { if (e.code.startsWith('Arrow')) e.preventDefault(); keys.add(e.code) })
+  window.addEventListener('keyup', (e) => keys.delete(e.code))
+  window.addEventListener('blur', () => keys.clear())
+  document.addEventListener('visibilitychange', () => { if (document.hidden && phase === 'flying') { paused = true; ctl.active = false; $('note').hidden = false } })
+  for (const id of ['dragA', 'dragB', 'stickA', 'stickB']) $(id).addEventListener('click', (e) => setMode(e.currentTarget.dataset.mode))
+  $('start').addEventListener('click', begin)
+  $('again').addEventListener('click', begin)
+  try { const saved = localStorage.getItem('explorare.comanda'); if (saved === 'stick' || saved === 'drag') setMode(saved) } catch (e) { /* rămâne „cu degetul” */ }
+
+  // ——— Bucla: pași ficși de 1/60 s, cel mult 5 pe cadru ———
+  function frame(now) {
+    const dt = last ? Math.min(0.1, (now - last) / 1000) : 0
+    last = now
+    stepStars(dt)
+    if (phase === 'flying' && !paused) {
+      acc += dt; let n = 0
+      while (acc >= DT && n < 5 && phase === 'flying') { step(DT); acc -= DT; n++ }
+      if (n === 5) acc = 0
+      if (phase === 'flying') hud()
+    }
+    draw()
+    requestAnimationFrame(frame)
+  }
+  window.addEventListener('resize', resize)
+  resize()
+  requestAnimationFrame(frame)
+
+  // Ajutoare pentru probă; nu schimbă jocul cât nu sunt chemate.
+  window.__ex = {
+    state: () => g, phase: () => phase,
+    run(secs) { const n = Math.round(secs / DT); for (let i = 0; i < n && phase === 'flying'; i++) step(DT); if (phase === 'flying') hud() },
+    god(on) { god = !!on },
+    give(kind) { take(kind); hud() },
+  }
+})()
+</script>
+</body></html>
