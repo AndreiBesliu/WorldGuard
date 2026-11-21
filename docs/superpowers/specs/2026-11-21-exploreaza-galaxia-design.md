@@ -1,6 +1,7 @@
 # World Guard: „Explorează galaxia”
 
-Scris pe 2026-11-21, din discuția cu Andrei din aceeași zi. Așteaptă aprobarea lui.
+Scris pe 2026-11-21, din discuția cu Andrei din aceeași zi, și aprobat de el în aceeași zi („acum e ok”).
+Planul de construcție: [`docs/superpowers/plans/2026-11-21-world-guard-exploreaza-galaxia.md`](../plans/2026-11-21-world-guard-exploreaza-galaxia.md).
 Machetele: [`docs/machete-exploreaza-galaxia.html`](../../machete-exploreaza-galaxia.html).
 Prototipul de aruncat pe care l-a încercat Andrei pe telefon, referință de **purtare** (nu de cod): [`docs/prototip-explorare.html`](../../prototip-explorare.html).
 Regulile de azi ale jocului sunt în [`docs/GDD.md`](../../GDD.md); documentul de față spune doar ce se adaugă și ce se schimbă.
@@ -32,7 +33,7 @@ De ce: să existe și altceva de făcut decât apărarea planetei, și un fir ca
 - Apărarea planetei rămâne cum e, cu panoul ei de alegere la fiecare nivel.
 - Ordinea: întâi bucla întreagă (zborul, rezerva, atelierul); apoi dușmanii de mai multe feluri, o singură dată, pentru amândouă modurile.
 
-**Ales de Claude, de verificat de Andrei odată cu documentul.** Până le vede în joc, toate sunt propuneri.
+**Ales de Claude și acceptat de Andrei odată cu documentul (21.11.2026).** I-au fost arătate ca listă de verificat. Până le vede în joc, toate rămân propuneri.
 
 - Felul în care se construiește (vezi „Abordări”).
 - Cele cinci module din zbor și cifrele lor; navele de transport care le lasă în urmă; reparația.

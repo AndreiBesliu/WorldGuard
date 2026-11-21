@@ -665,3 +665,7 @@ Andrei a cerut un mod nou, în care „jocul devine ceva diferit”: nava zboar�
 
 - [ ] aprobarea lui Andrei pentru designul „Explorează galaxia”; fără ea nu se construiește nimic.
 - [ ] proba lui Andrei pe telefon pentru varianta a doua a prototipului (trei minute, module culese din zbor).
+
+**Aprobat și planificat (tot 21.11.2026).** Andrei a aprobat designul („acum e ok”), cu lista alegerilor lui Claude arătată separat. Planul de construcție: `docs/superpowers/plans/2026-11-21-world-guard-exploreaza-galaxia.md`, nouă pași: rezerva și atelierul ca reguli; întăririle la apărarea planetei; regulile zborului; armele și modulele culese; sesiunea zborului și condusul cu degetul; zborul pe ecran; banda și cartonașele; atelierul pe ecran; documentele. Planul nu i-a fost dat lui Andrei la citit înainte de construcție: a cerut pe 18.11.2026 să se meargă înainte și verifică el când se strâng mai multe.
+
+- [x] aprobarea lui Andrei pentru designul „Explorează galaxia”; fără ea nu se construiește nimic. Dată pe 21.11.2026 („acum e ok”).
