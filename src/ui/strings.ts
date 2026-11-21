@@ -29,6 +29,16 @@ export interface Strings {
   sectorMore: string
   reserve: string
   workshop: string
+  /** Atelierul: rândul de deasupra titlului, „Înapoi”, „La plafon”, numele celor cinci întăriri și câte un rând pentru fiecare (propunere). */
+  shopEyebrow: string
+  back: string
+  maxed: string
+  upName: Record<'hull' | 'arms' | 'reach' | 'core' | 'kit', string>
+  upText: Record<'hull' | 'arms' | 'reach' | 'core', string>
+  /** Arsenalul de pornire, după treapta de acum (0…3): ce aduce treapta următoare, iar la plafon ce are. */
+  kitText: readonly [string, string, string, string]
+  /** Prețul din buton, pentru cititorul de ecran: „Carenă: 50 cristale, 10 metal”. */
+  buyLabel(name: string, crystal: number, metal: number): string
   stress: string
   overTitle: string
   overSurvived: string
@@ -111,6 +121,18 @@ export const STR: Strings = {
   sectorMore: 'Un sector mai departe',
   reserve: 'Rezerva',
   workshop: 'Atelier',
+  shopEyebrow: 'Întăriri care rămân',
+  back: 'Înapoi',
+  maxed: 'La plafon',
+  upName: { hull: 'Carenă', arms: 'Armament', reach: 'Colectare', core: 'Planetă', kit: 'Arsenal de pornire' },
+  upText: {
+    hull: 'Nava are mai multă viață.',
+    arms: 'Toate armele lovesc mai tare.',
+    reach: 'Strângi resurse de mai departe.',
+    core: 'Planeta are mai multă viață.',
+  },
+  kitText: ['Zborul pornește cu Laserul.', 'Zborul pornește și cu Rachetele.', 'Zborul pornește și cu Scutul.', 'Pornești cu Laser, Rachete, Scut.'],
+  buyLabel: (name, crystal, metal) => (metal > 0 ? `${name}: ${crystal} cristale, ${metal} metal` : `${name}: ${crystal} cristale`),
   stress: 'Test de viteză',
   overTitle: 'Planeta a căzut',
   overSurvived: 'Ai rezistat',

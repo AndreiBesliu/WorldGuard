@@ -70,7 +70,7 @@
           <div class="reserve">
             <span class="res"><i class="chip chip-crystal"></i><b id="startCrystal"></b><span data-str="crystal"></span></span>
             <span class="res"><i class="chip chip-metal"></i><b id="startMetal"></b><span data-str="metal"></span></span>
-            <button class="pill" id="startWorkshop" type="button" data-str="workshop" hidden></button>
+            <button class="pill" id="startWorkshop" type="button" data-str="workshop"></button>
           </div>
           <button class="mode main" id="start" type="button"><strong data-str="defend"></strong><span id="defendLine"></span></button>
           <div class="mode second">
@@ -118,7 +118,7 @@
             <span class="res" data-str="reserve"></span>
             <span class="res"><i class="chip chip-crystal"></i><b id="flightOverCrystal"></b></span>
             <span class="res"><i class="chip chip-metal"></i><b id="flightOverMetal"></b></span>
-            <button class="pill" id="overWorkshop" type="button" data-str="workshop" hidden></button>
+            <button class="pill" id="overWorkshop" type="button" data-str="workshop"></button>
           </div>
           <button class="go" id="flightNext" type="button"></button>
           <button class="go line" id="flightHome" type="button" data-str="backHome"></button>
@@ -131,6 +131,21 @@
           <div class="result"><span data-str="pauseSoFar"></span><b id="pauseTime"></b></div>
           <button class="go" id="resume" type="button" data-str="resume"></button>
           <button class="go alt" id="fresh" type="button" data-str="fresh"></button>
+        </div>
+      </div>
+
+      <div class="veil shop" id="shopVeil" hidden>
+        <div class="card shop-card" id="shopCard" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+          <div class="card-head">
+            <span class="eyebrow" data-str="shopEyebrow"></span>
+            <h1 id="shopTitle" data-str="workshop"></h1>
+          </div>
+          <div class="reserve">
+            <span class="res"><i class="chip chip-crystal"></i><b id="shopCrystal"></b><span data-str="crystal"></span></span>
+            <span class="res"><i class="chip chip-metal"></i><b id="shopMetal"></b><span data-str="metal"></span></span>
+          </div>
+          <div class="ups" id="shopRows"></div>
+          <button class="go line" id="shopBack" type="button" data-str="back"></button>
         </div>
       </div>
 

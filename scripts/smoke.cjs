@@ -10,7 +10,9 @@
 // (27) nava face mișcarea degetului × 1,2, (28) câmpul se vede întreg sub bandă la 360 × 640 și 390 × 780, (29) pauza la pagina ascunsă,
 // apoi drumul întreg, de pe cartonașe: (30) cartonașul de start cu cele două moduri, rezerva și sectorul, (31) zborul pornit de pe el, banda lui
 // și condusul (al doilea deget, degetul pus din nou, pointercancel), (32) zborul dus la capăt și rezerva, (33) ce s-a strâns ajunge în rezervă
-// exact o dată (reîncărcare, „Renunță la zbor”), (34) partida de apărare salvată rămâne după zboruri.
+// exact o dată (reîncărcare, „Renunță la zbor”), (34) partida de apărare salvată rămâne după zboruri, apoi atelierul: (35) se deschide de pe
+// cartonașul de start, o apăsare cumpără o treaptă, două apăsări repezi cumpără una sau două după rezervă, (36) întăririle cumpărate ajung la partida de
+// apărare și la zborul de pe start și de după sfârșitul unui zbor, (37) un profil stricat de mână dă start cu rezerva 0, fără erori; capturile `20-atelier` (390 și 360).
 // În afara verificărilor: rândurile `SMOKE INFO` (timpul de desen cu 150 de nave, fără module și cu toate cele nouă trăgând; al zborului
 // în clipa cea mai plină) și capturile modulelor pe navă (10, mărită; 12, la scara jocului), a tragerilor (11), a pictogramei
 // Rachetelor (13, 14), ale zborului (15 și 15-zbor-360, 16 cu nava de elită) și ale cartonașelor și benzii lui (17, 18, 19, la 390 și la 360).
@@ -856,16 +858,16 @@ async function main() {
     const s30 = {
       defend: await txt('#start strong'), explore: await txt('#explore strong'), lines: [await txt('#start span'), await txt('#explore span')],
       reserve: await startReserve(), sector: await txt('#sectorN'), cont: await txt('#continue'), rules: await page.locator('#startVeil .rules').count(),
-      atelier: await visible('#startWorkshop'),
+      atelier: await visible('#startWorkshop'),   // aprins de atelier (verificările 35–37)
     }
     for (let i = 0; i < 4; i++) { await tap('#sectorUp'); await sleep(20) }
     const up30 = await txt('#sectorN')
     await tap('#sectorDown')
     const down30 = await txt('#sectorN')
     await shot('17-start.png')
-    check(30, 'cartonașul de start: „Apără planeta” și „Explorează galaxia”, fiecare cu rândul lui, rezerva 0 și 0, „Sectorul 1”; + apăsat repede de patru ori și − îl lasă la 1; fără regulile vechi, atelierul ascuns',
+    check(30, 'cartonașul de start: „Apără planeta” și „Explorează galaxia”, fiecare cu rândul lui, rezerva 0 și 0, „Sectorul 1”; + apăsat repede de patru ori și − îl lasă la 1; fără regulile vechi, butonul „Atelier” la vedere',
       s30.defend === 'Apără planeta' && s30.explore === 'Explorează galaxia' && s30.lines.every((l) => l.length > 0) && same(s30.reserve, { crystal: 0, metal: 0 }) &&
-        s30.sector === 'Sectorul 1' && up30 === 'Sectorul 1' && down30 === 'Sectorul 1' && s30.rules === 0 && !s30.atelier && s30.cont.startsWith('Continuă partida') && save34 !== null,
+        s30.sector === 'Sectorul 1' && up30 === 'Sectorul 1' && down30 === 'Sectorul 1' && s30.rules === 0 && s30.atelier && s30.cont.startsWith('Continuă partida') && save34 !== null,
       `„${s30.defend}”, „${s30.explore}”, rânduri ${s30.lines.map((l) => `„${l}”`).join(' / ')}, rezerva ${show(s30.reserve)}, ${s30.sector} → după + ${up30} → după − ${down30}, reguli ${s30.rules}, atelier ${s30.atelier}, „${s30.cont}”`)
     failFast(30)
 
@@ -1062,6 +1064,109 @@ async function main() {
     r32.ok = r32.ok && ok32
     r32.detail += `; nava doborâtă în sectorul ${down32.sector} („${down32.title}”), „Încă un zbor”: ${JSON.stringify(again32)}, rezerva ${show(p32a)} → ${show(p32b)}; „Înapoi la start” ${back32}`
     await page.setViewportSize({ width: 390, height: 780 })
+
+    // Atelierul (35–37). Profilul se pune în stocare și pagina se încarcă din nou; atingerile sunt cu degetul, ca pe telefon.
+    const putProfile = (p) => page.evaluate((v) => localStorage.setItem('wg.v1.profile', v), typeof p === 'string' ? p : JSON.stringify({ v: 1, sector: 0, ...p, ups: { hull: 0, arms: 0, reach: 0, core: 0, kit: 0, ...(p.ups ?? {}) } }))
+    const shopState = () => page.evaluate(() => ({
+      open: !document.getElementById('shopVeil').hidden, start: !document.getElementById('startVeil').hidden, over: !document.getElementById('flightOverVeil').hidden,
+      rows: document.querySelectorAll('#shopRows .up').length, reserve: [document.getElementById('shopCrystal').textContent, document.getElementById('shopMetal').textContent].join('/'),
+      dots: [...document.querySelectorAll('#shopRows .up')].map((r) => r.querySelectorAll('.up-dots i.on').length),
+      buys: [...document.querySelectorAll('#shopRows .buy')].map((b) => (b.classList.contains('max') ? 'max' : b.classList.contains('poor') ? 'poor' : 'buy')),
+      pause: !document.getElementById('pause').classList.contains('off'),
+    }))
+    const upsNow = async () => (await profileNow()).ups
+    const buyBtn = (id) => `#shopRows .buy[data-up="${id}"]`
+    const noErr = errors.length
+
+    // 35. atelierul se deschide de pe cartonașul de start, cu cinci rânduri; o apăsare începută pe „Atelier” nu cumpără în panoul abia apărut;
+    // o apăsare pe Carenă scade rezerva cu prețul și aprinde un punct; două apăsări repezi: o treaptă dacă rezerva nu ajunge pentru amândouă
+    // (după prima: 150 / 50, iar treptele 2 și 3 costă 85 + 145), două dacă ajunge (400 / 100: 50 + 85)
+    await putProfile({ crystal: 200, metal: 60 })
+    await load()
+    await tap('#startWorkshop')
+    await page.waitForTimeout(200)
+    const o35 = await shopState()
+    await shot('20-atelier.png')
+    await tap(buyBtn('hull'))
+    await page.waitForTimeout(100)
+    const b35 = await shopState(), p35 = await profileNow()
+    await tap(buyBtn('hull')); await tap(buyBtn('hull'))
+    await page.waitForTimeout(100)
+    const q35 = await profileNow()
+    await tap('#shopBack')
+    await page.waitForTimeout(200)
+    const back35 = { start: await visible('#startVeil'), shop: await visible('#shopVeil'), reserve: await startReserve() }
+    await putProfile({ crystal: 400, metal: 100 })
+    await load()
+    await tap('#startWorkshop'); await page.waitForTimeout(200)
+    await tap(buyBtn('hull')); await tap(buyBtn('hull'))
+    await page.waitForTimeout(100)
+    const r35 = await profileNow()
+    check(35, 'atelierul se deschide de pe cartonașul de start (cartonașul se ascunde, fără buton de pauză) cu cinci rânduri și rezerva 200 / 60, iar deschiderea nu cumpără nimic; Carena: o apăsare scade 50 / 10 și aprinde un punct; două apăsări repezi cu rezerva 150 / 50 cumpără o singură treaptă (85 / 15), iar cu 400 / 100 două (50 + 85); „Înapoi” arată startul cu rezerva nouă',
+      o35.open && !o35.start && o35.rows === 5 && o35.reserve === '200/60' && o35.dots.every((d) => d === 0) && !o35.pause &&
+        b35.reserve === '150/50' && b35.dots[0] === 1 && p35.crystal === 150 && p35.metal === 50 && p35.ups.hull === 1 &&
+        q35.ups.hull === 2 && q35.crystal === 65 && q35.metal === 35 &&
+        back35.start && !back35.shop && same(back35.reserve, { crystal: 65, metal: 35 }) &&
+        r35.ups.hull === 2 && r35.crystal === 265 && r35.metal === 75,
+      `deschis ${JSON.stringify(o35)}; după Carenă ${JSON.stringify(b35)}, profil ${JSON.stringify(p35)}; după două apăsări repezi ${JSON.stringify(q35)}; „Înapoi” ${JSON.stringify(back35)}; cu 400 / 100 după două apăsări: ${JSON.stringify(r35)}`)
+    failFast(35)
+
+    // 36. întăririle cumpărate: partida de apărare de pe start pornește cu nava la 66 de viață (Carena 1), zborul de pe start cu Laserul
+    // (Arsenalul 1); după un zbor, atelierul de la sfârșit cumpără Arsenalul 2, „Înapoi” arată cartonașul de sfârșit cu rezerva nouă, iar
+    // „Încă un zbor” pornește cu Rachetele
+    await putProfile({ crystal: 1000, metal: 300 })
+    await load()
+    await tap('#startWorkshop'); await page.waitForTimeout(200)
+    await tap(buyBtn('hull')); await tap(buyBtn('kit'))
+    await page.waitForTimeout(100)
+    const u36 = await upsNow()
+    await tap('#shopBack'); await page.waitForTimeout(200)
+    await tap('#start'); await page.waitForTimeout(400)
+    const d36 = await page.evaluate(() => ({ hp: window.__wg.state().hero.hp, mode: window.__wg.mode() }))
+    await page.click('#pause'); await page.waitForTimeout(200)
+    await load()
+    await tap('#explore'); await page.waitForTimeout(400)
+    const f36 = await page.evaluate(() => { const f = window.__wg.flight(); return { laser: f.ship.mods.laser, missile: f.ship.mods.missile, hp: f.ship.hp } })
+    await page.evaluate(() => { const f = window.__wg.flight(); f.ship.inv = 0; f.ship.hp = 1; f.ship.mods.shield = 0; f.ship.shieldUp = false; f.shots.push({ x: f.ship.x, y: f.ship.y, vx: 0, vy: 0 }) })
+    await page.waitForSelector('#flightOverVeil:not([hidden])', { timeout: 3000 }).catch(() => {})
+    await page.waitForTimeout(200)
+    await tap('#overWorkshop'); await page.waitForTimeout(200)
+    const o36 = await shopState()
+    await tap(buyBtn('kit')); await page.waitForTimeout(100)
+    const k36 = await upsNow(), pr36 = await profileNow()
+    await tap('#shopBack'); await page.waitForTimeout(200)
+    const back36 = await page.evaluate(() => ({ over: !document.getElementById('flightOverVeil').hidden, shop: !document.getElementById('shopVeil').hidden,
+      reserve: { crystal: Number(document.getElementById('flightOverCrystal').textContent), metal: Number(document.getElementById('flightOverMetal').textContent) } }))
+    await tap('#flightNext'); await page.waitForTimeout(400)
+    const g36 = await page.evaluate(() => { const f = window.__wg.flight(); return { mode: f.mode, laser: f.ship.mods.laser, missile: f.ship.mods.missile } })
+    await shot('21-dupa-atelier.png')
+    check(36, 'după cumpărături: partida de apărare pornește cu nava la 66 de viață; zborul de pe start cu Laserul (și fără Rachete); atelierul de la sfârșitul zborului se deschide peste cartonașul de sfârșit, cumpără Arsenalul 2, „Înapoi” arată cartonașul cu rezerva nouă, iar „Încă un zbor” pornește cu Laserul și Rachetele',
+      u36.hull === 1 && u36.kit === 1 && d36.mode === 'defense' && d36.hp === 66 && f36.laser > 0 && !(f36.missile > 0) &&
+        o36.open && !o36.over && k36.kit === 2 && back36.over && !back36.shop && same(back36.reserve, pr36) && g36.mode === 'flying' && g36.laser > 0 && g36.missile > 0,
+      `ups ${JSON.stringify(u36)}; apărare ${JSON.stringify(d36)}; zbor de pe start ${JSON.stringify(f36)}; atelier de la sfârșit ${JSON.stringify(o36)}, ups ${JSON.stringify(k36)}; „Înapoi” ${JSON.stringify(back36)} față de profil ${show(pr36)}; „Încă un zbor” ${JSON.stringify(g36)}`)
+
+    // 37. profilul stricat de mână: pe start rezerva 0 și 0, iar atelierul are cinci rânduri stinse, fără nicio eroare nouă în consolă
+    await putProfile('{"v":1,"crystal":"mult"')
+    await load()
+    const s37 = await startReserve()
+    await tap('#startWorkshop'); await page.waitForTimeout(200)
+    const o37 = await shopState()
+    await tap('#shopBack'); await page.waitForTimeout(200)
+    await putProfile('{"v":1,"crystal":-5,"metal":1e99,"sector":2,"ups":{"hull":99}}')
+    await load()
+    const s37b = await startReserve()
+    check(37, 'profilul stricat de mână în stocare (JSON tăiat, apoi valori peste margini) dă cartonașul de start cu rezerva 0 și 0; atelierul se deschide cu cinci rânduri stinse; nicio eroare în consolă și nicio excepție',
+      same(s37, { crystal: 0, metal: 0 }) && same(s37b, { crystal: 0, metal: 0 }) && o37.open && o37.rows === 5 && o37.buys.every((b) => b === 'poor') && errors.length === noErr,
+      `rezerva ${show(s37)} și ${show(s37b)}, atelier ${JSON.stringify(o37)}, erori noi ${errors.length - noErr}`)
+    await page.evaluate(() => localStorage.removeItem('wg.v1.profile'))
+    await page.setViewportSize({ width: 360, height: 640 })
+    await putProfile({ crystal: 240, metal: 55, ups: { hull: 2, arms: 1, reach: 3, kit: 1 } })
+    await load()
+    await tap('#startWorkshop'); await page.waitForTimeout(200)
+    await shot('20-atelier-360.png')
+    const fit37 = await page.evaluate(() => { const c = document.getElementById('shopCard').getBoundingClientRect(); return { top: c.top, bottom: c.bottom, h: window.innerHeight, scroll: document.getElementById('shopVeil').scrollHeight > document.getElementById('shopVeil').clientHeight } })
+    console.log(`SMOKE INFO: 20-atelier-360.png: cartonașul atelierului de la ${fit37.top.toFixed(0)} la ${fit37.bottom.toFixed(0)} din ${fit37.h}, derulare ${fit37.scroll}`)
+    await page.evaluate(() => localStorage.removeItem('wg.v1.profile'))
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))

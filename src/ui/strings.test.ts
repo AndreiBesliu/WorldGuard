@@ -64,10 +64,19 @@ describe('textele temei de spațiu', () => {
     expect(STR.tookTier('Tun', 2)).toBe('Tun · treapta 2')
     expect(STR.tookMaxed('Laser', 5)).toBe('Laser e la maxim · +5 cristale')
   })
+  it('atelierul: titlul, „Înapoi”, „La plafon”, cele cinci întăriri și rândul fiecăreia', () => {
+    expect([STR.shopEyebrow, STR.back, STR.maxed]).toEqual(['Întăriri care rămân', 'Înapoi', 'La plafon'])
+    expect(STR.upName).toEqual({ hull: 'Carenă', arms: 'Armament', reach: 'Colectare', core: 'Planetă', kit: 'Arsenal de pornire' })
+    expect(STR.upText.hull).toBe('Nava are mai multă viață.')
+    expect(STR.upText.core).toBe('Planeta are mai multă viață.')
+    expect(STR.kitText[0]).toBe('Zborul pornește cu Laserul.')
+    expect(STR.buyLabel('Carenă', 50, 10)).toBe('Carenă: 50 cristale, 10 metal')
+    expect(STR.buyLabel('Colectare', 40, 0)).toBe('Colectare: 40 cristale')
+  })
   it('textele noi din butoane și din bandă au cel mult 28 de caractere', () => {
     const names = Object.values(STR.flightMods)
     const lines = [STR.defend, STR.explore, STR.sectorN(99), STR.reserve, STR.workshop, STR.explored, STR.heroDown, STR.broughtHome, STR.gotSoFar,
-      STR.nextSector, STR.flyAgain, STR.backHome, STR.flightPauseTitle, STR.flightSoFar, STR.quitFlight, STR.elite, STR.tookRepair,
+      STR.nextSector, STR.flyAgain, STR.backHome, STR.flightPauseTitle, STR.flightSoFar, STR.quitFlight, STR.elite, STR.tookRepair, STR.shopEyebrow, STR.back, STR.maxed, ...Object.values(STR.upName),
       ...names.flatMap((n) => [STR.tookNew(n), STR.tookTier(n, 3)])]
     for (const l of lines) expect(l.length, l).toBeLessThanOrEqual(28)
     // Rândul pentru un modul deja la maxim are forma cerută și trece de 28 („Rachete e la maxim · +5 cristale” are 32); stă pe un rând

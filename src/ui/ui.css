@@ -271,3 +271,35 @@ button.mode, .mode-go { font: inherit; border: 0; cursor: pointer; touch-action:
 .pip.on { background: var(--tone); }
 .pick-note { margin: 0; text-align: center; font-size: 11.5px; color: var(--ink-soft); }
 @media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+
+/* Atelierul (propunere de așezare, după macheta 2): peste cartonașul de unde s-a deschis, care e ascuns cât panoul e pe ecran.
+   Cinci rânduri: numele cu treptele ca puncte, rândul „ce face” și butonul cu prețul treptei următoare; stins când rezerva nu ajunge. */
+.veil.shop { background: var(--veil-deep); }
+.shop-card { padding: 16px; gap: 10px; }
+.shop-card:focus { outline: none; }   /* focusul de la deschidere stă pe panou ca să nu fie pe un buton de cumpărat; nu are nimic de arătat */
+.shop-card .card-head { gap: 4px; }
+.shop-card h1 { font-size: 24px; }
+.shop-card .reserve { padding: 8px 12px; }
+.shop-card .go { padding-block: 11px; font-size: 16px; }
+.ups { display: flex; flex-direction: column; }
+.up { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.up:first-child { border-top: 0; padding-top: 2px; }
+.up-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.up-name { margin: 0; font-family: var(--font-ui); font-weight: 500; font-size: 15px; line-height: 1.2; }
+.up-dots { display: inline-flex; gap: 4px; }
+.up-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--track); }
+.up-dots i.on { background: var(--hero); }
+.up-text { grid-column: 1; font-size: 12px; line-height: 1.3; color: var(--ink-soft); }
+.buy {
+  grid-column: 2; grid-row: 1 / span 2; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  min-width: 96px; min-height: 40px; padding: 8px 10px; border: 1.5px solid transparent; border-radius: 12px; background: var(--hero); color: var(--night);
+  font: inherit; font-weight: 500; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; touch-action: manipulation;
+}
+.buy:active { transform: translateY(1px); }
+.buy:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.buy .chip { width: 9px; height: 9px; background: #0b6b58; }
+.buy .chip-metal { background: #4a4590; }
+.buy.poor { background: transparent; color: var(--ink-soft); border-color: var(--line); cursor: default; }
+.buy.poor .chip-crystal { background: var(--crystal); opacity: .6; }
+.buy.poor .chip-metal { background: var(--metal); opacity: .6; }
+.buy.max { background: transparent; color: var(--ink-soft); border: 1.5px dashed var(--line); cursor: default; }

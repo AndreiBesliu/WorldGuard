@@ -14,7 +14,7 @@ reechilibrarea a două cifre (propuneri, până le vede Andrei în joc). Nava cu
 npm install
 npm run dev      # http://localhost:5180
 npm run check    # typecheck + teste + build cu service worker (poarta înainte de commit; CI rulează același lucru)
-npm run smoke    # proba în browser (Playwright, 34 de verificări); nu face parte din `check`
+npm run smoke    # proba în browser (Playwright, 37 de verificări); nu face parte din `check`
 npm run single   # dist-single/world-guard.html: tot jocul într-un singur fișier, fără nicio referință în afară
 npm run balance  # tabelul jucătorilor automați (120 de partide, ~15 s); cu `-- --raze` și pentru razele de apărare 80 și 160 (~40 s)
 npm run icons    # desenează din nou pictogramele PNG din public/icons/icon.svg (doar când se schimbă desenul)
@@ -53,8 +53,11 @@ săgețile sau WASD). Cartonașul de start are cele două moduri, „Apără pla
 zborul, viețile navei, drumul prin sector (care devine viața navei de elită), modulele cu treptele lor și pauza; sub ea, un rând scurt spune
 ce ai cules. Pauza zborului are cartonașul ei („Zbor în pauză”, „Continuă”, „Renunță la zbor”); la sfârșit: „Sector explorat” sau „Nava a
 fost doborâtă”, ce ai adus, rezerva, „Sectorul următor” sau „Încă un zbor” și „Înapoi la start”. Ce s-a strâns trece în rezervă exact o dată
-(la pauză și la sfârșit). Un zbor nu atinge partida de apărare salvată și nici recordul. Atelierul vine după (butonul lui e deja în pagină,
-ascuns). Cu `?debug=1&zbor=N` zborul pornește direct, în sectorul N. Cu `?debug=1`, `window.__wg` are și `mode()`, `flight()`,
+(la pauză și la sfârșit). Un zbor nu atinge partida de apărare salvată și nici recordul. Atelierul (butonul „Atelier” de pe cartonașul de start și de la sfârșitul
+zborului) e un panou peste cartonașul de unde s-a deschis: rezerva, cinci întăriri (Carenă, Armament, Colectare, Planetă, Arsenal de pornire) cu treptele ca
+puncte și butonul cu prețul treptei următoare, stins când rezerva nu ajunge, „La plafon” când nu mai sunt trepte; o apăsare cumpără o treaptă și o
+salvează pe loc, iar „Înapoi” arată din nou cartonașul, cu rezerva nouă. Nu se deschide în timpul unei partide, al unui zbor sau al unei pauze;
+partidele și zborurile pornite după o cumpărătură pornesc cu întăririle noi. Cu `?debug=1&zbor=N` zborul pornește direct, în sectorul N. Cu `?debug=1`, `window.__wg` are și `mode()`, `flight()`,
 `runFlight(secunde)`, `flightDrawMs(cadre)` și `flightField()`; proba din browser tipărește un rând `SMOKE INFO` cu timpul de desen al zborului
 în clipa cea mai plină.
 

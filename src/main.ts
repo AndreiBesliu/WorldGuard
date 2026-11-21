@@ -10,6 +10,7 @@ import '@fontsource/rubik/latin-700.css'
 import '@fontsource/rubik/latin-ext-700.css'
 import './ui/ui.css'
 import { parseFlags } from './app/flags'
+import type { FlightOver } from './app/flightSession'
 import { advance } from './app/loop'
 import { createSession, type OverInfo, type Phase } from './app/session'
 import { registerServiceWorker } from './app/sw'
@@ -19,6 +20,7 @@ import { FLIGHT } from './data/flight'
 import type { FlightInput, FlightState } from './flight/state'
 import { stepFlight } from './flight/step'
 import { createFlightMode } from './flightMode'
+import { createWorkshop } from './workshopMode'
 import { bindInput } from './input/bind'
 import { createRenderer } from './render/canvas'
 import { createFlightRenderer } from './render/flight/canvas'
@@ -61,7 +63,7 @@ const hud = createHud(document)
 const flags = parseFlags(location.search)
 /** Sămânța unei partide sau a unui zbor nou: `?seed=` dacă e dat, altfel din ceas. */
 const freshSeed = (): number => flags.seed ?? Date.now() >>> 0
-// Întăririle se citesc din profil la fiecare partidă nouă (deocamdată nu există atelierul care să le schimbe).
+// Întăririle se citesc din profil la fiecare partidă nouă, deci cele cumpărate în atelier intră la următoarea pornire.
 const session = createSession({ saveGame, clearGame, saveIfRecord, ups: () => loadProfile().ups }, freshSeed())
 let mode: Mode = 'defense'
 /** Faza modului de joc de acum. */
@@ -159,6 +161,30 @@ function home(): void {
   stopped()
   cards.showStart({ saved: saved === null ? null : { secs: Math.floor(saved.t) }, ...fm.startCard() })
 }
+/** Atelierul, de unde s-a deschis: cartonașul de start sau cel de sfârșit al zborului (cu ce a adus zborul). Închis: nimic. */
+let shopFrom: 'start' | 'over' | null = null
+let flightOver: FlightOver | null = null
+const veilUp = (id: string): boolean => document.getElementById(id)?.hidden === false
+/** Doar de pe unul din cele două cartonașe, cu nicio partidă, niciun zbor și nicio pauză în curs; altfel nu face nimic. */
+function openShop(): void {
+  if (shopFrom !== null || choice.open || phaseNow() === 'playing' || phaseNow() === 'paused') return
+  const from = mode === 'defense' && veilUp('startVeil') ? 'start' : mode === 'flight' && flightOver !== null && veilUp('flightOverVeil') ? 'over' : null
+  if (from === null) return
+  shopFrom = from
+  cards.hold()                                  // cartonașul se ascunde cât panoul e pe ecran; nici butonul de pauză
+  workshop.show()
+  redraw()
+}
+/** „Înapoi”: același cartonaș, cu rezerva de după cumpărături și cu sectorul pe care îl alesese jucătorul. */
+function closeShop(): void {
+  const from = shopFrom
+  if (from === null) return
+  shopFrom = null
+  workshop.hide()
+  if (from === 'start') cards.showStart({ saved: saved === null ? null : { secs: Math.floor(saved.t) }, profile: loadProfile(), sector: fm.sector() })
+  else if (flightOver !== null) cards.showFlightOver(flightOver, loadProfile())
+  redraw()
+}
 function ended(r: OverInfo): void {
   stopped()
   cards.showOver(r)
@@ -181,8 +207,10 @@ const cards = createCards(document, {
   sector(delta) { const c = fm.pick(delta); cards.showSector(c.sector, c.farthest) },
   next: () => fly(fm.nextSector()),
   home,
+  workshop: openShop,
 })
 const choice = createChoice(document, pick)
+const workshop = createWorkshop(document, closeShop)
 home()
 
 window.addEventListener('keydown', (e) => {
@@ -250,7 +278,7 @@ function frame(now: number): void {
       const r = advance(acc, frameDt)
       acc = r.acc
       const end = fm.advance(r.steps)
-      if (end !== null) { stopped(); cards.showFlightOver(end, loadProfile()) }   // imediat, peste cadrul înghețat; profilul, după ce s-a trecut în rezervă
+      if (end !== null) { flightOver = end; stopped(); cards.showFlightOver(end, loadProfile()) }   // imediat, peste cadrul înghețat; profilul, după ce s-a trecut în rezervă
     } else if (now > drawUntil) {
       return
     }

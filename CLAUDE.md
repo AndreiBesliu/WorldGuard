@@ -85,7 +85,10 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   cu aceeași înălțime în zbor, în pauza lui și la sfârșit, verificarea 32; rândul „ai cules” stă sub bandă, în afara așezării),
   cartonașele (`cards.ts`): de start (cele două moduri, „Apără planeta” și „Explorează galaxia”, rezerva, sectorul ales cu − și +, prin `stepSector`, fără DOM,
   de la 1 până la cel mai departe explorat plus unu, și „Continuă partida”), de pauză și de final ale apărării, de pauză („Zbor în pauză”) și de sfârșit
-  ale zborului; butonul „Atelier” e în pagină, ascuns; panoul de alegere de la un nivel nou al navei
+  ale zborului, cu butonul „Atelier” pe cel de start și pe cel de sfârșit; atelierul (`shop.ts`: `shopView` fără DOM — rezerva și cele cinci rânduri cu
+  treptele, prețul treptei următoare și starea `buy | poor | max` —, `createShop` în pagină: rândurile se refac doar când profilul s-a schimbat,
+  fiecare buton ține „generația” lui, deci cele de dinainte de o refacere sau de un `hide` nu mai cumpără, focusul de la deschidere stă pe panou, nu pe un buton);
+  panoul de alegere de la un nivel nou al navei
   (`choice.ts`: `choiceView` fără DOM, `createChoice` în pagină; la deschidere focusul stă pe cartonaș, nu pe o ofertă, și nicio alegere nu trece
   în primele `CHOICE_GRACE_MS` = 400 ms, propunere; pictogramele modulelor sunt `<symbol>` în `index.html`), apăsarea butoanelor (`tap.ts`: la atingere, la ridicarea
   degetului deasupra butonului, și pentru al doilea deget; cu mausul și tastatura, la `click`; o singură pornire pe gest), formatul ceasului (`format.ts`) și stilurile (`ui.css`; variabilele de culoare au nume pe roluri,
@@ -95,10 +98,13 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   (doar în build, cu `__WG_SW__`). `src/flightMode.ts` — legarea zborului, fără ciclu de cadre: sesiunea lui (`src/app/flightSession.ts`), care trece în profil
   (`bank`, `markExplored`) ce aduce, exact o dată; banda lui; sectorul ales și cel de după un zbor încheiat. Un zbor pornește de pe cartonașul de start,
   de pe cartonașul lui de sfârșit sau cu `?debug=1&zbor=N` (sectorul N), niciodată peste o partidă de apărare în curs, și nu atinge partida de apărare
-  salvată, nici recordul. Cu `?debug=1`, `window.__wg` are `state()`,
+  salvată, nici recordul. `src/workshopMode.ts` — legarea atelierului: `buyStep` citește profilul din stocare, îl verifică și îl cumpără cu `buy`,
+  salvează și întoarce profilul nou (nimic nu se scade dintr-un profil ținut în memorie); `main.ts` deschide atelierul doar de pe cartonașul de start sau
+  de la sfârșitul zborului (altfel nu face nimic), ascunde cartonașul cât panoul e pe ecran, iar „Înapoi” îl arată din nou cu rezerva de după cumpărături.
+  Cu `?debug=1`, `window.__wg` are `state()`,
   `phase()`, `run(secunde)` și `drawMs(cadre)`, iar pentru zbor `mode()`, `flight()`, `runFlight(secunde)`, `flightDrawMs(cadre)` și `flightField()`
   (câmpul pe ecran, în px).
-- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 34 de verificări, capturi în `smoke-out/`, plus rânduri `SMOKE INFO` cu timpul de
+- `scripts/` — `smoke.cjs` (proba în browser cu Playwright, 37 de verificări, capturi în `smoke-out/`, plus rânduri `SMOKE INFO` cu timpul de
   desen pe cadru cu cele 150 de nave dușmane ale testului de viteză așezate în jurul planetei, ca să fie în vedere, din `window.__wg.drawMs`:
   o dată cu nava testului de viteză (`STRESS_SHIP`: cele trei arme la treapta 3), o dată cu toate cele nouă module la treapta 3 și armele trăgând; capturile `10-nava-module.png` (mărită),
   `11-explozie.png`, `12-nava-la-scara.png`, `13-banda-rachete.png` și `14-panou-rachete.png` nu sunt verificări; verificările 27–29 sunt ale zborului (degetul,
@@ -106,7 +112,9 @@ npm run icons      # pictogramele PNG din public/icons/icon.svg (doar când se s
   lucruri de cules, resurse, un nor și o lovitură oprită de Scut în cadru) și capturile `15-zbor.png`, `15-zbor-360.png` și `16-zbor-elita.png`; verificările
   30–34 sunt drumul întreg de pe cartonașe (cartonașul de start, zborul pornit de pe el cu banda lui și condusul cu al doilea deget, degetul pus din nou și
   `pointercancel`, zborul dus la capăt și rezerva, ce s-a strâns ajunge în rezervă exact o dată, partida de apărare salvată rămâne), cu capturile
-  `17-start.png`, `18-banda-zbor.png` și `19-sfarsit-zbor.png`, și la 360 × 640 (`-360`); merge doar pe Linux și macOS), `single-file.mjs` (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`),
+  `17-start.png`, `18-banda-zbor.png` și `19-sfarsit-zbor.png`, și la 360 × 640 (`-360`); verificările 35–37 sunt ale atelierului (se deschide de pe start,
+  o apăsare cumpără, două apăsări repezi cumpără una sau două după rezervă; întăririle ajung la apărare și la zbor, de pe start și de după un zbor; un profil
+  stricat de mână dă start cu rezerva 0), cu capturile `20-atelier.png`, `20-atelier-360.png` și `21-dupa-atelier.png`; merge doar pe Linux și macOS), `single-file.mjs` (`npm run single`: tot jocul într-un singur fișier HTML, în `dist-single/`),
   `sw-template.js` și `build-sw.mjs` (service worker-ul scris de mână; după `vite build`, `build-sw.mjs` pune în el lista fișierelor din
   `dist` și o versiune din SHA-256-ul lor și scrie `dist/sw.js`; o versiune nouă se activează la următoarea pornire, niciodată în timpul
   unei partide) și `make-icons.cjs` (`npm run icons`).

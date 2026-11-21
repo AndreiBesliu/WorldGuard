@@ -31,7 +31,7 @@ function el<T extends HTMLElement>(doc: Document, id: string): T {
 
 export function createCards(doc: Document, on: {
   defend(): void; continue(): void; stress(): void; again(): void; pause(): void; resume(): void; fresh(): void
-  explore(): void; sector(delta: -1 | 1): void; next(): void; home(): void
+  explore(): void; sector(delta: -1 | 1): void; next(): void; home(): void; workshop(): void
 }): {
   showStart(o: { saved: { secs: number } | null; profile: Profile; sector: number }): void
   /** Sectorul ales (îl ține cine cheamă; cartonașul doar îl arată), după o apăsare pe − sau +, fără să mute focusul. */
@@ -65,6 +65,8 @@ export function createCards(doc: Document, on: {
   bind(el(doc, 'quitFlight'), on.home)          // renunțarea: strânsul e deja în rezervă, de la pauză
   bind(nextBtn, on.next)
   bind(el(doc, 'flightHome'), on.home)
+  bind(el(doc, 'startWorkshop'), on.workshop)   // de pe cartonașul de start și de la sfârșitul zborului, nicăieri altundeva
+  bind(el(doc, 'overWorkshop'), on.workshop)
 
   // Fără niciun cartonaș și fără panoul de alegere, partida e în curs: atunci, și doar atunci, butonul de pauză e la vedere.
   // Ascuns, rămâne în așezare (invizibil, de neatins, scos din ordinea de tabulare): banda nu-și schimbă înălțimea, iar canvasul nu e realocat.
