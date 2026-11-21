@@ -3,9 +3,12 @@ import { BALANCE } from '../data/balance'
 import { WORKSHOP } from '../data/workshop'
 import type { GameState } from './state'
 
-/** Viața planetei, plină: cu Planeta, `BALANCE.core.hp` × (1 + `WORKSHOP.core.hp` × treapta). */
+/**
+ * Viața planetei, plină: cu Planeta, `BALANCE.core.hp` × (1 + `WORKSHOP.core.hp` × treapta), rotunjită la întreg
+ * (altfel 400 × 1,1 dă 440,00000000000006, iar banda ar arăta 441). Pe treapta 0, exact `BALANCE.core.hp`.
+ */
 export function coreMaxHp(s: GameState): number {
-  return BALANCE.core.hp * (1 + WORKSHOP.core.hp * s.ups.core)
+  return Math.round(BALANCE.core.hp * (1 + WORKSHOP.core.hp * s.ups.core))
 }
 
 /** Cât se înmulțește lovitura navei (Unda, Laserul, Rachetele; nu și turelele), cu Armamentul. */

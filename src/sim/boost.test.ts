@@ -18,6 +18,12 @@ describe('întăririle, ca cifre', () => {
     expect([coreMaxHp(s), armsFactor(s), reachFactor(s), heroMaxHp(s)]).toEqual([480, 1.2, 1.3, 84])
     expect(s.core.hp).toBe(480)
   })
+  it('viața planetei e întreagă la fiecare treaptă: 400, 420, 440, 460, 480', () => {
+    const hp = [0, 1, 2, 3, 4].map((core) => coreMaxHp(withUps({ core })))
+    expect(hp).toEqual([400, 420, 440, 460, 480])
+    expect(hp.every(Number.isInteger)).toBe(true)
+    expect(createGame(1, { ...NO_UPS, core: 2 }).core.hp).toBe(440)
+  })
   it('fără întăriri: planeta 400, factorii 1, nava 60 la nivelul 1', () => {
     const s = createGame(1)
     expect([coreMaxHp(s), armsFactor(s), reachFactor(s), heroMaxHp(s)]).toEqual([400, 1, 1, 60])
@@ -57,6 +63,13 @@ describe('întăririle, în joc', () => {
     const p = padOf(s, 'repair'); heroAt(s, p.x, p.y)
     stepFor(s, 3)
     expect(s.core.hp).toBe(480)
+    expect(s.metal).toBe(46)
+  })
+  it('reparatul cu Planeta 3 se oprește exact la 460', () => {
+    const s = withUps({ core: 3 }); s.metal = 50; s.core.hp = 440
+    const p = padOf(s, 'repair'); heroAt(s, p.x, p.y)
+    stepFor(s, 3)
+    expect(s.core.hp).toBe(460)
     expect(s.metal).toBe(46)
   })
   it('nava strânge un cristal aflat la 1,25 × distanța de azi doar cu Colectare 3', () => {

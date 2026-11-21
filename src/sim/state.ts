@@ -67,9 +67,9 @@ export function createGame(seed: number, ups: Ups = NO_UPS): GameState {
   const s: GameState = {
     seed, mode: 'playing', tick: 0, t: 0,
     crystal: BALANCE.start.crystal, metal: BALANCE.start.metal, kills: 0,
-    core: { hp: BALANCE.core.hp, hitT: NEVER },
+    core: { hp: 0, hitT: NEVER },            // viața plină (a planetei și a navei) se pune mai jos, din întăriri
     hero: {
-      x: HOME.x, y: HOME.y, face: 0, hp: BALANCE.hero.hp, lvl: 1, xp: 0, mods: [{ id: 'wave', tier: 1, t: 0 }], dead: false, respawnT: 0,
+      x: HOME.x, y: HOME.y, face: 0, hp: 0, lvl: 1, xp: 0, mods: [{ id: 'wave', tier: 1, t: 0 }], dead: false, respawnT: 0,
       strikeT: NEVER, gatherT: NEVER, waveT: NEVER, waveA: 0, hurtT: NEVER, moved: false,
     },
     nodes: layNodes(),
@@ -82,7 +82,7 @@ export function createGame(seed: number, ups: Ups = NO_UPS): GameState {
     offer: null,
     ups: { ...ups },
   }
-  s.core.hp = coreMaxHp(s)
+  s.core.hp = coreMaxHp(s)                  // singurele surse ale vieții de pornire
   s.hero.hp = BALANCE.hero.hp + hullHp(s)
   return s
 }
