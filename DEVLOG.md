@@ -646,3 +646,9 @@ Recenzia întregii ramuri n-a găsit nimic stricat în purtarea jocului; valul �
 - **Cifrele, rulate acum:** `npm run check` — 36 de fișiere de test, 364 de teste trec (354 înainte); `npm run smoke` — „SMOKE OK (26 verificări)”; `npm run balance`, raza 120: Nimic 66 s · Amestec 306 s · Doar navă 205 s (66,9%, nivelul 2,5 la mediană) · Fără navă 219 s (71,6%) · Fără economie 278 s · Fără turele 246 s (80,3%; înainte 235 s). Razele 80 și 160 și sondele cu un script de aruncat sunt în `docs/GDD.md`, la „Plasa pentru dificultate”.
 - [ ] cele două cifre de la „Test de viteză” pe telefonul lui Andrei (cadre pe secundă și `min`), niciodată notate: pentru tema nouă și pentru nava cu module; acum testul de viteză pornește nava cu Unda, Laserul și Rachetele la treapta 3, trăgând tot timpul, lângă cele 150 de nave dușmane;
 - [ ] hotărârea lui Andrei asupra celor două propuneri ale valului: încărcătura navei din „Test de viteză” și Releul luat ultimul de jucătorii automați fără turele.
+
+### Jocul într-un singur fișier, reparat
+
+`npm run single` nu mai mergea de la panoul de alegere încoace: verificarea „nicio referință spre un fișier” din `scripts/single-file.mjs` lua drept fișiere trimiterile din aceeași pagină ale pictogramelor (`href="#i-…"`, spre `<symbol>`-urile din `index.html`) și oprea construirea. Comanda nu face parte din `npm run check` și nici din proba din browser, de aceea n-a prins-o nimeni până la încheierea etapei. Acum o trimitere care începe cu `#` e primită, ca `data:`; orice altă referință oprește construirea, ca înainte. Verificat: `npm run single` scrie `dist-single/world-guard.html` (435 041 octeți), iar pagina, învelită ca document și deschisă într-un browser, pornește partida fără nicio eroare în consolă și arată pictogramele (nicio trimitere fără țintă).
+
+- [ ] `npm run single` nu e păzită de nicio verificare automată: se poate strica din nou fără să se vadă. De hotărât dacă intră în `npm run check` sau în proba din browser.

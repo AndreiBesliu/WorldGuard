@@ -43,10 +43,11 @@ const out = [
   `<script type="module">${js}</script>`,
 ].join('\n') + '\n'
 
-// Nicio referință spre un fișier: `data:` e în regulă, orice altceva nu
+// Nicio referință spre un fișier: `data:` e în regulă, la fel o trimitere în aceeași pagină (`#…`, cum au pictogramele
+// modulelor spre `<symbol>`-urile lor); orice altceva nu
 const leftovers = []
 for (const m of out.matchAll(/\b(?:src|href)\s*=\s*["']?([^"'\s>]+)/g)) {
-  if (!m[1].startsWith('data:')) leftovers.push(m[0])
+  if (!m[1].startsWith('data:') && !m[1].startsWith('#')) leftovers.push(m[0])
 }
 for (const m of css.matchAll(/url\(\s*["']?([^"')]+)/g)) {
   if (!m[1].startsWith('data:')) leftovers.push(`url(${m[1].slice(0, 60)})`)
