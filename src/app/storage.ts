@@ -1,5 +1,6 @@
 // Recordul (secunde) și partida întreruptă în localStorage. Orice lipsă sau eroare de stocare înseamnă „fără record”
 // și „fără reluare”, nu o oprire a jocului.
+import { emptyProfile, packProfile, unpackProfile, type Profile } from './profile'
 import { packSave, unpackSave } from './save'
 import type { GameState } from '../sim/state'
 
@@ -55,4 +56,19 @@ export function loadGame(store?: Store | null): GameState | null {
 /** Scoate partida salvată (recordul rămâne). */
 export function clearGame(store?: Store | null): void {
   try { (store === undefined ? pageStore() : store)?.removeItem(SAVE_KEY) } catch { /* nimic de scos sau stocare blocată */ }
+}
+
+export const PROFILE_KEY = 'wg.v1.profile'
+
+/** Profilul jucătorului (rezerva și atelierul); lipsă, stricat sau stocare blocată dau profil gol. Unul stricat nu se șterge: următoarea salvare îl înlocuiește. */
+export function loadProfile(store?: Store | null): Profile {
+  try {
+    const s = store === undefined ? pageStore() : store
+    const r = unpackProfile(s?.getItem(PROFILE_KEY))
+    return r.ok ? r.value : emptyProfile()
+  } catch { return emptyProfile() }
+}
+
+export function saveProfile(p: Profile, store?: Store | null): void {
+  try { (store === undefined ? pageStore() : store)?.setItem(PROFILE_KEY, packProfile(p)) } catch { /* fără păstrare, dar jocul merge */ }
 }

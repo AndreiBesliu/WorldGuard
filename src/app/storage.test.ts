@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest'
 import { createGame } from '../sim/state'
 import { step } from '../sim/step'
-import { RECORD_KEY, SAVE_KEY, clearGame, loadGame, readRecord, saveGame, saveIfRecord } from './storage'
+import { emptyProfile } from './profile'
+import { PROFILE_KEY, RECORD_KEY, SAVE_KEY, clearGame, loadGame, loadProfile, readRecord, saveGame, saveIfRecord, saveProfile } from './storage'
 
 const mem = (init: Record<string, string> = {}) => { const m = { ...init }; return { getItem: (k: string) => m[k] ?? null, setItem: (k: string, v: string) => { m[k] = v }, removeItem: (k: string) => { delete m[k] } } }
 const broken = { getItem: () => { throw new Error('refuzat') }, setItem: () => { throw new Error('plin') }, removeItem: () => { throw new Error('refuzat') } }
@@ -66,4 +67,24 @@ it('un timp care nu e număr nu devine record', () => {
   expect(saveIfRecord(NaN, st)).toEqual({ record: 120, isNew: false })
   expect(saveIfRecord(Infinity, st)).toEqual({ record: 120, isNew: false })
   expect(readRecord(st)).toBe(120)
+})
+
+it('profilul: lipsă, stricat sau stocare care aruncă dă profil gol, fără să arunce', () => {
+  expect(loadProfile(mem())).toEqual(emptyProfile())
+  expect(loadProfile(mem({ [PROFILE_KEY]: '{nu e json' }))).toEqual(emptyProfile())
+  expect(loadProfile(broken)).toEqual(emptyProfile())
+  expect(loadProfile(null)).toEqual(emptyProfile())
+  expect(() => saveProfile(emptyProfile(), broken)).not.toThrow()
+  expect(() => saveProfile(emptyProfile(), null)).not.toThrow()
+})
+it('profilul salvat se citește la fel; unul stricat nu se șterge, următoarea salvare îl înlocuiește', () => {
+  const st = mem(); const p = { crystal: 40, metal: 5, sector: 3, ups: { hull: 2, arms: 0, reach: 1, core: 0, kit: 3 } }
+  saveProfile(p, st)
+  expect(loadProfile(st)).toEqual(p)
+  const bad = mem({ [PROFILE_KEY]: 'gunoi' })
+  expect(loadProfile(bad)).toEqual(emptyProfile())
+  expect(bad.getItem(PROFILE_KEY)).toBe('gunoi')
+  saveProfile(p, bad)
+  expect(loadProfile(bad)).toEqual(p)
+  expect(PROFILE_KEY).toBe('wg.v1.profile')
 })
