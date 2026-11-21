@@ -8,10 +8,11 @@ import { blastReach, blockGlow, fade, regrown, shieldReady, turretAim } from '..
 import { blob, disc, poly, rr, seg, TAU, type Pt } from '../draw'
 import { alpha, FONT_UI, palette } from '../palette'
 
-// Formele navelor, la mărimea 1 (cele dușmane se scalează cu raza lor) sau în px de lume (nava ta).
-const GRUNT: readonly Pt[] = [[1.25, 0], [-0.8, 0.95], [-0.4, 0], [-0.8, -0.95]]
-const BRUTE: readonly Pt[] = [[1.2, 0], [0.15, 0.6], [-0.9, 1], [-0.5, 0.3], [-0.75, 0], [-0.5, -0.3], [-0.9, -1], [0.15, -0.6]]
-const SHIP: readonly Pt[] = [[18, 0], [-3, 9.5], [-12, 13], [-7, 0], [-12, -13], [-3, -9.5]]
+// Formele navelor, cu botul spre +x, la mărimea 1 (cele dușmane se scalează cu raza lor) sau în px de lume (nava ta).
+// Le folosește și zborul (`../flight/things.ts`), ca navele să fie aceleași în amândouă modurile.
+export const GRUNT: readonly Pt[] = [[1.25, 0], [-0.8, 0.95], [-0.4, 0], [-0.8, -0.95]]
+export const BRUTE: readonly Pt[] = [[1.2, 0], [0.15, 0.6], [-0.9, 1], [-0.5, 0.3], [-0.75, 0], [-0.5, -0.3], [-0.9, -1], [0.15, -0.6]]
+export const SHIP: readonly Pt[] = [[18, 0], [-3, 9.5], [-12, 13], [-7, 0], [-12, -13], [-3, -9.5]]
 
 const SHAKE = 0.18           // cât tresare o resursă după o bucată strânsă, s
 const SPROUT = 0.45          // de la cât din creștere apare din nou țandăra unui cristal golit

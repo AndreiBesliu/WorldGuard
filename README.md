@@ -14,7 +14,7 @@ reechilibrarea a două cifre (propuneri, până le vede Andrei în joc). Nava cu
 npm install
 npm run dev      # http://localhost:5180
 npm run check    # typecheck + teste + build cu service worker (poarta înainte de commit; CI rulează același lucru)
-npm run smoke    # proba în browser (Playwright, 26 de verificări); nu face parte din `check`
+npm run smoke    # proba în browser (Playwright, 29 de verificări); nu face parte din `check`
 npm run single   # dist-single/world-guard.html: tot jocul într-un singur fișier, fără nicio referință în afară
 npm run balance  # tabelul jucătorilor automați (120 de partide, ~15 s); cu `-- --raze` și pentru razele de apărare 80 și 160 (~40 s)
 npm run icons    # desenează din nou pictogramele PNG din public/icons/icon.svg (doar când se schimbă desenul)
@@ -45,6 +45,13 @@ timpul (propunere; experiența nu se strânge, deci nu apar niveluri și panou),
 `npm run smoke` tipărește din el două rânduri `SMOKE INFO` cu timpul de desen pe cadru cu cele 150 de nave dușmane așezate
 în jurul planetei (în vedere, ca desenul să nu le sară): o dată cu nava testului de viteză (cele trei arme la treapta 3) și o dată cu toate cele nouă module la treapta 3,
 cu raze de laser, rachete în zbor și explozii în cadru.
+
+**„Explorează galaxia” (în lucru, pe ramură):** al doilea mod, un zbor de trei minute văzut de sus, în care nava înaintează și trage
+singură, iar tu o ferești de focul dușman conducând-o cu degetul (nava face mișcarea degetului, de 1,2 ori mai mare; pe calculator,
+săgețile sau WASD). Regulile și desenul există; cartonașele, banda din zbor și atelierul vin după. Deocamdată zborul pornește doar cu
+`?debug=1&zbor=1` (sectorul 1; `zbor=N` pentru sectorul N); pauza folosește cartonașul de la apărare, iar la sfârșit jocul se întoarce
+la cartonașul de start. Ce s-a strâns trece în rezervă. Cu `?debug=1`, `window.__wg` are și `mode()`, `flight()`, `runFlight(secunde)`,
+`flightDrawMs(cadre)` și `flightField()`; proba din browser tipărește un rând `SMOKE INFO` cu timpul de desen al zborului în clipa cea mai plină.
 
 Designul: [`docs/GDD.md`](docs/GDD.md). Regulile proiectului: [`CLAUDE.md`](CLAUDE.md).
 Jocul vechi (tower defense pe hexagoane) a rămas la commit-ul `ec73b9e`.

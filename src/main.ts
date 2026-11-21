@@ -1,4 +1,5 @@
-// Intrarea: leagă pagina, sesiunea, comenzile și desenul. Stările (start, joc, pauză, final) le ține sesiunea; aici se arată.
+// Intrarea: leagă pagina, sesiunile (apărarea și zborul), comenzile și desenul. Stările (start, joc, pauză, final) le țin sesiunile;
+// aici se arată. Un singur ciclu de cadre, cu modul de joc ales (`mode`).
 import '@fontsource/exo-2/latin-800.css'
 import '@fontsource/exo-2/latin-ext-800.css'
 import '@fontsource/rubik/latin-400.css'
@@ -9,13 +10,20 @@ import '@fontsource/rubik/latin-700.css'
 import '@fontsource/rubik/latin-ext-700.css'
 import './ui/ui.css'
 import { parseFlags } from './app/flags'
+import { createFlightSession } from './app/flightSession'
 import { advance } from './app/loop'
+import { bank, markExplored } from './app/profile'
 import { createSession, type OverInfo, type Phase } from './app/session'
 import { registerServiceWorker } from './app/sw'
-import { clearGame, loadGame, loadProfile, saveGame, saveIfRecord } from './app/storage'
+import { clearGame, loadGame, loadProfile, saveGame, saveIfRecord, saveProfile } from './app/storage'
 import { createWake, type WakeNav } from './app/wake'
-import { bindInput } from './input/bind'
+import { FLIGHT } from './data/flight'
+import type { FlightInput, FlightState } from './flight/state'
+import { stepFlight } from './flight/step'
+import { bindInput, flightKeys } from './input/bind'
+import { dragTake } from './input/drag'
 import { createRenderer } from './render/canvas'
+import { createFlightRenderer } from './render/flight/canvas'
 import { DT, type GameState } from './sim/state'
 import { step } from './sim/step'
 import { createCards } from './ui/cards'
@@ -36,24 +44,44 @@ function text(key: string | undefined): string {
 for (const el of document.querySelectorAll<HTMLElement>('[data-str]')) el.textContent = text(el.dataset.str)
 for (const el of document.querySelectorAll<HTMLElement>('[data-str-aria]')) el.setAttribute('aria-label', text(el.dataset.strAria))
 
+type Mode = 'defense' | 'flight'
 declare global {
-  interface Window { __wg?: { state(): GameState; phase(): Phase; run(seconds: number): void; drawMs(frames: number): number } }
+  interface Window {
+    __wg?: {
+      state(): GameState; phase(): Phase; run(seconds: number): void; drawMs(frames: number): number
+      mode(): Mode; flight(): FlightState; runFlight(seconds: number): void; flightDrawMs(frames: number): number
+      flightField(): { x: number; y: number; w: number; h: number; scale: number }   // câmpul zborului pe ecran, px de la colțul canvasului
+    }
+  }
 }
 
 const canvas = document.getElementById('field') as HTMLCanvasElement
 const stage = document.getElementById('stage') as HTMLElement
 const renderer = createRenderer(canvas)
+const flightView = createFlightRenderer(canvas)
 const hud = createHud(document)
 const flags = parseFlags(location.search)
 // Întăririle se citesc din profil la fiecare partidă nouă (deocamdată nu există atelierul care să le schimbe).
 const session = createSession({ saveGame, clearGame, saveIfRecord, ups: () => loadProfile().ups }, flags.seed ?? Date.now() >>> 0)
+// Zborul: rezerva și sectorul explorat se scriu în profilul din stocare, citit din nou la fiecare scriere.
+const flight = createFlightSession({
+  ups: () => loadProfile().ups,
+  bank: (haul) => saveProfile(bank(loadProfile(), haul)),
+  explored: (sector) => saveProfile(markExplored(loadProfile(), sector)),
+})
+let mode: Mode = 'defense'
+/** Faza modului de joc de acum. */
+const phaseNow = (): Phase => (mode === 'flight' ? flight.phase : session.phase)
 const wake = createWake(navigator as WakeNav)
 // Jocul fără internet, doar în build-ul publicat (`__WG_SW__ && PROD`). Sub `if`, pagina într-un singur fișier
 // (`__WG_SW__` fals) pierde la build apelul cu totul, cu adresa lui `./sw.js` cu tot.
 if (__WG_SW__) registerServiceWorker(navigator, import.meta.env.PROD)
 // Joystickul merge doar în joc și doar cât panoul de alegere nu e pe ecran; tastele 1–3 aleg din panou, prin poarta lui (`choice.key`).
-const input = bindInput(canvas, () => session.phase === 'playing' && !choice.open, (i) => choice.key(i))
+// În zbor, degetul conduce nava (în unități de câmp), doar cât se zboară; joystickul nu merge.
+const input = bindInput(canvas, () => phaseNow() === 'playing' && (mode === 'flight' || !choice.open), (i) => choice.key(i),
+  { on: () => mode === 'flight', scale: () => flightView.scale() })
 const still = { x: 0, y: 0 }
+const STILL_FLIGHT: FlightInput = { dx: 0, dy: 0 }
 let saved = loadGame()
 let fps: { now: number; min: number } | null = null
 let fpsFrames = 0, fpsTime = 0
@@ -98,17 +126,43 @@ function pick(i: number): void {
 }
 
 function begin(seed: number, stress: boolean): void {
+  mode = 'defense'
   session.start(seed, stress)
   saved = null                                  // „Continuă partida” nu mai e de oferit; din stocare sesiunea o șterge doar la o partidă obișnuită, nu și în testul de viteză
   fps = null; fpsFrames = 0; fpsTime = 0
   playing()
 }
 function pause(): void {
+  if (mode === 'flight') {
+    if (!flight.pause()) return                 // pauza trece în rezervă ce s-a strâns
+    stopped()
+    cards.showPause(Math.floor(flight.f.t))     // până la cartonașul zborului, cel de la apărare
+    return
+  }
   if (!session.pause()) return
   stopped()
   cards.showPause(Math.floor(session.s.t))
 }
-function unpause(): void { if (session.unpause()) playing() }
+function unpause(): void { if (mode === 'flight' ? flight.unpause() : session.unpause()) playing() }
+
+/** Un zbor în sectorul dat. Nu atinge partida de apărare salvată și nici recordul. */
+function fly(sector: number): void {
+  mode = 'flight'
+  flight.start(flags.seed ?? Date.now() >>> 0, sector)
+  playing()                                     // `playing` lasă degetul (și mișcarea strânsă) și cere ecranul aprins
+}
+/** Înapoi la cartonașul de start, cu „Continuă partida” dacă partida de apărare e salvată. */
+function home(): void {
+  mode = 'defense'
+  stopped()
+  cards.showStart(saved === null ? null : { secs: Math.floor(saved.t) })
+}
+/** Mișcarea navei pentru pașii acestui cadru: degetul (citit doar când se fac pași, altfel s-ar pierde) și tastele. */
+function flightMove(steps: number): FlightInput {
+  if (steps === 0) return STILL_FLIGHT
+  const d = dragTake(input.drag), k = flightKeys(input.keys(), steps * DT)
+  return { dx: d.dx + k.dx, dy: d.dy + k.dy }
+}
 function ended(r: OverInfo): void {
   stopped()
   cards.showOver(r)
@@ -126,27 +180,30 @@ const cards = createCards(document, {
   again: () => begin(Date.now() >>> 0, false),
   pause,
   resume: unpause,
-  fresh: () => begin(Date.now() >>> 0, false),
+  fresh() {
+    if (mode === 'flight') { flight.quit(); home(); return }   // „Partidă nouă” în zborul pus pe pauză: înapoi la start
+    begin(Date.now() >>> 0, false)
+  },
 })
 const choice = createChoice(document, pick)
 cards.showStart(saved === null ? null : { secs: Math.floor(saved.t) })
 
 window.addEventListener('keydown', (e) => {
   if (e.code !== 'Escape' || e.repeat || choice.open) return   // panoul de alegere nu se închide cu Escape
-  if (session.phase === 'playing') pause()
-  else if (session.phase === 'paused') unpause()
+  if (phaseNow() === 'playing') pause()
+  else if (phaseNow() === 'paused') unpause()
 })
 // Pauza automată: jucătorul a ieșit din pagină (alt program, ecran stins, pagină închisă). Pauza salvează partida.
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') { pause(); return }
-  renderer.refresh()                            // la revenire: cerul se pictează din nou, iar primul cadru nu sare
+  renderer.refresh(); flightView.refresh()      // la revenire: cerul se pictează din nou, iar primul cadru nu sare
   last = performance.now(); acc = 0
   redraw()
 })
 window.addEventListener('pagehide', pause)
 canvas.addEventListener('contextrestored', redraw)
 
-function resize(): void { renderer.resize(hud.bottom()); redraw() }
+function resize(): void { const b = hud.bottom(); renderer.resize(b); flightView.resize(b); redraw() }
 const sizes = new ResizeObserver(resize)
 sizes.observe(stage)
 sizes.observe(document.getElementById('banner') as HTMLElement)   // banda crește când apare textul fps sau se schimbă un font
@@ -167,13 +224,41 @@ if (flags.debug) {
       }
       return (performance.now() - t0) / frames
     },
+    mode: () => mode,
+    flight: () => flight.f,
+    runFlight(seconds) { for (let i = 0, n = Math.round(seconds / DT); i < n; i++) stepFlight(flight.f, STILL_FLIGHT) },
+    flightDrawMs(frames) {
+      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+      const t0 = performance.now()
+      for (let i = 0; i < frames; i++) {
+        flightView.frame(flight.f, 0)
+        ctx.getImageData(0, 0, 1, 1)
+      }
+      return (performance.now() - t0) / frames
+    },
+    flightField() {
+      const k = flightView.fit()
+      return { x: k.x, y: k.y, w: FLIGHT.field.w * k.scale, h: FLIGHT.field.h * k.scale, scale: k.scale }
+    },
   }
 }
+if (flags.zbor !== null) fly(flags.zbor)        // doar cu ?debug=1: zborul pornește direct, fără cartonașul de start
 
 function frame(now: number): void {
   requestAnimationFrame(frame)                  // întâi cadrul următor: o excepție într-un cadru nu oprește bucla
   const frameDt = Math.min(0.1, Math.max(0, (now - last) / 1000))
   last = now
+  if (mode === 'flight') {
+    if (flight.phase === 'playing') {
+      const r = advance(acc, frameDt)
+      acc = r.acc
+      if (flight.advance(r.steps, flightMove(r.steps)) !== null) { home(); return }   // sfârșitul: până la cartonașul zborului, cel de start
+    } else if (now > drawUntil) {
+      return
+    }
+    flightView.frame(flight.f, frameDt)
+    return
+  }
   let camDt = frameDt                           // cât timp „a trecut” pentru cameră
   if (session.phase === 'playing' && !choice.open) {   // cu panoul deschis simularea stă: nici pași, nici desen după ce camera s-a așezat
     const r = advance(acc, frameDt)

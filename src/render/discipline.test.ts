@@ -1,5 +1,6 @@
 // Desenul de pe fiecare cadru rămâne ieftin pe telefon: fără umbră estompată, iar gradientul și decupajul stau
-// doar la cer și la planetă (`orbit/scene.ts`). Testul citește sursele din `src/render/`; proba lui negativă e ultimul caz.
+// doar la cer și la planetă (`orbit/scene.ts`). Testul citește sursele din `src/render/`, cu zborul (`flight/`) cu tot;
+// proba lui negativă e ultimul caz.
 
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
@@ -34,6 +35,9 @@ describe('disciplina desenului', () => {
 
   it('fișierele desenului au fost găsite', () => {
     expect(Object.keys(files)).toEqual(expect.arrayContaining(['world.ts', 'orbit/scene.ts', 'orbit/things.ts']))
+  })
+  it('și fișierele desenului zborului', () => {
+    expect(Object.keys(files)).toEqual(expect.arrayContaining(['flight/canvas.ts', 'flight/scene.ts', 'flight/things.ts']))
   })
   it('nicio umbră estompată în desen', () => {
     expect(offenders(files, /shadowBlur/)).toEqual([])

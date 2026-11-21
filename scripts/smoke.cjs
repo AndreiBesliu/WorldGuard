@@ -6,9 +6,11 @@
 // (15) finalul șterge salvarea, (16) testul de viteză nu salvează, apoi instalarea și jocul fără internet: (17) manifestul și pictogramele,
 // (18) service worker-ul și cache-ul, (19) pornirea fără rețea, apoi (20) pauza și „Continuă” atinse cu al doilea deget, cât primul ține joystickul,
 // și panoul de alegere: (21) apare după plata nivelului și jocul stă, iar o atingere imediat după deschidere, Enter și Spațiu nu aleg, (22) un rând atins alege, (23) pauza și reîncărcarea îl păstrează,
-// (24) tasta 1 alege, iar o atingere începută în afara unui rând nu alege nimic.
-// În afara verificărilor: rândurile `SMOKE INFO` (timpul de desen cu 150 de nave, fără module și cu toate cele nouă trăgând)
-// și capturile modulelor pe navă (10, mărită; 12, la scara jocului), a tragerilor (11) și a pictogramei Rachetelor (13, 14).
+// (24) tasta 1 alege, iar o atingere începută în afara unui rând nu alege nimic, (25, 26) banda, apoi zborul, pornit cu ?debug=1&zbor=1:
+// (27) nava face mișcarea degetului × 1,2, (28) câmpul se vede întreg sub bandă la 360 × 640 și 390 × 780, (29) pauza la pagina ascunsă.
+// În afara verificărilor: rândurile `SMOKE INFO` (timpul de desen cu 150 de nave, fără module și cu toate cele nouă trăgând; al zborului
+// în clipa cea mai plină) și capturile modulelor pe navă (10, mărită; 12, la scara jocului), a tragerilor (11), a pictogramei
+// Rachetelor (13, 14) și ale zborului (15 și 15-zbor-360, 16 cu nava de elită).
 // Fiecare rulare pornește un browser cu un context nou, deci fără cache sau service worker rămase de la o rulare anterioară.
 // Nu face parte din `npm run check`: are nevoie de un Playwright instalat pe mașină.
 // Merge doar pe Linux și macOS: oprește serverul prin grupul lui de procese (`process.kill(-pid)`), pe care Windows nu îl are.
@@ -27,6 +29,7 @@ try {
 const PORT = 4180
 const URL_ = `http://localhost:${PORT}/`
 const PAGE = `${URL_}?seed=7&debug=1`
+const FLIGHT_PAGE = `${PAGE}&zbor=1`
 const root = path.resolve(__dirname, '..')
 const dist = path.join(root, 'dist')
 const outDir = path.join(root, 'smoke-out')
@@ -677,6 +680,144 @@ async function main() {
     })
     await shot('11-explozie.png')
     console.log(`SMOKE INFO: captura 11-explozie.png are ${fired11.beam} raze de laser, ${fired11.blast} explozii și ${fired11.missile} rachete în zbor`)
+
+    // Zborul: pornit direct cu ?debug=1&zbor=1 (cartonașele lui vin mai târziu).
+    const loadFlight = async () => { await page.goto(FLIGHT_PAGE); await page.evaluate(() => document.fonts.ready); await page.waitForTimeout(500) }
+    const fingerAt = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] })
+
+    // 27. în zbor, nava face mișcarea degetului × 1,2 (în unități de câmp: pixelii împărțiți la scara câmpului)
+    await page.setViewportSize({ width: 390, height: 780 })
+    await loadFlight()
+    const ship27 = () => page.evaluate(() => { const f = window.__wg.flight(); return { mode: window.__wg.mode(), fm: f.mode, x: f.ship.x, y: f.ship.y, k: window.__wg.flightField().scale } })
+    const a27 = await ship27()
+    await fingerAt('touchStart', 200, 600)
+    await fingerAt('touchMove', 140, 560)                                  // 60 px la stânga, 40 px în sus
+    await sleep(400)
+    const b27 = await ship27()
+    await fingerAt('touchEnd', 0, 0)
+    const want27 = { dx: (-60 / a27.k) * 1.2, dy: (-40 / a27.k) * 1.2 }
+    const got27 = { dx: b27.x - a27.x, dy: b27.y - a27.y }
+    check(27, 'cu ?debug=1&zbor=1 pagina e în zbor, iar nava face mișcarea degetului de 1,2 ori (± 0,5 unități)',
+      a27.mode === 'flight' && b27.fm === 'flying' && Math.abs(got27.dx - want27.dx) < 0.5 && Math.abs(got27.dy - want27.dy) < 0.5,
+      `mod ${a27.mode}/${b27.fm}, scara ${a27.k.toFixed(4)} px pe unitate, nava (${got27.dx.toFixed(2)}, ${got27.dy.toFixed(2)}), așteptat (${want27.dx.toFixed(2)}, ${want27.dy.toFixed(2)})`)
+
+    // 28. câmpul întreg sub bandă, măsurat în pixeli: banda și canvasul din pagină, câmpul din desenator, iar punctul din mijlocul
+    // navei, citit de pe canvas, e acolo unde câmpul spune că e nava
+    const fit28 = []
+    for (const [w, h] of [[360, 640], [390, 780]]) {
+      await page.setViewportSize({ width: w, height: h })
+      await loadFlight()
+      const m = await page.evaluate(() => {
+        window.__wg.flightDrawMs(1)
+        const c = document.getElementById('field'), r = c.getBoundingClientRect()
+        const band = document.getElementById('banner').getBoundingClientRect().bottom - r.top
+        const k = window.__wg.flightField(), s = window.__wg.flight().ship
+        const dpr = c.width / r.width, px = c.getContext('2d').getImageData(Math.round((k.x + s.x * k.scale) * dpr), Math.round((k.y + s.y * k.scale) * dpr), 1, 1).data
+        return { cw: r.width, ch: r.height, band, k, dot: [px[0], px[1], px[2]] }
+      })
+      const { k } = m, e = 0.5
+      const inside = k.x >= -e && k.x + k.w <= m.cw + e && k.y >= m.band - e && Math.abs(k.y + k.h - m.ch) <= e
+      const largest = Math.abs(k.x) <= e || Math.abs(k.y - m.band) <= e
+      const dot = Math.abs(m.dot[0] - 241) < 30 && Math.abs(m.dot[1] - 244) < 30 && Math.abs(m.dot[2] - 255) < 30   // `--ink`, punctul de lovit
+      fit28.push({ ok: inside && largest && dot, text: `${w}×${h}: banda până la ${m.band.toFixed(1)} px, câmpul (${k.x.toFixed(1)}, ${k.y.toFixed(1)}) ${k.w.toFixed(1)} × ${k.h.toFixed(1)} px, scara ${k.scale.toFixed(4)}, punctul navei rgb(${m.dot.join(',')})` })
+      if (w === 360) await shot('15-zbor-360.png')
+    }
+    check(28, 'câmpul se vede întreg sub bandă, lipit de jos, la scara cea mai mare, la 360 × 640 și la 390 × 780; nava e pe canvas unde o pune câmpul',
+      fit28.every((r) => r.ok), fit28.map((r) => r.text).join('; '))
+    await page.setViewportSize({ width: 390, height: 780 })
+
+    // 29. pagina ascunsă pune zborul pe pauză (cartonașul de pauză, timpul zborului stă) și nicio eroare nu a apărut în consolă
+    await loadFlight()
+    await page.waitForTimeout(300)
+    await setVisibility('hidden')
+    const t29a = await page.evaluate(() => window.__wg.flight().t)
+    await setVisibility('visible')
+    await page.waitForTimeout(600)
+    const t29b = await page.evaluate(() => window.__wg.flight().t)
+    const veil29 = await visible('#pauseVeil')
+    await page.click('#resume')
+    await page.waitForTimeout(300)
+    const t29c = await page.evaluate(() => window.__wg.flight().t)
+    check(29, 'pagina ascunsă pune zborul pe pauză (cartonașul de pauză, timpul zborului stă), „Continuă” îl reia, iar în consolă nu e nicio eroare',
+      t29a > 0 && t29a === t29b && veil29 && t29c > t29b && errors.length === 0, `timp ${t29a} → ${t29b} → ${t29c}, cartonaș ${veil29}, erori ${errors.length}`)
+
+    // Capturi și timpul de desen al zborului; nu sunt verificări. Lucrurile de cules și resursele din 15-zbor.png sunt puse de mână,
+    // lângă navă, ca focul dușman, modulele de cules și resursele să se vadă în același cadru.
+    await loadFlight()
+    await page.evaluate(() => {
+      const f = window.__wg.flight()
+      Object.assign(f.ship.mods, { gun: 2, laser: 1, missile: 1, shield: 1 }); f.ship.shieldUp = true
+      f.ship.inv = 1e9
+      window.__wg.runFlight(40)
+    })
+    await page.click('#pause')
+    await page.addStyleTag({ content: '.veil, #hint { display: none !important }' })
+    await page.evaluate(() => {
+      const f = window.__wg.flight()
+      f.ship.inv = 0
+      f.picks.push({ kind: 'missile', x: 120, y: 420 }, { kind: 'magnet', x: 300, y: 380 })
+      f.drops.push({ kind: 'crystal', x: 160, y: 470 }, { kind: 'metal', x: 250, y: 450 }, { kind: 'crystal', x: 270, y: 480 })
+      window.__wg.flightDrawMs(1)
+    })
+    await shot('15-zbor.png')
+
+    // Clipa cea mai plină: toate modulele la treapta 3, nava de neatins. O navă cu toate armele la treapta 3 doboară aproape tot
+    // ce intră în câmp (măsurat: la secunda 172,5 rămânea o singură navă dușmană), deci de la secunda 150 dușmanii și asteroizii
+    // primesc viață multă: armele trag în ei, iar cadrul are tot ce vine spre navă, nu doar ce scapă. Pas cu pas până la
+    // secunda 178 (nava de elită coboară), pasul cu cei mai mulți dușmani și proiectile dușmane; starea lui se pune la loc (e date
+    // simple), armele sunt aduse să tragă (mai jos), iar cadrul se desenează de cinci ori câte 200 de cadre (mediana), într-un singur
+    // `evaluate`: bucla jocului nu face niciun pas între ele.
+    await loadFlight()
+    const full = await page.evaluate(() => {
+      const f = window.__wg.flight()
+      for (const id of ['gun', 'laser', 'missile', 'shield', 'magnet']) f.ship.mods[id] = 3
+      f.ship.shieldUp = true; f.ship.inv = 1e9
+      window.__wg.runFlight(150)
+      let best = null, most = -1
+      while (f.t < 178 && f.mode === 'flying') {
+        for (const x of f.foes) if (x.maxHp < 1e8) { x.maxHp = 1e9; x.hp = 1e9 }
+        for (const a of f.asteroids) a.hp = 1e9
+        window.__wg.runFlight(1 / 60)
+        const n = f.foes.length + f.shots.length
+        if (n > most) { most = n; best = JSON.stringify(f) }
+      }
+      Object.assign(f, JSON.parse(best))
+      // O rachetă abia pleacă după ce explozia celei dinainte s-a stins, iar raza Laserului trăiește 0,12 s: pe niciun pas nu sunt
+      // toate trei. Ca la apărare: pași până la o explozie, apoi Rachetele din nou gata și câțiva pași (racheta nouă e în zbor),
+      // apoi Laserul din nou gata și încă un pas.
+      const has = (k) => f.fx.some((e) => e.kind === k)
+      for (let i = 0; i < 180 && !has('blast'); i++) window.__wg.runFlight(1 / 60)
+      f.ship.missileT = 0
+      window.__wg.runFlight(3 / 60)
+      f.ship.laserT = 0
+      window.__wg.runFlight(1 / 60)
+      const what = { t: f.t, foes: f.foes.length, shots: f.shots.length, bolts: f.bolts.length, missiles: f.missiles.length, asteroids: f.asteroids.length,
+        beams: f.fx.filter((e) => e.kind === 'beam').length, blasts: f.fx.filter((e) => e.kind === 'blast').length, drops: f.drops.length, mode: f.mode }
+      const draws = []
+      for (let i = 0; i < 5; i++) draws.push(window.__wg.flightDrawMs(200))
+      draws.sort((a, b) => a - b)
+      return { ms: draws[2], what }
+    })
+    const w30 = full.what
+    console.log(`SMOKE INFO: desen al zborului în clipa cea mai plină (toate modulele la treapta 3, secunda ${w30.t.toFixed(2)}): ${full.ms.toFixed(2)} ms pe cadru` +
+      ` (în cadru: ${w30.foes} nave dușmane, ${w30.shots} proiectile dușmane, ${w30.bolts} ale Tunului, ${w30.missiles} rachete, ${w30.beams} raze de Laser, ${w30.blasts} explozii, ${w30.asteroids} asteroizi, ${w30.drops} resurse; zborul ${w30.mode})`)
+
+    // 16-zbor-elita.png: aceeași navă, într-un zbor nou, fără viață în plus la dușmani, cu nava de elită coborâtă la locul ei
+    await loadFlight()
+    const elite16 = await page.evaluate(() => {
+      const f = window.__wg.flight(), elite = () => f.foes.find((x) => x.id === f.eliteId)
+      for (const id of ['gun', 'laser', 'missile', 'shield', 'magnet']) f.ship.mods[id] = 3
+      f.ship.shieldUp = true; f.ship.inv = 1e9
+      window.__wg.runFlight(172)
+      for (let i = 0; i < 600 && f.mode === 'flying' && !(elite() && elite().y >= 110); i++) window.__wg.runFlight(1 / 60)
+      const e = elite()
+      return e ? { y: e.y, hp: e.hp, max: e.maxHp, foes: f.foes.length, shots: f.shots.length } : null
+    })
+    await page.click('#pause')
+    await page.addStyleTag({ content: '.veil, #hint { display: none !important }' })
+    await page.evaluate(() => { window.__wg.flight().ship.inv = 0; window.__wg.flightDrawMs(1) })
+    await shot('16-zbor-elita.png')
+    console.log(`SMOKE INFO: captura 16-zbor-elita.png ${elite16 ? `are nava de elită la y ${elite16.y.toFixed(0)}, cu viața ${Math.round(elite16.hp)}/${elite16.max}, ${elite16.foes} nave dușmane și ${elite16.shots} proiectile dușmane` : 'nu are nava de elită'}`)
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))

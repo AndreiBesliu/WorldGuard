@@ -3,11 +3,16 @@
 // Cifrele din tabelele specului sunt ale lui; restul vin din prototipul de aruncat (`docs/prototip-explorare.html`) și sunt
 // propuneri, ca și mărimea câmpului și formula sectoarelor.
 
+import type { ModKind } from './modules'
+
 export type FlightModId = 'gun' | 'laser' | 'missile' | 'shield' | 'magnet'
 export type FlightFoeKind = 'drone' | 'weaver' | 'gunship' | 'cargo' | 'elite'
 
 /** Modulele din zbor, în ordinea din spec. */
 export const FLIGHT_MODS: readonly FlightModId[] = ['gun', 'laser', 'missile', 'shield', 'magnet']
+
+/** Felul fiecărui modul din zbor (dă culoarea, ca la apărare); Tunul e armă. */
+export const FLIGHT_MOD_KIND: Record<FlightModId, ModKind> = { gun: 'weapon', laser: 'weapon', missile: 'weapon', shield: 'body', magnet: 'utility' }
 
 export const FLIGHT = {
   field: { w: 390, h: 680 },                 // câmpul de joc, fix (propunere); înălțimile de mai jos sunt fracții din `h`
@@ -24,7 +29,7 @@ export const FLIGHT = {
     top: 0.3,                                // până unde poate urca, din înălțime, măsurat de sus
     bottom: 34,                              // cât de aproape de marginea de jos poate coborî
   },
-  drive: { gain: 1.2, max: 1100 },           // nava face mișcarea cerută × `gain`, cu cel mult `max` unități pe secundă
+  drive: { gain: 1.2, max: 1100, keys: 255 },   // nava face mișcarea cerută × `gain`, cu cel mult `max` unități pe secundă; tastele o mută cu `keys` pe secundă
   gun: {
     every: 0.11,                             // secunde între două salve
     firstAt: 0.3,                            // prima salvă
