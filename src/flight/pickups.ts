@@ -13,17 +13,17 @@ export function take(f: FlightState, kind: FlightModId | 'repair'): void {
   if (kind === 'repair') {
     if (s.hp >= s.maxHp) return
     s.hp += 1
-    f.fx.push({ kind: 'took', what: 'repair', tier: 0, t0: f.t })
+    f.fx.push({ kind: 'took', what: 'repair', tier: 0, maxed: false, t0: f.t })
     return
   }
   if (s.mods[kind] >= FLIGHT.mods.tiers) {
     f.crystal += FLIGHT.mods.maxed
-    f.fx.push({ kind: 'took', what: 'maxed', tier: FLIGHT.mods.tiers, t0: f.t })
+    f.fx.push({ kind: 'took', what: kind, tier: FLIGHT.mods.tiers, maxed: true, t0: f.t })
     return
   }
   const tier = ++s.mods[kind]
   if (kind === 'shield' && tier === 1) { s.shieldUp = true; s.shieldT = 0 }
-  f.fx.push({ kind: 'took', what: kind, tier, t0: f.t })
+  f.fx.push({ kind: 'took', what: kind, tier, maxed: false, t0: f.t })
 }
 
 /**

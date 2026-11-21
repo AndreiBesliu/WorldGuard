@@ -52,7 +52,8 @@ function launchMissile(f: FlightState): void {
   const foe = nearestTarget(f, s.x, s.y, m.range)
   if (!foe) { s.missileT = m.retry; return }
   s.missileT = m.every
-  f.missiles.push({ x: s.x, y: s.y - m.from, vx: 0, vy: -m.launch, targetId: foe.id })
+  const dmg = m.dmg[s.mods.missile - 1]! * armsFactor(f)   // lovitura se hotărăște acum: o treaptă culeasă cât e în aer n-o schimbă
+  f.missiles.push({ x: s.x, y: s.y - m.from, vx: 0, vy: -m.launch, targetId: foe.id, dmg })
 }
 
 /** Armele trag și Scutul se reîncarcă. Nu se cheamă după ce a căzut nava de elită. */
@@ -68,9 +69,9 @@ export function fireArsenal(f: FlightState): void {
   }
 }
 
-/** Explozia unei rachete: lovește tot ce prinde, dușmani și asteroizi. */
-function blast(f: FlightState, x: number, y: number): void {
-  const m = FLIGHT.mods.missile, dmg = m.dmg[f.ship.mods.missile - 1]! * armsFactor(f)
+/** Explozia unei rachete: lovește cu `dmg` tot ce prinde, dușmani și asteroizi. */
+function blast(f: FlightState, x: number, y: number, dmg: number): void {
+  const m = FLIGHT.mods.missile
   f.fx.push({ kind: 'blast', x, y, r: m.blast, t0: f.t })
   for (const foe of f.foes) if (foe.hp > EPS && Math.hypot(foe.x - x, foe.y - y) < m.blast + foe.r * m.blastPad) hitFoe(f, foe, dmg)
   for (const a of f.asteroids) if (a.hp > EPS && Math.hypot(a.x - x, a.y - y) < m.blast + a.r * m.blastPad) hitAsteroid(f, a, dmg)
@@ -95,7 +96,7 @@ function flyMissile(f: FlightState, mi: FlightMissile): boolean {
   const hit = f.foes.find((foe) => foe.hp > EPS && (foe.kind !== 'cargo' || foe.id === mi.targetId)
     && Math.hypot(foe.x - mi.x, foe.y - mi.y) < foe.r + m.hit)
   if (!hit) return true
-  blast(f, mi.x, mi.y)
+  blast(f, mi.x, mi.y, mi.dmg)
   return false
 }
 

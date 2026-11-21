@@ -122,6 +122,19 @@ describe('Rachetele', () => {
     expect(JSON.stringify(copy)).toBe(JSON.stringify(f))
     expect(other.hp).toBeLessThan(1000)
   })
+  it('lovitura se hotărăște la lansare: o treaptă culeasă cât racheta e în aer n-o întărește', () => {
+    const f = quietFlight()
+    untouchable(f)
+    shipAt(f, 195, 600)
+    take(f, 'missile')
+    const foe = addFoe(f, 'drone', 130, 300, HP)
+    stepFlight(f, STILL)
+    expect(f.missiles).toHaveLength(1)
+    take(f, 'missile'); take(f, 'missile')
+    let guard = 0
+    while (!f.fx.some((e) => e.kind === 'blast') && guard++ < 180) stepFlight(f, STILL)
+    expect(1000 - foe.hp).toBeCloseTo(12, 9)
+  })
   it('pleacă la 2,4 s cât are țintă', () => {
     const f = quietFlight()
     untouchable(f)
@@ -165,6 +178,20 @@ describe('Scutul', () => {
       expect(late.fx.filter((e) => e.kind === 'block')).toHaveLength(1)   // cel vechi a îmbătrânit, ăsta e nou
     })
   }
+})
+
+describe('Scutul și două lovituri în același pas', () => {
+  it('se consumă doar Scutul; viața rămâne', () => {
+    const f = quietFlight()
+    take(f, 'shield')
+    shotAt(f, f.ship.x, f.ship.y)
+    shotAt(f, f.ship.x, f.ship.y)
+    stepFlight(f, STILL)
+    expect(f.ship.hp).toBe(5)
+    expect(f.ship.shieldUp).toBe(false)
+    expect(f.shots).toEqual([])
+    expect(f.fx.filter((e) => e.kind === 'block')).toHaveLength(1)
+  })
 })
 
 describe('după ce cade nava de elită', () => {

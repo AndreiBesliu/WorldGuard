@@ -45,7 +45,7 @@ describe('dușmanii', () => {
     expect(first.drone).toBeCloseTo(1.2, 1)
     expect(first.weaver).toBeGreaterThanOrEqual(24)
     expect(first.gunship).toBeGreaterThanOrEqual(50)
-    expect(first.cargo).toBeCloseTo(5, 1)                    // transportul, de la Task 4
+    expect(first.cargo).toBeCloseTo(5, 1)                    // primul transport
   })
   it('la jumătatea sectorului vin câteva secunde fără dușmani noi', () => {
     const f = createFlight(4, 1)

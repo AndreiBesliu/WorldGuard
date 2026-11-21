@@ -15,13 +15,13 @@ describe('take', () => {
       for (let tier = from + 1; tier <= 3; tier++) {
         take(f, id)
         expect(f.ship.mods[id]).toBe(tier)
-        expect(tookFx(f).at(-1)).toMatchObject({ what: id, tier, t0: f.t })
+        expect(tookFx(f).at(-1)).toEqual({ kind: 'took', what: id, tier, maxed: false, t0: f.t })
       }
       expect(f.crystal).toBe(0)
       take(f, id)
       expect(f.ship.mods[id]).toBe(3)
       expect(f.crystal).toBe(5)
-      expect(tookFx(f).at(-1)).toMatchObject({ what: 'maxed', tier: 3 })
+      expect(tookFx(f).at(-1)).toEqual({ kind: 'took', what: id, tier: 3, maxed: true, t0: f.t })
       take(f, id)
       expect(f.crystal).toBe(10)
     })
@@ -36,7 +36,7 @@ describe('take', () => {
     f.ship.hp = 3
     take(f, 'repair')
     expect(f.ship.hp).toBe(4)
-    expect(tookFx(f).at(-1)).toMatchObject({ what: 'repair' })
+    expect(tookFx(f).at(-1)).toMatchObject({ what: 'repair', maxed: false })
     take(f, 'repair')
     expect(f.ship.hp).toBe(5)
   })
@@ -45,6 +45,23 @@ describe('take', () => {
     const before = JSON.stringify(f)
     take(f, 'repair')
     expect(JSON.stringify(f)).toBe(before)
+  })
+})
+
+describe('după `down`', () => {
+  it('nimic nu se mai culege: nici modul, nici resursă', () => {
+    const f = quietFlight()
+    f.ship.hp = 1
+    f.shots.push({ x: f.ship.x, y: f.ship.y, vx: 0, vy: 0 })
+    stepFlight(f, STILL)
+    expect(f.mode).toBe('down')
+    f.picks.push({ kind: 'laser', x: f.ship.x, y: f.ship.y })
+    f.drops.push({ kind: 'crystal', x: f.ship.x, y: f.ship.y })
+    for (let i = 0; i < 30; i++) stepFlight(f, STILL)
+    expect(f.ship.mods.laser).toBe(0)
+    expect(f.crystal).toBe(0)
+    expect(f.picks).toHaveLength(1)
+    expect(f.drops).toHaveLength(1)
   })
 })
 
@@ -88,6 +105,15 @@ describe('nava de transport', () => {
     for (let seed = 1; seed <= 200; seed++) if (downCargo(seed, (f) => { f.ship.hp = 2 }).picks[0]!.kind === 'repair') hurtRepairs++
     expect(hurtRepairs).toBeGreaterThan(60)
     expect(hurtRepairs).toBeLessThan(140)
+  })
+  it('doborât prin atingerea navei, lasă tot lucrul de cules', () => {
+    const f = quietFlight()
+    untouchable(f)
+    addFoe(f, 'cargo', f.ship.x, f.ship.y - 10, { hp: FLIGHT.foe.bump })
+    stepFlight(f, STILL)
+    expect(f.foes).toEqual([])
+    expect(f.picks).toEqual([])                               // a căzut chiar pe navă: s-a cules în același pas
+    expect(f.fx.filter((e) => e.kind === 'took')).toHaveLength(1)
   })
   it('nu trage', () => {
     expect(FLIGHT.foes.cargo.fire).toBe(0)

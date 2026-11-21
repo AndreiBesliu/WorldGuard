@@ -1,5 +1,5 @@
 // Atelierul: cele cinci întăriri cumpărate din rezerva păstrată între partide. Cifrele sunt propuneri; regulile (cumpărat, plătit) stau în `src/app/profile.ts`.
-// Prețurile (bazele cristalelor, coborâte în Task 4) țin țintele din spec față de zborul măsurat în `src/bots/flightYield.ts`: cea mai
+// Prețurile țin țintele din spec față de zborul măsurat în `src/bots/flightYield.ts`: cea mai
 // ieftină întărire după un zbor, toate la plafon după 25–35 de zboruri (păzite de `src/bots/flightYield.test.ts`).
 
 export type UpId = 'hull' | 'arms' | 'reach' | 'core' | 'kit'   // Carenă, Armament, Colectare, Planetă, Arsenal de pornire

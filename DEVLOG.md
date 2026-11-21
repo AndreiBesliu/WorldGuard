@@ -695,3 +695,11 @@ Andrei a cerut un mod nou, în care „jocul devine ceva diferit”: nava zboar�
 - **Prețurile atelierului, propunere:** cu bazele vechi, toate la plafon costau 3775 de cristale, adică 38,1 zboruri (peste ținta 25–35). Bazele cristalelor coboară: Carenă 60 → 50, Armament 80 → 60, Colectare 50 → 40, Planetă 70 → 55, Arsenal de pornire 120 → 95; metalul, înmulțitorii, treptele și efectele rămân. Acum toate la plafon costă 2960 de cristale și 770 de metal: 29,9 zboruri la cristale, 23,7 la metal; cea mai ieftină întărire (Colectarea 1, 40 de cristale) intră într-un zbor.
 - **Cifrele, rulate acum:** `npm run check` — 50 de fișiere de test, 541 de teste trec; `npm run balance`, tabelul apărării neschimbat (Amestec 306 s; cu toate întăririle la plafon 336 s).
 - [ ] hotărârea lui Andrei asupra prețurilor noi ale atelierului și a propunerilor pasului 4 (transportul în liniște, transportul cu toate modulele la plafon, reparația la viață plină).
+
+**Explorează galaxia, pasul 4: reparațiile după recenzia modulelor din zbor (21.11.2026).**
+- **Țintele de preț păzite de o rulare, nu de o cifră scrisă de mână:** testul din `src/bots/flightYield.test.ts` rulează măsurătoarea (sectorul 1, semințele 1…10, cam 0,6 s) și verifică țintele pe cifra ieșită; tot el cere ca ea să fie exact `MEASURED` (99 cristale, 32,5 metal), cifra citată de `npm run balance` și de documente. O schimbare de reguli care mută cât aduce un zbor pică acum `npm run check`.
+- **Ce s-a cules:** efectul `took` spune modulul și dacă era deja la treapta 3 (`maxed`), ca banda de sus să poată scrie „Tun e la maxim · +5 cristale”.
+- **Lovitura rachetei se hotărăște la lansare:** o treaptă de Rachete culeasă cât racheta e în aer n-o mai întărește.
+- **Teste noi, purtarea neschimbată:** două lovituri în același pas cu Scutul încărcat consumă doar Scutul; un transport doborât prin atingere lasă tot lucrul de cules; după `down` nu se mai culege nimic.
+- **Propunere** (cifră din prototip, nescrisă mai sus): după o lovitură oprită de Scut, nava are 0,45 s fără lovituri.
+- `npm run balance`: rândul zborului neschimbat, „99 cristale, 32,5 metal”.

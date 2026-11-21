@@ -35,8 +35,8 @@ export interface FlightAsteroid { x: number; y: number; vx: number; vy: number; 
 export interface FlightDrop { kind: 'crystal' | 'metal'; x: number; y: number }
 /** Un lucru de cules lăsat de un transport: un modul sau o reparație. */
 export interface FlightPick { kind: FlightModId | 'repair'; x: number; y: number }
-/** O rachetă în zbor; ținta e `id`-ul unui dușman, −1 fără țintă. */
-export interface FlightMissile { x: number; y: number; vx: number; vy: number; targetId: number }
+/** O rachetă în zbor; ținta e `id`-ul unui dușman, −1 fără țintă; lovitura exploziei e hotărâtă la lansare. */
+export interface FlightMissile { x: number; y: number; vx: number; vy: number; targetId: number; dmg: number }
 export type FlightFx =
   | { kind: 'puff'; what: 'foe' | 'elite' | 'asteroid' | 'shot'; r: number; x: number; y: number; t0: number }   // ceva a căzut sau s-a spart
   | { kind: 'hurt'; x: number; y: number; t0: number }   // nava a fost lovită
@@ -44,7 +44,7 @@ export type FlightFx =
   | { kind: 'beam'; x1: number; y1: number; x2: number; y2: number; t0: number }   // raza Laserului, de la navă la țintă
   | { kind: 'blast'; x: number; y: number; r: number; t0: number }   // explozia unei rachete
   | { kind: 'block'; x: number; y: number; t0: number }   // Scutul a oprit o lovitură
-  | { kind: 'took'; what: FlightModId | 'repair' | 'maxed'; tier: number; t0: number }   // ce s-a cules (pentru banda de sus); `maxed`: un modul deja la treapta 3, +5 cristale
+  | { kind: 'took'; what: FlightModId | 'repair'; tier: number; maxed: boolean; t0: number }   // ce s-a cules (pentru banda de sus); `maxed`: modulul era deja la treapta 3 și a dat cristale
 
 /** Aparițiile care se repetă: dronele, șerpuitoarele, navele grele, asteroizii, transporturile, escorta elitei. */
 export type SpawnKind = 'drone' | 'weaver' | 'gunship' | 'asteroid' | 'cargo' | 'escort'

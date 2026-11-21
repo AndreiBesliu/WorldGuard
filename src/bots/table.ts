@@ -13,7 +13,7 @@ console.log(formatTable(rows))
 // Sub tabel, doar informație: „Amestec” cu toate întăririle din atelier la plafon.
 const mix = rows.find((r) => r.name === 'amestec')!
 console.log(boostedLine(mix.median, measure(POLICIES.find((p) => p.name === 'amestec')!, GUARD, MAX_UPS).median))
-// Zborul: mediana pe semințele 1…10; dacă diferă de `MEASURED`, testul țintelor de preț citește o cifră veche.
+// Zborul: mediana pe semințele 1…10; dacă diferă de `MEASURED`, pică și testul țintelor de preț (`src/bots/flightYield.test.ts`).
 const got = flightYield(YIELD_SECTOR, YIELD_SEEDS), num = (n: number): string => String(n).replace('.', ',')
 const stale = got.crystal !== MEASURED.crystal || got.metal !== MEASURED.metal
 console.log(`Zbor, sectorul ${YIELD_SECTOR}, navă condusă de script: ${num(got.crystal)} cristale, ${num(got.metal)} metal`
