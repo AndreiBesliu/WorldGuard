@@ -33,13 +33,16 @@ export const FLIGHT = {
     foeHit: { x: 3, y: 6 },                  // cât de larg prinde un proiectil un dușman, peste raza lui (în lățime, în înălțime)
     asteroidHit: { x: 2, y: 5 },             // la fel, pentru un asteroid
   },
+  // `keepsAway`: nu trage la mai puțin de `foe.fireGap` deasupra navei, nici după ce a trecut de ea. Doar cei care trec pe lângă
+  // navă; nava grea și elita stau sus și trag oricât de aproape ar urca nava (propunere, R2).
   foes: {
-    drone: { r: 13, hp: 14, vy: 95, fire: 1.7, drop: 1 },
-    weaver: { r: 13, hp: 20, vy: 75, fire: 2.1, drop: 1, amp: 70, freq: 1.6, edge: 16 },   // șerpuiește ±`amp`, cu `freq` radiani pe secundă
-    gunship: { r: 20, hp: 70, vy: 60, fire: 1.9, drop: 4, stopAt: 0.2, roam: 32, roamEdge: 50, stay: 9, leave: 130 },
-    cargo: { r: 17, hp: 34, vy: 62, fire: 0, drop: 0 },
+    drone: { r: 13, hp: 14, vy: 95, fire: 1.7, drop: 1, keepsAway: true },
+    weaver: { r: 13, hp: 20, vy: 75, fire: 2.1, drop: 1, keepsAway: true, amp: 70, freq: 1.6, edge: 16 },   // șerpuiește ±`amp`, cu `freq` radiani pe secundă
+    gunship: { r: 20, hp: 70, vy: 60, fire: 1.9, drop: 4, keepsAway: false, stopAt: 0.2, roam: 32, roamEdge: 50, stay: 9, leave: 130 },
+    cargo: { r: 17, hp: 34, vy: 62, fire: 0, drop: 0, keepsAway: false },
     elite: {
-      r: 34, hp: 1400, vy: 45, fire: 1.3, drop: 24,
+      r: 34, hp: 1400, vy: 45, fire: 1.3, drop: 24, keepsAway: false,
+      pattern: ['ring', 'burst', 'burst'],   // tiparul focului, în cerc; între două salve la rând, `burstGap`, altfel `fire`
       stopAt: 0.17,                          // coboară până la 17% din înălțime, apoi se leagănă
       swayFreq: 0.55, swayAmp: 105,          // leagănul, în jurul mijlocului câmpului
       ring: 14, ringAngry: 18, spin: 0.22,   // cercul de proiectile și cât se rotește de la un cerc la altul, radiani
@@ -53,7 +56,7 @@ export const FLIGHT = {
     jitter: 0.85, jitterSpan: 0.3,           // pauza dintre focuri × între `jitter` și `jitter` + `jitterSpan` (nu la elită)
     fireTop: 24,                             // nu trage cât e mai sus de atât (abia a intrat în câmp)
     fireLow: 0.62,                           // nici sub 62% din înălțime
-    fireGap: 110,                            // nici la mai puțin de atât deasupra navei (sau după ce a trecut de ea)
+    fireGap: 110,                            // cei cu `keepsAway`: nici la mai puțin de atât deasupra navei (sau după ce a trecut de ea)
     touch: 0.75,                             // o navă dușmană atinge nava ta la `touch` × raza ei + raza punctului
     bump: 12,                                // lovitura pe care o primește o navă dușmană (nu elita) când o atinge pe a ta
     gone: 50,                                // iese din joc la atât sub câmp
@@ -81,7 +84,8 @@ export const FLIGHT = {
     hpPerR: 1.5,                             // viața: raza × `hpPerR`
     shape: 8, shapeMin: 0.78, shapeSpan: 0.32,   // conturul: 8 raze, fiecare între 0,78 și 1,1 din rază
     touch: 0.85,                             // atinge nava la `touch` × raza lui + raza punctului
-    big: 19,                                 // peste raza asta lasă 2 de metal, altfel 1
+    big: 19,                                 // peste raza asta e mare
+    metal: { small: 1, big: 2 },             // cât metal lasă spart, mic sau mare
     gone: 40,                                // iese din joc la atât în afara câmpului
     y: 4,                                    // intră la raza lui + atât deasupra câmpului
   },

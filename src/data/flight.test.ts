@@ -6,6 +6,12 @@ describe('cifrele zborului', () => {
     expect(FLIGHT.field).toEqual({ w: 390, h: 680 })
     expect([FLIGHT.sectorSecs, FLIGHT.eliteDelay, FLIGHT.lootSecs]).toEqual([170, 2.5, 3.4])
   })
+  it('tiparul elitei, metalul asteroizilor și cine ține seama de distanța până la navă stau în date', () => {
+    expect(FLIGHT.foes.elite.pattern).toEqual(['ring', 'burst', 'burst'])
+    expect(FLIGHT.asteroid.metal).toEqual({ small: 1, big: 2 })
+    const keeps = (['drone', 'weaver', 'gunship', 'cargo', 'elite'] as const).map((k) => FLIGHT.foes[k].keepsAway)
+    expect(keeps).toEqual([true, true, false, false, false])
+  })
   it('sectorul 1 e cel din prototip: totul ×1', () => {
     expect(sectorScale(1)).toEqual({ hp: 1, pace: 1, elite: 1, loot: 1 })
   })

@@ -17,8 +17,9 @@ export function shipBounds(): { x0: number; x1: number; y0: number; y1: number }
  */
 export function driveShip(f: FlightState, input: FlightInput): void {
   const s = f.ship, b = shipBounds(), d = FLIGHT.drive
-  s.rx = clamp(s.x + s.rx + input.dx * d.gain, b.x0, b.x1) - s.x
-  s.ry = clamp(s.y + s.ry + input.dy * d.gain, b.y0, b.y1) - s.y
+  const dx = Number.isFinite(input.dx) ? input.dx : 0, dy = Number.isFinite(input.dy) ? input.dy : 0   // NaN ar strica nava pentru totdeauna
+  s.rx = clamp(s.x + s.rx + dx * d.gain, b.x0, b.x1) - s.x
+  s.ry = clamp(s.y + s.ry + dy * d.gain, b.y0, b.y1) - s.y
   const dist = Math.hypot(s.rx, s.ry), max = d.max * DT
   if (dist <= max) {
     s.x += s.rx; s.y += s.ry; s.rx = 0; s.ry = 0

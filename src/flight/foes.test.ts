@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { FLIGHT } from '../data/flight'
 import { createFlight, eliteOf, type FlightState } from './state'
 import { stepFlight } from './step'
-import { STILL, addFoe, flyFor, quietFlight, shipAt, untouchable } from './testkit'
+import { shipBounds } from './ship'
+import { STILL, addFoe, flyFor, quietFlight, shipAt, shotAt, untouchable } from './testkit'
 
 const { w, h } = FLIGHT.field
 
@@ -82,17 +83,37 @@ describe('dușmanii', () => {
     flyFor(f, 9)
     expect(foe.y).toBeGreaterThan(h * 0.2 + 100)
   })
-  it('un dușman nu trage la mai puțin de 110 unități deasupra navei, nici sub 62% din înălțime', () => {
-    const fire = (shipY: number, foeY: number): number => {
+  it('drona și șerpuitoarea nu trag la mai puțin de 110 unități deasupra navei; niciun dușman nu trage sub 62% din înălțime', () => {
+    const fire = (kind: 'drone' | 'weaver' | 'gunship', shipY: number, foeY: number): number => {
       const f = quietFlight()
       shipAt(f, 30, shipY)
-      addFoe(f, 'drone', 300, foeY, { fireT: 0 })
+      addFoe(f, kind, 300, foeY, { fireT: 0, ph: 0 })
       flyFor(f, 0.5)
       return f.shots.length
     }
-    expect(fire(646, 300)).toBe(1)                          // departe, sus: trage
-    expect(fire(400, 300)).toBe(0)                          // la 100 deasupra navei
-    expect(fire(646, h * 0.62 + 5)).toBe(0)                 // sub 62% din înălțime
+    for (const kind of ['drone', 'weaver'] as const) {
+      expect(fire(kind, 646, 300)).toBe(1)                  // departe, sus: trage
+      expect(fire(kind, 400, 300)).toBe(0)                  // la 100 deasupra navei
+      expect(fire(kind, 400, 400)).toBe(0)                  // în dreptul ei, apoi trecută de ea
+    }
+    for (const kind of ['drone', 'weaver', 'gunship'] as const) expect(fire(kind, 646, h * 0.62 + 5)).toBe(0)
+  })
+  it('nava grea oprită sus și nava de elită trag și când nava e lipită de marginea de sus', () => {
+    const top = shipBounds().y0
+    const g = quietFlight()
+    shipAt(g, 195, top)
+    addFoe(g, 'gunship', 195, h * FLIGHT.foes.gunship.stopAt, { fireT: 0 })
+    untouchable(g)
+    stepFlight(g, STILL)
+    expect(g.shots).toHaveLength(3)
+    const e = quietFlight()
+    shipAt(e, 195, top)
+    untouchable(e)
+    const elite = addFoe(e, 'elite', w / 2, h * FLIGHT.foes.elite.stopAt, { fireT: 0 })
+    e.eliteId = elite.id
+    stepFlight(e, STILL)
+    expect(e.shots).toHaveLength(FLIGHT.foes.elite.ring)
+    expect(e.ship.y - elite.y).toBeLessThan(FLIGHT.foe.fireGap)
   })
   it('focul: drona trage drept în jos cu 185, șerpuitoarea spre navă cu 170, nava grea trei în evantai cu 160', () => {
     const shots = (kind: 'drone' | 'weaver' | 'gunship') => {
@@ -163,6 +184,24 @@ describe('ce lasă în urmă', () => {
     expect(n / 40).toBeGreaterThan(5.2)
     expect(n / 40).toBeLessThan(6)
   })
+  it('un asteroid mare spart lasă 2 de metal', () => {
+    const f = quietFlight()
+    f.asteroids.push({ x: 200, y: 300, vx: 0, vy: 0, r: FLIGHT.asteroid.big + 1, rot: 0, vr: 0, hp: 0.1, hitT: -9, shape: [1, 1, 1, 1, 1, 1, 1, 1] })
+    f.bolts.push({ x: 200, y: 300, vx: 0 })
+    stepFlight(f, STILL)
+    expect(f.drops.filter((d) => d.kind === 'metal')).toHaveLength(2)
+  })
+  it('un asteroid ieșit din câmp, pe jos sau în lături, e scos din stare', () => {
+    const f = quietFlight()
+    const asteroid = (x: number, y: number, vx: number, vy: number) =>
+      ({ x, y, vx, vy, r: 15, rot: 0, vr: 0, hp: 22, hitT: -9, shape: [1, 1, 1, 1, 1, 1, 1, 1] })
+    const out = FLIGHT.asteroid.gone
+    f.asteroids.push(asteroid(30, h + out - 0.5, 0, 60), asteroid(-out + 0.5, 100, -60, 0), asteroid(w + out - 0.5, 100, 60, 0), asteroid(100, 100, 0, 0))
+    stepFlight(f, STILL)
+    expect(f.asteroids).toHaveLength(1)
+    expect([f.asteroids[0]!.x, f.asteroids[0]!.y]).toEqual([100, 100])
+    expect(f.drops).toEqual([])
+  })
   it('un asteroid care atinge nava o lovește și dispare fără să lase metal', () => {
     const f = quietFlight()
     f.asteroids.push({ x: f.ship.x, y: f.ship.y - 10, vx: 0, vy: 0, r: 15, rot: 0, vr: 0, hp: 22, hitT: -9, shape: [1, 1, 1, 1, 1, 1, 1, 1] })
@@ -214,6 +253,41 @@ describe('nava de elită și sfârșitul', () => {
     const frozen = JSON.stringify(f)
     flyFor(f, 1, { dx: 30, dy: 30 })
     expect(JSON.stringify(f)).toBe(frozen)
+  })
+  describe('a cincea lovitură în pasul în care cade nava de elită', () => {
+    /** Nava cu o singură viață, elita pe moarte, cu un proiectil al Tunului în ea: cade în pasul următor. */
+    const setup = (): FlightState => {
+      const f = quietFlight()
+      shipAt(f, w / 2, 600)
+      f.ship.hp = 1
+      const elite = addFoe(f, 'elite', w / 2, 200, { fireT: 99, hp: 0.1 })
+      f.eliteId = elite.id
+      f.bolts.push({ x: w / 2, y: 200, vx: 0 })
+      return f
+    }
+    it('din atingerea unei nave dușmane: câștigă căderea navei tale (`down`)', () => {
+      const f = setup()
+      addFoe(f, 'drone', w / 2, 590, { fireT: 99 })
+      stepFlight(f, STILL)
+      expect(eliteOf(f)).toBeNull()
+      expect(f.mode).toBe('down')
+    })
+    it('de la un asteroid: tot `down`', () => {
+      const f = setup()
+      f.asteroids.push({ x: w / 2, y: 595, vx: 0, vy: 0, r: 15, rot: 0, vr: 0, hp: 22, hitT: -9, shape: [1, 1, 1, 1, 1, 1, 1, 1] })
+      stepFlight(f, STILL)
+      expect(eliteOf(f)).toBeNull()
+      expect(f.mode).toBe('down')
+    })
+    it('de la un proiectil dușman: câștigă elita doborâtă (proiectilul dispare odată cu ea), apoi `explored`', () => {
+      const f = setup()
+      shotAt(f, f.ship.x, f.ship.y)
+      stepFlight(f, STILL)
+      expect(eliteOf(f)).toBeNull()
+      expect([f.mode, f.ship.hp]).toEqual(['flying', 1])
+      flyFor(f, FLIGHT.lootSecs + 0.1)
+      expect(f.mode).toBe('explored')
+    })
   })
   it('când cade elita, proiectilele dușmane dispar, iar nava nu mai poate fi lovită cât strânge', () => {
     const f = quietFlight()

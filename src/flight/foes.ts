@@ -143,7 +143,8 @@ export function hitAsteroid(f: FlightState, a: FlightAsteroid, dmg: number): voi
   a.hitT = f.t
   if (a.hp > EPS) return
   f.fx.push({ kind: 'puff', what: 'asteroid', r: a.r * FLIGHT.fx.asteroidPuff, x: a.x, y: a.y, t0: f.t })
-  scatter(f, 'metal', a.x, a.y, a.r > FLIGHT.asteroid.big ? 2 : 1, FLIGHT.drops.spread.asteroid)
+  const metal = FLIGHT.asteroid.metal
+  scatter(f, 'metal', a.x, a.y, a.r > FLIGHT.asteroid.big ? metal.big : metal.small, FLIGHT.drops.spread.asteroid)
 }
 
 function shoot(f: FlightState, x: number, y: number, ang: number, speed: number): void {
@@ -154,16 +155,16 @@ function shoot(f: FlightState, x: number, y: number, ang: number, speed: number)
 function fire(f: FlightState, foe: FlightFoe): void {
   const s = f.ship, sh = FLIGHT.shot, toShip = Math.atan2(s.y - foe.y, s.x - foe.x)
   if (foe.kind === 'elite') {
-    const e = FLIGHT.foes.elite, angry = foe.hp < foe.maxHp / 2, pause = e.fire * (angry ? e.angry : 1), step = foe.pat % 3
-    if (step === 0) {
+    const e = FLIGHT.foes.elite, angry = foe.hp < foe.maxHp / 2, pause = e.fire * (angry ? e.angry : 1)
+    const now = e.pattern[foe.pat % e.pattern.length], then = e.pattern[(foe.pat + 1) % e.pattern.length]
+    if (now === 'ring') {
       const n = angry ? e.ringAngry : e.ring
       foe.spin += e.spin
       for (let i = 0; i < n; i++) shoot(f, foe.x, foe.y, foe.spin + (i / n) * TAU, sh.ring)
-      foe.fireT = pause
     } else {
       for (const a of sh.burstSpread) shoot(f, foe.x, foe.y + foe.r * sh.burstFrom, toShip + a, sh.burst)
-      foe.fireT = step === 1 ? e.burstGap : pause
     }
+    foe.fireT = now === 'burst' && then === 'burst' ? e.burstGap : pause
     foe.pat += 1
     return
   }
@@ -216,7 +217,7 @@ export function updateFoes(f: FlightState): void {
     if (foe.hp <= EPS) continue
     move(foe)
     const canFire = foe.kind !== 'cargo' && f.mode === 'flying' && f.exploreAt < 0
-      && foe.y > c.fireTop && foe.y < h * c.fireLow && s.y - foe.y > c.fireGap
+      && foe.y > c.fireTop && foe.y < h * c.fireLow && (!FLIGHT.foes[foe.kind].keepsAway || s.y - foe.y > c.fireGap)
     if (canFire) {
       foe.fireT -= DT
       if (foe.fireT <= EPS) fire(f, foe)

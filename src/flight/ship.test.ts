@@ -38,6 +38,21 @@ describe('condusul', () => {
     expect(f.ship.x - x0).toBeCloseTo(120, 9)
     expect(f.ship.y).toBe(y0)
   })
+  it('o mișcare care nu e număr finit (NaN, ±Infinity) se ia drept 0: nava rămâne întreagă și trece prin JSON', () => {
+    const f = quietFlight()
+    const bad = [NaN, Infinity, -Infinity]
+    for (let i = 0; i < 100; i++) stepFlight(f, { dx: bad[i % 3]!, dy: bad[(i + 1) % 3]! })
+    expect(Number.isFinite(f.ship.x) && Number.isFinite(f.ship.y)).toBe(true)
+    expect(Number.isFinite(f.ship.rx) && Number.isFinite(f.ship.ry)).toBe(true)
+    expect([f.ship.x, f.ship.y]).toEqual([FLIGHT.field.w / 2, FLIGHT.field.h * 0.8])
+    const copy = JSON.parse(JSON.stringify(f)) as typeof f
+    stepFlight(f, { dx: 10, dy: NaN }); stepFlight(copy, { dx: 10, dy: NaN })
+    expect(JSON.stringify(copy)).toBe(JSON.stringify(f))
+    expect(f.ship.x).toBeCloseTo(FLIGHT.field.w / 2 + 12, 9)
+    shotAt(f, f.ship.x, f.ship.y)
+    stepFlight(f, { dx: NaN, dy: NaN })
+    expect(f.ship.hp).toBe(4)                                 // tot poate fi lovită
+  })
   it('după oprirea la margine, o mișcare înapoi mișcă nava în același pas', () => {
     const f = quietFlight()
     stepFlight(f, { dx: 1000, dy: 0 })
