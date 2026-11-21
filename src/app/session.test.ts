@@ -152,4 +152,33 @@ it('o partidă obișnuită pornește ca înainte: nivelul 1, doar Unda la treapt
   expect(x.s.hero).toEqual(createGame(7).hero)
   expect([x.s.hero.lvl, x.s.hero.mods.map((m) => [m.id, m.tier])]).toEqual([1, [['wave', 1]]])
 })
+it('„Înapoi la start” din pauză: sesiunea nu mai e în pauză, salvarea de la pauză rămâne singura scriere, iar partida nu mai merge', () => {
+  const { d, calls, saved } = deps(); const x = createSession(d, 5); x.start(7, false); x.advance(60, still)
+  x.pause()
+  expect(x.leave()).toBe(true)
+  expect([x.phase, calls]).toEqual(['ready', ['clear', 'save']])
+  expect(saved[0]!.tick).toBe(60)
+  expect(x.unpause()).toBe(false)
+  expect(x.advance(60, still)).toBeNull(); expect(x.s.tick).toBe(60)
+  expect(x.leave()).toBe(false)
+})
+it('„Înapoi la start” de la sfârșit: sesiunea trece pe start fără să mai scrie ceva', () => {
+  const { d, calls } = deps(); const x = createSession(d, 5); x.start(7, false)
+  x.s.core.hp = 0
+  expect(x.advance(1, still)).not.toBeNull()
+  const before = [...calls]
+  expect(x.leave()).toBe(true)
+  expect([x.phase, calls]).toEqual(['ready', before])
+})
+it('„Înapoi la start” nu face nimic cât partida e în curs sau pe start', () => {
+  const { d } = deps(); const x = createSession(d, 5)
+  expect(x.leave()).toBe(false)
+  x.start(7, false)
+  expect([x.leave(), x.phase]).toEqual([false, 'playing'])
+})
+it('testul de viteză pus pe pauză și lăsat: nicio salvare', () => {
+  const { d, calls } = deps(); const x = createSession(d, 5); x.start(7, true); x.advance(10, still)
+  x.pause()
+  expect([x.leave(), x.phase, calls]).toEqual([true, 'ready', []])
+})
 })

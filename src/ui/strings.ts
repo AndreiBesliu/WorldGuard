@@ -127,7 +127,7 @@ export const STR: Strings = {
   upName: { hull: 'Carenă', arms: 'Armament', reach: 'Colectare', core: 'Planetă', kit: 'Arsenal de pornire' },
   upText: {
     hull: 'Nava are mai multă viață.',
-    arms: 'Toate armele lovesc mai tare.',
+    arms: 'Armele navei lovesc mai tare.',
     reach: 'Strângi resurse de mai departe.',
     core: 'Planeta are mai multă viață.',
   },

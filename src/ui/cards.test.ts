@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { startView, stepSector } from './cards'
+import { FLIGHT } from '../data/flight'
+import { firstSector, sectorAfter, startView, stepSector } from './cards'
 import { STR } from './strings'
 
 describe('cartonașul de start, cu și fără partidă salvată', () => {
@@ -31,6 +32,17 @@ describe('alegerea sectorului de pe cartonașul de start', () => {
     expect(s).toBe(6)
     for (let i = 0; i < 50; i++) s = stepSector(s, -1, 5)
     expect(s).toBe(1)
+  })
+  it(`nu trece de plafonul sectorului (${FLIGHT.sectorCap}), oricât de departe ar fi explorat`, () => {
+    expect(stepSector(FLIGHT.sectorCap, 1, FLIGHT.sectorCap)).toBe(FLIGHT.sectorCap)
+    expect(stepSector(FLIGHT.sectorCap - 1, 1, FLIGHT.sectorCap - 1)).toBe(FLIGHT.sectorCap)
+    expect(stepSector(5, 1, Number.MAX_SAFE_INTEGER)).toBe(6)
+    expect(stepSector(Number.MAX_SAFE_INTEGER, -1, Number.MAX_SAFE_INTEGER)).toBe(FLIGHT.sectorCap)
+  })
+  it('sectorul propus pe start (cel mai departe plus unu) și cel de după un zbor, în plafon', () => {
+    expect([firstSector(0), firstSector(4), firstSector(FLIGHT.sectorCap)]).toEqual([1, 5, FLIGHT.sectorCap])
+    expect([sectorAfter(3, true), sectorAfter(3, false)]).toEqual([4, 3])
+    expect(sectorAfter(FLIGHT.sectorCap, true)).toBe(FLIGHT.sectorCap)
   })
   it('un sector de pornire în afara marginilor (profil schimbat între timp) e adus înăuntru', () => {
     expect(stepSector(9, -1, 2)).toBe(3)

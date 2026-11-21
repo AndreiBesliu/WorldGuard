@@ -96,7 +96,7 @@ describe('ce cumpără, pe rând', () => {
     expect(nextPad(s, buy)).toBeNull()
     expect(nextPad(s, [])).toBeNull()
   })
-  it('plata care curge se termină: nava devine gata la mijlocul plății unei turele, ținta rămâne turela (R7)', () => {
+  it('plata care curge se termină: nava devine gata la mijlocul plății unei turele, ținta rămâne turela', () => {
     const s = createGame(1), buy = pol('amestec').buy, t = onPad(s, padOf(s, 'turret', 0))
     s.crystal = 30; s.metal = 30
     t.paid = { crystal: 5, metal: 0 }
@@ -107,7 +107,7 @@ describe('ce cumpără, pe rând', () => {
     t.lvl = 1; t.paid = { crystal: 0, metal: 0 }; t.dwell = -BALANCE.pay.restAfterLevel   // nivelul turelei s-a încheiat, ca în `finishLevel`
     expect(nextPad(s, buy)).toBe(padOf(s, 'hero'))
   })
-  it('plata care curge se oprește când stocul nu mai poate plăti nimic din ce a rămas (R7)', () => {
+  it('plata care curge se oprește când stocul nu mai poate plăti nimic din ce a rămas', () => {
     const s = createGame(1), buy = pol('amestec').buy, t = onPad(s, padOf(s, 'turret', 0))
     t.paid = { crystal: 5, metal: 0 }; s.hero.xp = 6
     s.crystal = 25; s.metal = 10
@@ -115,7 +115,7 @@ describe('ce cumpără, pe rând', () => {
     t.lvl = 1; t.paid = { crystal: 0, metal: 15 }; s.crystal = 0   // nivelul 2: rămân 35 de cristale, stocul n-are niciunul
     expect(nextPad(s, buy)).toBe(padOf(s, 'collector'))             // fără plata ținută: rândul, adică economia
   })
-  it('plata care curge nu se mută nici când nava trece pragul fără să fie plătibilă (R7)', () => {
+  it('plata care curge nu se mută nici când nava trece pragul fără să fie plătibilă', () => {
     const s = createGame(1), buy = pol('amestec').buy
     padOf(s, 'turret', 0).lvl = 1; padOf(s, 'collector').lvl = 1   // rândul navei, nava nu e gata: turela a doua
     const t = onPad(s, padOf(s, 'turret', 1)); t.paid = { crystal: 3, metal: 0 }; s.crystal = 10; s.metal = 0
@@ -125,7 +125,7 @@ describe('ce cumpără, pe rând', () => {
     t.dwell = 0                                      // a ieșit din cerc
     expect(nextPad(s, buy)).toBe(padOf(s, 'hero'))
   })
-  it('ținută la o turelă, plata cedează în fața luptei; ținută la cercul navei gata, nu (R7)', () => {
+  it('ținută la o turelă, plata cedează în fața luptei; ținută la cercul navei gata, nu', () => {
     const s = createGame(1), t = onPad(s, padOf(s, 'turret', 0)); s.crystal = 30; s.metal = 30
     const f = addFoe(s, CORE.x + 100, CORE.y)
     expect(chooseGoal(s, pol('amestec'))).toEqual({ kind: 'fight', foe: f })
@@ -138,7 +138,7 @@ describe('ce cumpără, pe rând', () => {
     t.dwell = BALANCE.pay.dwell - 1 / 60; s.crystal = 30; s.metal = 30; s.hero.xp = 6
     expect(nextPad(s, buy)).toBe(padOf(s, 'hero'))
   })
-  it('un cerc din afara categoriilor purtării nu e ținut; fără nimic de cumpărat, null (R8)', () => {
+  it('un cerc din afara categoriilor purtării nu e ținut; fără nimic de cumpărat, null', () => {
     const s = createGame(1); s.crystal = 30; s.metal = 30; s.hero.xp = 6
     onPad(s, padOf(s, 'hero')); padOf(s, 'hero').paid = { crystal: 3, metal: 0 }
     expect(nextPad(s, pol('amestec').buy)).toBe(padOf(s, 'hero'))
@@ -217,7 +217,7 @@ describe('ce face la fiecare pas', () => {
     padOf(h, 'hero').paid = { crystal: 10, metal: 10 }   // a rămas de plătit: 15 cristale
     expect(chooseGoal(h, pol('doar-nava'))).toEqual({ kind: 'pay', pad: padOf(h, 'hero') })
   })
-  it('nava gata și plătibilă: plata la cercul navei trece înaintea luptei (R4)', () => {
+  it('nava gata și plătibilă: plata la cercul navei trece înaintea luptei', () => {
     const s = createGame(1); s.crystal = 999; s.metal = 999; s.hero.xp = 6
     addFoe(s, CORE.x + 100, CORE.y)
     expect(chooseGoal(s, pol('amestec'))).toEqual({ kind: 'pay', pad: padOf(s, 'hero') })

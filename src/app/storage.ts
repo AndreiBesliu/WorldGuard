@@ -60,15 +60,35 @@ export function clearGame(store?: Store | null): void {
 
 export const PROFILE_KEY = 'wg.v1.profile'
 
-/** Profilul jucătorului (rezerva și atelierul); lipsă, stricat sau stocare blocată dau profil gol. Unul stricat nu se șterge: următoarea salvare îl înlocuiește. */
+const copyProfile = (p: Profile): Profile => ({ ...p, ups: { ...p.ups } })
+
+/**
+ * Ultimul profil scris, ținut și în memorie cât e pagina deschisă, cu stocarea în care s-a scris și dacă a ajuns acolo (`ahead`:
+ * nu a ajuns, deci memoria e mai nouă decât stocarea). Cu stocarea refuzată, bucla zbor → rezervă → atelier merge așa măcar o ședință.
+ */
+let kept: { store: Store | null; p: Profile; ahead: boolean } | null = null
+
+/**
+ * Profilul jucătorului (rezerva și atelierul). Stocarea e adevărul când se poate citi și ultima scriere a ajuns în ea (așa se vede
+ * și ce a scris altă filă); altfel, ultimul profil scris, din memorie. Lipsă sau stricat dau profil gol; unul stricat nu se șterge:
+ * următoarea salvare îl înlocuiește.
+ */
 export function loadProfile(store?: Store | null): Profile {
+  const s = store === undefined ? pageStore() : store
+  const mine = kept !== null && kept.store === s ? kept : null
+  if (mine !== null && (mine.ahead || s === null)) return copyProfile(mine.p)
   try {
-    const s = store === undefined ? pageStore() : store
-    const r = unpackProfile(s?.getItem(PROFILE_KEY))
+    if (s === null) return emptyProfile()
+    const r = unpackProfile(s.getItem(PROFILE_KEY))
     return r.ok ? r.value : emptyProfile()
-  } catch { return emptyProfile() }
+  } catch { return mine !== null ? copyProfile(mine.p) : emptyProfile() }
 }
 
 export function saveProfile(p: Profile, store?: Store | null): void {
-  try { (store === undefined ? pageStore() : store)?.setItem(PROFILE_KEY, packProfile(p)) } catch { /* fără păstrare, dar jocul merge */ }
+  const s = store === undefined ? pageStore() : store
+  let ahead = true
+  try {
+    if (s !== null) { s.setItem(PROFILE_KEY, packProfile(p)); ahead = false }
+  } catch { /* fără păstrare în stocare: rămâne în memorie, iar jocul merge */ }
+  kept = { store: s, p: copyProfile(p), ahead }
 }

@@ -123,8 +123,11 @@ function pick(i: number): void {
   playing()
 }
 
+/** S-a jucat deja o partidă în pagina asta: atunci „Apără planeta” pornește cu sămânță nouă (cu `?seed=`, tot aceea), nu a doua oară aceeași. */
+let played = false
 function begin(seed: number, stress: boolean): void {
   mode = 'defense'
+  played = true
   session.start(seed, stress)
   saved = null                                  // „Continuă partida” nu mai e de oferit; din stocare sesiunea o șterge doar la o partidă obișnuită, nu și în testul de viteză
   fps = null; fpsFrames = 0; fpsTime = 0
@@ -154,10 +157,16 @@ function fly(sector: number): void {
   fm.begin(freshSeed(), sector)
   playing()                                     // `playing` lasă degetul (și mișcarea strânsă) și cere ecranul aprins
 }
-/** Înapoi la cartonașul de start (din zbor: „Renunță la zbor” sau „Înapoi la start”), cu rezerva citită acum și sectorul propus. */
+/**
+ * Înapoi la cartonașul de start, cu rezerva citită acum și sectorul propus: din zbor („Renunță la zbor”, „Înapoi la start”) și din
+ * apărare („Înapoi la start” din pauză sau de la final). Apărarea nu mai e în pauză (deci zborul și atelierul pornesc), iar partida
+ * salvată (de pauză) se citește din nou din stocare, pentru „Continuă partida”.
+ */
 function home(): void {
   if (mode === 'flight') fm.end()
   mode = 'defense'
+  session.leave()
+  saved = loadGame()
   stopped()
   cards.showStart({ saved: saved === null ? null : { secs: Math.floor(saved.t) }, ...fm.startCard() })
 }
@@ -191,14 +200,15 @@ function ended(r: OverInfo): void {
 }
 
 const cards = createCards(document, {
-  defend: () => begin(session.s.seed, false),   // prima partidă folosește sămânța deja așezată în zona de joc
+  defend: () => begin(played ? freshSeed() : session.s.seed, false),   // prima partidă folosește sămânța deja așezată în zona de joc
   continue() {
     if (saved === null) return
     session.resume(saved)
     saved = null
+    played = true
     playing()
   },
-  stress: () => begin(session.s.seed, true),
+  stress: () => begin(played ? freshSeed() : session.s.seed, true),
   again: () => begin(Date.now() >>> 0, false),
   pause,
   resume: unpause,
@@ -228,7 +238,14 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', pause)
 canvas.addEventListener('contextrestored', redraw)
 
-function resize(): void { const b = hud.bottom(); renderer.resize(b); flightView.resize(b); redraw() }
+// Cu scara câmpului schimbată (ecranul rotit, fereastra mărită), degetul ținut pe ecran e lăsat: poziția lui veche e la scara veche,
+// iar următoarea mișcare ar arunca nava.
+function resize(): void {
+  const b = hud.bottom(), was = flightView.scale()
+  renderer.resize(b); flightView.resize(b)
+  if (flightView.scale() !== was) input.release()
+  redraw()
+}
 const sizes = new ResizeObserver(resize)
 sizes.observe(stage)
 sizes.observe(document.getElementById('hud') as HTMLElement)      // banda crește când apare textul fps, se schimbă un font sau vine banda zborului

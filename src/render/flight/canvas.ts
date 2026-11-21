@@ -1,6 +1,6 @@
 // Desenatorul zborului: mărimea canvasului, așezarea câmpului pe ecran și cerul. Citește starea, nu o scrie.
-// Câmpul (`FLIGHT.field`) stă sub banda de sus, lipit de marginea de jos, la scara cea mai mare la care încape întreg;
-// pe un ecran mai înalt se vede cer în plus deasupra, pe unul prea scund rămân fâșii de cer în lături. Regulile nu știu de ecran.
+// Câmpul (`FLIGHT.field`) stă lipit de banda de sus, la scara cea mai mare la care încape întreg, deci dușmanii ies de sub bandă;
+// pe un ecran mai înalt se vede cer în plus dedesubt, pe unul prea scund rămân fâșii de cer în lături. Regulile nu știu de ecran.
 import { FLIGHT } from '../../data/flight'
 import { WORLD } from '../../data/layout'
 import type { FlightState } from '../../flight/state'
@@ -10,12 +10,13 @@ import { drawFlight, type Area } from './scene'
 /** Așezarea câmpului: pixeli de ecran pe unitate de câmp și colțul de sus-stânga al câmpului, în pixeli de ecran. */
 export interface Fit { scale: number; x: number; y: number }
 
-/** Câmpul întreg sub bandă (`hudBottom`, px de la marginea de sus a canvasului), lipit de jos și pe mijloc în lățime. */
+/** Câmpul întreg sub bandă (`hudBottom`, px de la marginea de sus a canvasului), lipit de ea și pe mijloc în lățime. */
 export function fitField(w: number, h: number, hudBottom: number): Fit {
   const { w: FW, h: FH } = FLIGHT.field
   const k = Math.min(w / FW, (h - hudBottom) / FH)
   const scale = Number.isFinite(k) && k > 0 ? k : 1
-  return { scale, x: (w - FW * scale) / 2, y: h - FH * scale }
+  const x = (w - FW * scale) / 2
+  return { scale, x: Number.isFinite(x) ? x : 0, y: Number.isFinite(hudBottom) ? hudBottom : 0 }
 }
 
 // Cerul pictat al apărării e mult mai mare decât câmpul: zborul ia bucata din mijlocul lui, departe de marginile care se întunecă.

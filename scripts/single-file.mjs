@@ -35,7 +35,10 @@ const body = /<body[^>]*>([\s\S]*?)<\/body>/.exec(html)?.[1]
 if (!title || body === undefined) fail('index.html nu are <title> sau <body>')
 const markup = body.replace(scripts[0][0], '').trim()
 
+// Primul rând e codificarea: fără el, fișierul deschis de mână (nu prin pagina care îl îmbracă) își strică diacriticele.
+const CHARSET = '<meta charset="utf-8">'
 const out = [
+  CHARSET,
   `<title>${title}</title>`,
   '<meta name="claude:viewport-fit-sides" content="cover">',
   `<style>${css}</style>`,
@@ -58,6 +61,8 @@ if (leftovers.length > 0) fail(`au rămas referințe spre fișiere: ${leftovers.
 // stau în <head>, din care fragmentul ia doar <title>, deci rămân pe dinafară; aici se verifică asta, la fel și `sw.js`.
 const install = ['manifest.webmanifest', 'icons/icon', 'theme-color', 'sw.js'].filter((s) => out.includes(s))
 if (install.length > 0) fail(`au rămas în fragment urme ale instalării: ${install.join(', ')}`)
+
+if (!out.startsWith(`${CHARSET}\n`)) fail(`fragmentul trebuie să înceapă cu ${CHARSET}`)
 
 const target = join(dir, 'world-guard.html')
 writeFileSync(target, out)

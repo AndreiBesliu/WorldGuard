@@ -69,6 +69,7 @@ describe('textele temei de spațiu', () => {
     expect(STR.upName).toEqual({ hull: 'Carenă', arms: 'Armament', reach: 'Colectare', core: 'Planetă', kit: 'Arsenal de pornire' })
     expect(STR.upText.hull).toBe('Nava are mai multă viață.')
     expect(STR.upText.core).toBe('Planeta are mai multă viață.')
+    expect(STR.upText.arms).toBe('Armele navei lovesc mai tare.')   // turelele nu sunt atinse de Armament
     expect(STR.kitText[0]).toBe('Zborul pornește cu Laserul.')
     expect(STR.buyLabel('Carenă', 50, 10)).toBe('Carenă: 50 cristale, 10 metal')
     expect(STR.buyLabel('Colectare', 40, 0)).toBe('Colectare: 40 cristale')

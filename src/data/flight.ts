@@ -1,7 +1,7 @@
 // Cifrele zborului („Explorează galaxia”). Un număr din regulile zborului scris în afara lui `src/data/` e o greșeală.
 // Unități: secunde, unități de câmp (câmpul e 390 × 680, în picioare), puncte de viață; vitezele, în unități pe secundă.
-// Cifrele din tabelele specului sunt ale lui; restul vin din prototipul de aruncat (`docs/prototip-explorare.html`) și sunt
-// propuneri, ca și mărimea câmpului și formula sectoarelor.
+// Toate sunt propuneri până le vede Andrei în joc, și cele din tabelele specului (alese acolo, nu hotărâte de el): cele mai multe
+// vin din prototipul de aruncat (`docs/prototip-explorare.html`), iar mărimea câmpului și formula sectoarelor sunt adăugate aici.
 
 import type { ModKind } from './modules'
 
@@ -16,6 +16,7 @@ export const FLIGHT_MOD_KIND: Record<FlightModId, ModKind> = { gun: 'weapon', la
 
 export const FLIGHT = {
   field: { w: 390, h: 680 },                 // câmpul de joc, fix (propunere); înălțimile de mai jos sunt fracții din `h`
+  sectorCap: 999,                            // cel mai departe sector (propunere): un profil cu unul mai mare e stricat
   sectorSecs: 170,                           // secunde până nu mai apar dușmani obișnuiți
   eliteDelay: 2.5,                           // după `sectorSecs`, secunde până apare nava de elită
   lootSecs: 3.4,                             // după ce cade nava de elită, secunde de strâns până se încheie zborul
@@ -82,7 +83,8 @@ export const FLIGHT = {
     repair: 0.22, repairLow: 0.5, low: 2,    // cu nava lovită, șansa unei reparații; cu viața cel mult `low`, `repairLow`
   },
   // `keepsAway`: nu trage la mai puțin de `foe.fireGap` deasupra navei, nici după ce a trecut de ea. Doar cei care trec pe lângă
-  // navă; nava grea și elita stau sus și trag oricât de aproape ar urca nava (propunere, R2).
+  // navă; nava grea și elita stau sus și trag oricât de aproape ar urca nava, altfel sub elită ar rămâne o fâșie
+  // în care nava nu poate fi lovită (propunere; în `docs/GDD.md`, „Purtări hotărâte în construcție”).
   foes: {
     drone: { r: 13, hp: 14, vy: 95, fire: 1.7, drop: 1, keepsAway: true },
     weaver: { r: 13, hp: 20, vy: 75, fire: 2.1, drop: 1, keepsAway: true, amp: 70, freq: 1.6, edge: 16 },   // șerpuiește ±`amp`, cu `freq` radiani pe secundă

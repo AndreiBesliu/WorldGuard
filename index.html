@@ -46,11 +46,12 @@
             <span class="xp" id="xpText"></span>
           </div>
         </div>
-        <!-- Banda din zbor: ia locul celei de sus cât se zboară; rândul „ai cules” stă sub ea, fără să-i schimbe înălțimea. -->
+        <!-- Banda din zbor: ia locul celei de sus cât se zboară; rândul „ai cules” stă sub ea, fără să-i schimbe înălțimea.
+             Cristalele și metalul, doar cu semnul și cifra: la 360 px lățime încap și cele 7 vieți ale Carenei la plafon. -->
         <div class="banner fl" id="flightBanner" hidden>
           <div class="fl-row">
-            <div class="stock"><i class="chip chip-crystal"></i><b id="flCrystal"></b><span data-str="crystal"></span></div>
-            <div class="stock"><i class="chip chip-metal"></i><b id="flMetal"></b><span data-str="metal"></span></div>
+            <div class="stock"><i class="chip chip-crystal"></i><b id="flCrystal"></b></div>
+            <div class="stock"><i class="chip chip-metal"></i><b id="flMetal"></b></div>
             <span class="fl-hits" id="flHits"></span>
           </div>
           <div class="fl-row fl-way" id="flWay"><span id="flLabel"></span><span class="fl-track"><i id="flFill"></i></span><span id="flPct"></span></div>
@@ -131,6 +132,7 @@
           <div class="result"><span data-str="pauseSoFar"></span><b id="pauseTime"></b></div>
           <button class="go" id="resume" type="button" data-str="resume"></button>
           <button class="go alt" id="fresh" type="button" data-str="fresh"></button>
+          <button class="go line" id="pauseHome" type="button" data-str="backHome"></button>
         </div>
       </div>
 
@@ -172,6 +174,7 @@
             <div><dt data-str="overKills"></dt><dd id="overKills"></dd></div>
           </dl>
           <button class="go" id="again" type="button" data-str="again"></button>
+          <button class="go line" id="overHome" type="button" data-str="backHome"></button>
         </div>
       </div>
     </div>

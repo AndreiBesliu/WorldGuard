@@ -7,12 +7,15 @@
 // (18) service worker-ul și cache-ul, (19) pornirea fără rețea, apoi (20) pauza și „Continuă” atinse cu al doilea deget, cât primul ține joystickul,
 // și panoul de alegere: (21) apare după plata nivelului și jocul stă, iar o atingere imediat după deschidere, Enter și Spațiu nu aleg, (22) un rând atins alege, (23) pauza și reîncărcarea îl păstrează,
 // (24) tasta 1 alege, iar o atingere începută în afara unui rând nu alege nimic, (25, 26) banda, apoi zborul, pornit cu ?debug=1&zbor=1:
-// (27) nava face mișcarea degetului × 1,2, (28) câmpul se vede întreg sub bandă la 360 × 640 și 390 × 780, (29) pauza la pagina ascunsă,
+// (27) nava face mișcarea degetului × 1,2, (28) câmpul se vede întreg, lipit de bandă, la 360 × 640, 390 × 780 și 412 × 892, (29) pauza la pagina ascunsă,
 // apoi drumul întreg, de pe cartonașe: (30) cartonașul de start cu cele două moduri, rezerva și sectorul, (31) zborul pornit de pe el, banda lui
 // și condusul (al doilea deget, degetul pus din nou, pointercancel), (32) zborul dus la capăt și rezerva, (33) ce s-a strâns ajunge în rezervă
 // exact o dată (reîncărcare, „Renunță la zbor”), (34) partida de apărare salvată rămâne după zboruri, apoi atelierul: (35) se deschide de pe
 // cartonașul de start, o apăsare cumpără o treaptă, două apăsări repezi cumpără una sau două după rezervă, (36) întăririle cumpărate ajung la partida de
-// apărare și la zborul de pe start și de după sfârșitul unui zbor, (37) un profil stricat de mână dă start cu rezerva 0, fără erori; capturile `20-atelier` (390 și 360).
+// apărare și la zborul de pe start și de după sfârșitul unui zbor, (37) un profil stricat de mână dă start cu rezerva 0, fără erori; capturile `20-atelier` (390 și 360);
+// apoi drumul înapoi la start din apărare: (38) de la final, apoi un zbor, (39) din pauză, la 360 × 640, apoi „Continuă partida” reia aceeași partidă,
+// (40) din pauză, apoi atelierul, (41) fără ?seed=, partida de după întoarcere are altă sămânță; (42) banda zborului la 360 cu 7 vieți și cifre de joc,
+// (43) ecranul rotit cu degetul pe el nu aruncă nava, (44) stocarea refuzată: rezerva și atelierul tot merg (capturile 22, 23, 24 și 15-zbor-412).
 // În afara verificărilor: rândurile `SMOKE INFO` (timpul de desen cu 150 de nave, fără module și cu toate cele nouă trăgând; al zborului
 // în clipa cea mai plină) și capturile modulelor pe navă (10, mărită; 12, la scara jocului), a tragerilor (11), a pictogramei
 // Rachetelor (13, 14), ale zborului (15 și 15-zbor-360, 16 cu nava de elită) și ale cartonașelor și benzii lui (17, 18, 19, la 390 și la 360).
@@ -709,9 +712,10 @@ async function main() {
       `mod ${a27.mode}/${b27.fm}, scara ${a27.k.toFixed(4)} px pe unitate, nava (${got27.dx.toFixed(2)}, ${got27.dy.toFixed(2)}), așteptat (${want27.dx.toFixed(2)}, ${want27.dy.toFixed(2)})`)
 
     // 28. câmpul întreg sub bandă, măsurat în pixeli: banda și canvasul din pagină, câmpul din desenator, iar punctul din mijlocul
-    // navei, citit de pe canvas, e acolo unde câmpul spune că e nava
+    // navei, citit de pe canvas, e acolo unde câmpul spune că e nava. Câmpul e lipit de bandă (cel mult 1 px), deci dușmanii ies de
+    // sub ea; pe ecranul înalt (412 × 892) cerul în plus rămâne sub câmp.
     const fit28 = []
-    for (const [w, h] of [[360, 640], [390, 780]]) {
+    for (const [w, h] of [[360, 640], [390, 780], [412, 892]]) {
       await page.setViewportSize({ width: w, height: h })
       await loadFlight()
       const m = await page.evaluate(() => {
@@ -723,13 +727,19 @@ async function main() {
         return { cw: r.width, ch: r.height, band, k, dot: [px[0], px[1], px[2]] }
       })
       const { k } = m, e = 0.5
-      const inside = k.x >= -e && k.x + k.w <= m.cw + e && k.y >= m.band - e && Math.abs(k.y + k.h - m.ch) <= e
-      const largest = Math.abs(k.x) <= e || Math.abs(k.y - m.band) <= e
+      const inside = k.x >= -e && k.x + k.w <= m.cw + e && k.y >= m.band - e && k.y + k.h <= m.ch + e
+      const glued = Math.abs(k.y - m.band) <= 1
+      const largest = Math.abs(k.x) <= e || Math.abs(k.y + k.h - m.ch) <= e
       const dot = Math.abs(m.dot[0] - 241) < 30 && Math.abs(m.dot[1] - 244) < 30 && Math.abs(m.dot[2] - 255) < 30   // `--ink`, punctul de lovit
-      fit28.push({ ok: inside && largest && dot, text: `${w}×${h}: banda până la ${m.band.toFixed(1)} px, câmpul (${k.x.toFixed(1)}, ${k.y.toFixed(1)}) ${k.w.toFixed(1)} × ${k.h.toFixed(1)} px, scara ${k.scale.toFixed(4)}, punctul navei rgb(${m.dot.join(',')})` })
+      fit28.push({ ok: inside && glued && largest && dot, text: `${w}×${h}: banda până la ${m.band.toFixed(1)} px, câmpul (${k.x.toFixed(1)}, ${k.y.toFixed(1)}) ${k.w.toFixed(1)} × ${k.h.toFixed(1)} px, scara ${k.scale.toFixed(4)}, punctul navei rgb(${m.dot.join(',')})` })
       if (w === 360) await shot('15-zbor-360.png')
+      if (w === 412) {                                                     // captura: câteva secunde de zbor, cu dușmanii ieșind de sub bandă
+        await page.evaluate(() => { window.__wg.flight().ship.inv = 1e9; window.__wg.runFlight(6) })
+        await page.waitForTimeout(200)
+        await shot('15-zbor-412.png')
+      }
     }
-    check(28, 'câmpul se vede întreg sub bandă, lipit de jos, la scara cea mai mare, la 360 × 640 și la 390 × 780; nava e pe canvas unde o pune câmpul',
+    check(28, 'câmpul se vede întreg sub bandă, lipit de ea (cel mult 1 px), la scara cea mai mare, la 360 × 640, 390 × 780 și 412 × 892; nava e pe canvas unde o pune câmpul',
       fit28.every((r) => r.ok), fit28.map((r) => r.text).join('; '))
     await page.setViewportSize({ width: 390, height: 780 })
 
@@ -1227,6 +1237,189 @@ async function main() {
     const fit37 = await page.evaluate(() => { const c = document.getElementById('shopCard').getBoundingClientRect(); return { top: c.top, bottom: c.bottom, h: window.innerHeight, scroll: document.getElementById('shopVeil').scrollHeight > document.getElementById('shopVeil').clientHeight } })
     console.log(`SMOKE INFO: 20-atelier-360.png: cartonașul atelierului de la ${fit37.top.toFixed(0)} la ${fit37.bottom.toFixed(0)} din ${fit37.h}, derulare ${fit37.scroll}`)
     await page.evaluate(() => localStorage.removeItem('wg.v1.profile'))
+
+    // Drumul înapoi la start din apărare (38–41). Cartonașele se apasă cu degetul, ca pe telefon.
+    const defenseNow = () => page.evaluate(() => { const s = window.__wg.state(); return { t: s.t, crystal: s.crystal, metal: s.metal, seed: s.seed, phase: window.__wg.phase(), mode: window.__wg.mode() } })
+
+    // 38. de la sfârșitul apărării: „Înapoi la start” (sub „Încă o partidă”) duce la cartonașul de start, iar de acolo „Explorează galaxia” pornește un zbor
+    await page.setViewportSize({ width: 390, height: 780 })
+    await page.evaluate(() => localStorage.clear())
+    await load()
+    await tap('#start')
+    await page.waitForTimeout(300)
+    await page.evaluate(() => window.__wg.run(200))
+    await page.waitForSelector('#overVeil:not([hidden])', { timeout: 3000 }).catch(() => {})
+    await page.waitForTimeout(200)
+    const over38 = { shown: await visible('#overVeil'), again: await txt('#again'), home: await txt('#overHome'),
+      below: await page.evaluate(() => document.getElementById('overHome').getBoundingClientRect().top >= document.getElementById('again').getBoundingClientRect().bottom) }
+    await shot('22-final-aparare.png')
+    await tap('#overHome')
+    await page.waitForTimeout(300)
+    const start38 = { start: await visible('#startVeil'), over: await visible('#overVeil'), phase: await page.evaluate(() => window.__wg.phase()), cont: await visible('#continue'), save: await saveRaw() }
+    await tap('#explore')
+    await page.waitForTimeout(400)
+    const fly38 = await page.evaluate(() => ({ mode: window.__wg.mode(), fm: window.__wg.flight().mode, t: window.__wg.flight().t, veil: !document.getElementById('startVeil').hidden }))
+    check(38, 'de la sfârșitul apărării, „Înapoi la start” (sub „Încă o partidă”) duce la cartonașul de start, fără „Continuă partida” și fără salvare, iar „Explorează galaxia” pornește un zbor',
+      over38.shown && over38.again === 'Încă o partidă' && over38.home === 'Înapoi la start' && over38.below && start38.start && !start38.over && start38.phase === 'ready' && !start38.cont && start38.save === null &&
+        fly38.mode === 'flight' && fly38.fm === 'flying' && fly38.t > 0 && !fly38.veil,
+      `final ${JSON.stringify(over38)}, start ${JSON.stringify(start38)}, zbor ${JSON.stringify(fly38)}`)
+
+    // 39. din pauza apărării, la 360 × 640: trei butoane care încap; „Înapoi la start” duce la start cu „Continuă partida · m:ss”, sesiunea nu mai e
+    // în pauză, iar „Continuă partida” reia aceeași partidă (timpul și resursele)
+    await page.setViewportSize({ width: 360, height: 640 })
+    await page.evaluate(() => localStorage.clear())
+    await load()
+    await tap('#start')
+    await page.waitForTimeout(300)
+    await page.evaluate(() => window.__wg.run(20))
+    await tap('#pause')
+    await page.waitForTimeout(300)
+    const p39 = await defenseNow()
+    const card39 = await page.evaluate(() => {
+      const ids = ['resume', 'fresh', 'pauseHome'], r = (id) => document.getElementById(id).getBoundingClientRect()
+      const c = document.querySelector('#pauseVeil .card').getBoundingClientRect()
+      return { texts: ids.map((id) => document.getElementById(id).textContent), inside: ids.every((id) => r(id).top >= 0 && r(id).bottom <= window.innerHeight && r(id).left >= 0 && r(id).right <= window.innerWidth),
+        card: [Math.round(c.top), Math.round(c.bottom)], h: window.innerHeight, scroll: document.getElementById('pauseVeil').scrollHeight > document.getElementById('pauseVeil').clientHeight }
+    })
+    await shot('23-pauza-aparare-360.png')
+    const saved39 = await saveRaw()
+    await tap('#pauseHome')
+    await page.waitForTimeout(300)
+    const start39 = { start: await visible('#startVeil'), pause: await visible('#pauseVeil'), phase: await page.evaluate(() => window.__wg.phase()), cont: await txt('#continue'), contShown: await visible('#continue'), save: await saveRaw() }
+    const clock39 = `${Math.floor(Math.floor(p39.t) / 60)}:${String(Math.floor(p39.t) % 60).padStart(2, '0')}`
+    // Apăsat și citit în același pas, înaintea oricărui cadru: starea e exact cea reluată (ca la verificarea 13).
+    const after39 = await page.evaluate(() => {
+      document.getElementById('continue').click()
+      const s = window.__wg.state()
+      return { t: s.t, crystal: s.crystal, metal: s.metal, phase: window.__wg.phase() }
+    })
+    check(39, 'din pauza apărării, la 360 × 640: cele trei butoane („Continuă”, „Partidă nouă”, „Înapoi la start”) încap; „Înapoi la start” duce la start, cu sesiunea scoasă din pauză și partida salvată, iar „Continuă partida · m:ss” reia aceeași partidă (timpul și resursele)',
+      card39.texts.join('|') === 'Continuă|Partidă nouă|Înapoi la start' && card39.inside && p39.phase === 'paused' && saved39 !== null &&
+        start39.start && !start39.pause && start39.phase === 'ready' && start39.contShown && start39.cont === `Continuă partida · ${clock39}` && start39.save === saved39 &&
+        after39 !== null && after39.phase === 'playing' && after39.t === p39.t && after39.crystal === p39.crystal && after39.metal === p39.metal,
+      `pauză ${JSON.stringify(p39)}, cartonaș ${JSON.stringify(card39)}, start ${JSON.stringify({ ...start39, save: start39.save === saved39 ? 'aceeași' : 'alta' })}, reluat ${JSON.stringify(after39)}`)
+    await page.setViewportSize({ width: 390, height: 780 })
+
+    // 40. din pauza apărării la start, apoi atelierul se deschide (fără „în pauză” rămas în spate), iar „Înapoi” arată din nou startul cu „Continuă partida”
+    await load()
+    await page.evaluate(() => { if (window.__wg.phase() !== 'playing') document.getElementById('continue').click() })
+    await page.waitForTimeout(300)
+    await tap('#pause')
+    await page.waitForTimeout(300)
+    const ph40 = await page.evaluate(() => window.__wg.phase())
+    await tap('#pauseHome')
+    await page.waitForTimeout(300)
+    await tap('#startWorkshop')
+    await page.waitForTimeout(300)
+    const shop40 = await shopState()
+    await tap('#shopBack')
+    await page.waitForTimeout(300)
+    const back40 = { start: await visible('#startVeil'), cont: await visible('#continue') }
+    check(40, 'din pauza apărării, „Înapoi la start” și apoi „Atelier”: atelierul se deschide peste start, cu cinci rânduri; „Înapoi” arată startul cu „Continuă partida”',
+      ph40 === 'paused' && shop40.open && !shop40.start && shop40.rows === 5 && back40.start && back40.cont,
+      `fază la pauză ${ph40}, atelier ${JSON.stringify(shop40)}, înapoi ${JSON.stringify(back40)}`)
+
+    // 41. fără `?seed=`: după o partidă încheiată și întoarcerea la start, „Apără planeta” pornește cu altă sămânță, nu a doua oară aceeași
+    await page.evaluate(() => localStorage.clear())
+    await page.goto(`${URL_}?debug=1`); await page.evaluate(() => document.fonts.ready); await page.waitForTimeout(500)
+    await tap('#start')
+    await page.waitForTimeout(300)
+    const a41 = await defenseNow()
+    await page.evaluate(() => window.__wg.run(200))
+    await page.waitForSelector('#overVeil:not([hidden])', { timeout: 3000 }).catch(() => {})
+    await sleep(20)
+    await tap('#overHome')
+    await page.waitForTimeout(300)
+    await tap('#start')
+    await page.waitForTimeout(300)
+    const b41 = await defenseNow()
+    check(41, 'fără ?seed=, după o partidă de apărare încheiată și „Înapoi la start”, „Apără planeta” pornește o partidă nouă cu altă sămânță, cu ceasul de la zero',
+      a41.phase === 'playing' && b41.phase === 'playing' && b41.seed !== a41.seed && b41.t < 2, `sămânța ${a41.seed} → ${b41.seed}, timp ${b41.t.toFixed(2)} s`)
+
+    // 42. banda zborului la 360 lățime, cu cifre de joc: 151 cristale, 52 metal, Carena la plafon (7 vieți) și cinci module. Fiecare cerc de viață e
+    // întreg în bandă și pe ecran; după o lovitură se vede un cerc gol
+    await page.setViewportSize({ width: 360, height: 640 })
+    await putProfile({ crystal: 0, metal: 0, ups: { hull: 4 } })
+    await loadFlight()
+    const hits42 = () => page.evaluate(() => {
+      const band = document.getElementById('flightBanner').getBoundingClientRect(), w = window.innerWidth
+      const dots = [...document.querySelectorAll('#flHits i')].map((i) => ({ on: i.classList.contains('on'), r: i.getBoundingClientRect() }))
+      return { n: dots.length, on: dots.filter((d) => d.on).length, inBand: dots.every((d) => d.r.left >= band.left - 0.5 && d.r.right <= band.right + 0.5),
+        onScreen: dots.every((d) => d.r.left >= 0 && d.r.right <= w), hollowSeen: dots.some((d) => !d.on && d.r.left >= 0 && d.r.right <= w),
+        right: Math.round(Math.max(...dots.map((d) => d.r.right))), band: [Math.round(band.left), Math.round(band.right)], w,
+        text: [document.getElementById('flCrystal').textContent, document.getElementById('flMetal').textContent].join(' '), mods: document.querySelectorAll('#flMods .fslot').length }
+    })
+    await page.evaluate(() => {
+      const f = window.__wg.flight()
+      f.crystal = 151; f.metal = 52; f.ship.inv = 1e9
+      Object.assign(f.ship.mods, { gun: 3, laser: 2, missile: 2, shield: 1, magnet: 1 }); f.ship.shieldUp = false; f.ship.shieldT = 1e9
+    })
+    await page.waitForTimeout(300)
+    const a42 = await hits42()
+    await shot('24-banda-zbor-360-7-vieti.png')
+    await page.evaluate(() => { const f = window.__wg.flight(); f.ship.inv = 0; f.shots.push({ x: f.ship.x, y: f.ship.y, vx: 0, vy: 0 }) })
+    await page.waitForTimeout(300)
+    const b42 = await hits42()
+    check(42, 'banda zborului la 360 × 640, cu 151 cristale, 52 metal, 7 vieți și cinci module: fiecare cerc de viață e întreg în bandă și pe ecran; după o lovitură, 6 din 7 și cercul gol se vede',
+      a42.text === '151 52' && a42.mods === 5 && a42.n === 7 && a42.on === 7 && a42.inBand && a42.onScreen && b42.n === 7 && b42.on === 6 && b42.inBand && b42.onScreen && b42.hollowSeen,
+      `înainte ${JSON.stringify(a42)}, după lovitură ${JSON.stringify(b42)}`)
+    await page.evaluate(() => localStorage.removeItem('wg.v1.profile'))
+
+    // 43. ecranul rotit cu degetul pe el: degetul e lăsat la schimbarea scării câmpului, deci o mișcare de 1 px după rotire nu aruncă nava
+    await page.setViewportSize({ width: 360, height: 640 })
+    await loadFlight()
+    await page.evaluate(() => { window.__wg.flight().ship.inv = 1e9 })
+    await fingerAt('touchStart', 180, 500)
+    await fingerAt('touchMove', 170, 500)
+    await sleep(300)
+    const a43 = await page.evaluate(() => ({ x: window.__wg.flight().ship.x, k: window.__wg.flightField().scale }))
+    await page.setViewportSize({ width: 640, height: 360 })
+    await page.waitForTimeout(400)
+    await fingerAt('touchMove', 171, 300)
+    await sleep(300)
+    const b43 = await page.evaluate(() => ({ x: window.__wg.flight().ship.x, k: window.__wg.flightField().scale, fm: window.__wg.flight().mode }))
+    await fingerAt('touchEnd', 0, 0)
+    check(43, 'zborul cu degetul pe ecran, iar ecranul trece din 360 × 640 în 640 × 360: scara se schimbă, iar următoarea mișcare a degetului nu mută nava (cel mult 1 unitate)',
+      a43.k !== b43.k && b43.fm === 'flying' && Math.abs(b43.x - a43.x) <= 1, `scara ${a43.k.toFixed(4)} → ${b43.k.toFixed(4)}, nava x ${a43.x.toFixed(2)} → ${b43.x.toFixed(2)}`)
+    await page.setViewportSize({ width: 390, height: 780 })
+
+    // 44. stocarea refuzată (o dată accesul la localStorage aruncă, o dată scrierea): după un zbor, cartonașul de sfârșit arată rezerva cu ce s-a adus,
+    // atelierul cumpără o treaptă (rezerva scade, punctul se aprinde), iar „Înapoi” arată rezerva de după cumpărătură; nicio eroare în pagină
+    const refused44 = []
+    for (const [name, init] of [
+      ['accesul aruncă', () => {
+        const no = { configurable: true, get() { throw new DOMException('refuzat', 'SecurityError') } }
+        try { Object.defineProperty(window, 'localStorage', no) } catch { Object.defineProperty(Window.prototype, 'localStorage', no) }
+      }],
+      ['scrierea aruncă', () => { Storage.prototype.setItem = function () { throw new DOMException('plin', 'QuotaExceededError') } }],
+    ]) {
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2, serviceWorkers: 'block' })
+      await ctx.addInitScript(init)
+      const p = await ctx.newPage()
+      const errs = []
+      p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()) })
+      p.on('pageerror', (e) => errs.push(e.message))
+      await p.goto(FLIGHT_PAGE); await p.waitForTimeout(500)
+      await p.evaluate(() => { const f = window.__wg.flight(); f.crystal = 60; f.metal = 12; f.ship.inv = 0; f.ship.hp = 1; f.ship.mods.shield = 0; f.ship.shieldUp = false; f.shots.push({ x: f.ship.x, y: f.ship.y, vx: 0, vy: 0 }) })
+      await p.waitForSelector('#flightOverVeil:not([hidden])', { timeout: 3000 }).catch(() => {})
+      await p.waitForTimeout(200)
+      const read = (ids) => p.evaluate((ids) => ids.map((id) => document.getElementById(id).textContent).join('/'), ids)
+      const over = { haul: await read(['overCrystal', 'overMetal']), reserve: await read(['flightOverCrystal', 'flightOverMetal']) }
+      // Apăsat din cod, nu cu `p.click`: un buton stins (rezervă prea mică) nu trebuie să oprească proba, ci să-i pice verificarea.
+      const press = (sel) => p.evaluate((sel) => document.querySelector(sel)?.click(), sel)
+      await press('#overWorkshop'); await p.waitForTimeout(200)
+      const shop = await read(['shopCrystal', 'shopMetal'])
+      await p.waitForTimeout(500)
+      await press('#shopRows .buy[data-up="hull"]'); await p.waitForTimeout(500)
+      const bought = { reserve: await read(['shopCrystal', 'shopMetal']), dots: await p.evaluate(() => document.querySelector('#shopRows .buy[data-up="hull"]')?.closest('.up')?.querySelectorAll('.up-dots i.on').length ?? -1) }
+      await press('#shopBack'); await p.waitForTimeout(200)
+      const back = await read(['flightOverCrystal', 'flightOverMetal'])
+      refused44.push({ name, ok: over.haul === '+60/+12' && over.reserve === '60/12' && shop === '60/12' && bought.reserve === '10/2' && bought.dots === 1 && back === '10/2' && errs.length === 0,
+        text: `${name}: sfârșit ${over.haul}, rezerva ${over.reserve}; atelier ${shop} → după Carenă ${bought.reserve}, puncte ${bought.dots}; „Înapoi” ${back}; erori ${errs.length}${errs.length ? ` (${errs[0]})` : ''}` })
+      await ctx.close()
+    }
+    check(44, 'cu stocarea refuzată (accesul aruncă; scrierea aruncă): după un zbor, rezerva de pe cartonașul de sfârșit e cea adusă (60 / 12), atelierul cumpără Carena (10 / 2, un punct aprins), iar „Înapoi” arată rezerva nouă; nicio eroare',
+      refused44.every((r) => r.ok), refused44.map((r) => r.text).join('; '))
 
     check(1, 'fără erori în consolă sau în pagină', errors.length === 0, errors.join(' | '))
     check(2, 'nicio cerere în afara localhost', outside.length === 0, outside.join(' | '))

@@ -70,6 +70,17 @@ describe('flightRow: banda din zbor', () => {
     take(f, 'missile'); take(f, 'magnet')
     expect(flightRow(f).toast).toBe('Magnet · nou')
   })
+  it('rândul „ai cules” nu rămâne înghețat: e gol când zborul nu e în curs (pauză, sfârșit)', () => {
+    const f = quietFlight()
+    untouchable(f)
+    take(f, 'laser')
+    expect(flightRow(f, true).toast).toBe('Laser · nou')
+    expect(flightRow(f, false).toast).toBe('')          // pauza: timpul zborului stă, rândul s-ar fi văzut oricât
+    f.mode = 'explored'
+    expect(flightRow(f, true).toast).toBe('')
+    f.mode = 'down'
+    expect(flightRow(f).toast).toBe('')
+  })
   it('nu scrie nimic în stare', () => {
     const f = quietFlight()
     take(f, 'laser')

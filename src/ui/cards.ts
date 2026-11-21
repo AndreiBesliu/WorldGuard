@@ -1,15 +1,27 @@
 // Cartonașele: de start (cele două moduri și sectorul ales), de pauză și de final ale apărării, de pauză și de sfârșit ale zborului,
-// plus butoanele de pauză din cele două benzi. Butoanele sunt în pagină; aici doar se leagă și se arată.
+// plus butoanele de pauză din cele două benzi. Din fiecare cartonaș în afară de cel de start, „Înapoi la start” (`on.home`). Butoanele sunt în pagină; aici doar se leagă și se arată.
 import type { FlightOver } from '../app/flightSession'
 import type { Profile } from '../app/profile'
+import { FLIGHT } from '../data/flight'
 import type { OverInfo } from '../app/session'
 import { clock } from './format'
 import { STR } from './strings'
 import { onTap } from './tap'
 
-/** Sectorul de după o apăsare pe − sau +: de la 1 până la cel mai departe explorat (`farthest`) plus unu, oricâte apăsări ar veni. */
+/** Sectorul propus pe cartonașul de start: cel mai departe explorat plus unu, de la 1 până la plafon. */
+export function firstSector(farthest: number): number {
+  const n = Number.isFinite(farthest) ? Math.floor(farthest) + 1 : 1
+  return Math.min(FLIGHT.sectorCap, Math.max(1, n))
+}
+
+/** Sectorul de după un zbor încheiat: următorul după unul explorat, același după o navă doborâtă; cel mult plafonul. */
+export function sectorAfter(sector: number, explored: boolean): number {
+  return Math.min(FLIGHT.sectorCap, explored ? sector + 1 : sector)
+}
+
+/** Sectorul de după o apăsare pe − sau +: de la 1 până la cel mai departe explorat (`farthest`) plus unu, dar nu peste plafon, oricâte apăsări ar veni. */
 export function stepSector(sector: number, delta: -1 | 1, farthest: number): number {
-  const top = Math.max(1, Math.floor(farthest) + 1)
+  const top = firstSector(farthest)
   const n = Number.isFinite(sector) ? Math.floor(sector) + delta : 1
   return Math.min(top, Math.max(1, n))
 }
@@ -58,6 +70,8 @@ export function createCards(doc: Document, on: {
   for (const b of pauseBtns) bind(b, on.pause)
   bind(resumeBtn, on.resume)
   bind(el(doc, 'fresh'), on.fresh)
+  bind(el(doc, 'pauseHome'), on.home)           // din pauza apărării (partida rămâne salvată de la pauză) și de la finalul ei
+  bind(el(doc, 'overHome'), on.home)
   bind(el(doc, 'explore'), on.explore)          // sectorul îl ține cine cheamă, nu cartonașul
   bind(sectorDown, () => on.sector(-1))
   bind(sectorUp, () => on.sector(1))

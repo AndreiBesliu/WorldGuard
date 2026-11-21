@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { FLIGHT } from '../data/flight'
 import { MAX_UPS, WORKSHOP, upPrice } from '../data/workshop'
 import { bank, buy, canBuy, emptyProfile, markExplored, packProfile, unpackProfile, type Profile } from './profile'
 
@@ -92,5 +93,19 @@ describe('markExplored', () => {
   })
   it('un sector nefinit, negativ sau neîntreg nu schimbă nimic', () => {
     for (const s of [NaN, -3, 1.5, Infinity]) expect(markExplored(rich(), s)).toEqual(rich())
+  })
+  it(`nu trece de plafonul sectorului (${FLIGHT.sectorCap})`, () => {
+    expect(markExplored(rich(), FLIGHT.sectorCap).sector).toBe(FLIGHT.sectorCap)
+    expect(markExplored(rich(), FLIGHT.sectorCap + 1)).toEqual(rich())
+    expect(markExplored(rich(), Number.MAX_SAFE_INTEGER)).toEqual(rich())
+  })
+})
+
+describe('plafonul sectorului la citire', () => {
+  it(`un sector peste ${FLIGHT.sectorCap} e profil stricat; până la el, bun`, () => {
+    expect(FLIGHT.sectorCap).toBe(999)
+    expect(unpackProfile(raw({ ...good(), sector: FLIGHT.sectorCap })).ok).toBe(true)
+    expect(unpackProfile(raw({ ...good(), sector: FLIGHT.sectorCap + 1 })).ok).toBe(false)
+    expect(unpackProfile(raw({ ...good(), sector: Number.MAX_SAFE_INTEGER })).ok).toBe(false)
   })
 })

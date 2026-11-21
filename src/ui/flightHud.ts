@@ -28,8 +28,9 @@ function toastOf(f: FlightState): string {
   return ''
 }
 
-/** Banda din starea zborului, fără DOM. */
-export function flightRow(f: FlightState): FlightRow {
+/** Banda din starea zborului, fără DOM. `live`: zborul e în curs (nu pe pauză); altfel, ca și după sfârșit, rândul „ai cules” e gol,
+ *  fiindcă timpul zborului stă și rândul ar rămâne înghețat sub bandă. */
+export function flightRow(f: FlightState, live = true): FlightRow {
   const elite = eliteOf(f), s = f.ship
   return {
     crystal: f.crystal, metal: f.metal, hits: Math.max(0, s.hp), maxHits: s.maxHp,
@@ -37,7 +38,7 @@ export function flightRow(f: FlightState): FlightRow {
     frac: elite !== null ? clamp01(elite.hp / elite.maxHp) : sectorProgress(f),
     label: elite !== null ? STR.elite : STR.sectorN(f.sector),
     mods: FLIGHT_MODS.filter((id) => s.mods[id] > 0).map((id) => ({ id, tier: s.mods[id] })),
-    toast: toastOf(f),
+    toast: live && f.mode === 'flying' ? toastOf(f) : '',
   }
 }
 
@@ -56,7 +57,7 @@ function modElement(doc: Document, m: { id: FlightModId; tier: number }): HTMLEl
   return e
 }
 
-export function createFlightHud(doc: Document): { sync(f: FlightState): void; show(on: boolean): void } {
+export function createFlightHud(doc: Document): { sync(f: FlightState, live?: boolean): void; show(on: boolean): void } {
   const band = el(doc, 'flightBanner'), defense = el(doc, 'banner'), toast = el(doc, 'flToast')
   const way = el(doc, 'flWay'), fill = el(doc, 'flFill'), hits = el(doc, 'flHits'), mods = el(doc, 'flMods')
   const text: Record<string, HTMLElement> = {}
@@ -67,8 +68,8 @@ export function createFlightHud(doc: Document): { sync(f: FlightState): void; sh
   let on: boolean | null = null
 
   return {
-    sync(f) {
-      const r = flightRow(f)
+    sync(f, live = true) {
+      const r = flightRow(f, live)
       put('flCrystal', String(r.crystal)); put('flMetal', String(r.metal))
       put('flLabel', r.label); put('flPct', `${Math.round(r.frac * 100)}%`)
       const width = `${Math.round(r.frac * 1000) / 10}%`

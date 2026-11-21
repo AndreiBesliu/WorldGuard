@@ -1,5 +1,6 @@
 // Profilul jucătorului: rezerva de resurse, sectorul cel mai departe explorat și treptele atelierului. Fără DOM și fără stocare
 // (stocarea e în `storage.ts`); fiecare regulă întoarce un profil nou, iar cel primit rămâne neatins.
+import { FLIGHT } from '../data/flight'
 import { MAX_UPS, NO_UPS, UP_IDS, WORKSHOP, upPrice, type Cost, type UpId, type Ups } from '../data/workshop'
 import { fail, ok, type Result } from '../sim/result'
 
@@ -28,6 +29,7 @@ export function unpackProfile(text: string | null | undefined): Result<Profile> 
   if (o.v !== PROFILE_VERSION) return fail('altă versiune')
   if (!sameKeys(o, ['v', 'crystal', 'metal', 'sector', 'ups']) || !isObject(o.ups) || !sameKeys(o.ups, UP_IDS)) return fail('altă formă')
   if (!isCount(o.crystal) || !isCount(o.metal) || !isCount(o.sector)) return fail('număr greșit în rezervă sau în sector')
+  if (o.sector > FLIGHT.sectorCap) return fail('sector peste plafon')
   const ups = o.ups
   for (const id of UP_IDS) {
     const t = ups[id]
@@ -59,8 +61,8 @@ export function bank(p: Profile, haul: Cost): Profile {
   return { ...p, crystal: p.crystal + Math.floor(haul.crystal), metal: p.metal + Math.floor(haul.metal) }
 }
 
-/** Sectorul cel mai departe explorat nu coboară niciodată; un sector care nu e număr întreg nenegativ se ignoră. */
+/** Sectorul cel mai departe explorat nu coboară niciodată; un sector care nu e număr întreg nenegativ, sau e peste plafon, se ignoră. */
 export function markExplored(p: Profile, sector: number): Profile {
-  if (!isCount(sector) || sector <= p.sector) return p
+  if (!isCount(sector) || sector > FLIGHT.sectorCap || sector <= p.sector) return p
   return { ...p, sector }
 }

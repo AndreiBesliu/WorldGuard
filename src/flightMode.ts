@@ -7,7 +7,8 @@ import type { FlightInput } from './flight/state'
 import { flightKeys } from './input/bind'
 import { dragTake, type Drag } from './input/drag'
 import { DT, type Input } from './sim/state'
-import { stepSector } from './ui/cards'
+import { FLIGHT } from './data/flight'
+import { firstSector, sectorAfter, stepSector } from './ui/cards'
 import { createFlightHud } from './ui/flightHud'
 
 const STILL: FlightInput = { dx: 0, dy: 0 }
@@ -47,7 +48,7 @@ export function createFlightMode(doc: Document, input: { drag: Drag; keys(): Inp
     startCard() {
       const profile = loadProfile()
       farthest = profile.sector
-      chosen = farthest + 1
+      chosen = firstSector(farthest)
       return { profile, sector: chosen }
     },
     sector: () => chosen,
@@ -55,10 +56,10 @@ export function createFlightMode(doc: Document, input: { drag: Drag; keys(): Inp
       chosen = stepSector(chosen, delta, farthest)
       return { sector: chosen, farthest }
     },
-    nextSector: () => (last === null ? chosen : last.explored ? last.sector + 1 : last.sector),
+    nextSector: () => (last === null ? chosen : sectorAfter(last.sector, last.explored)),
     begin(seed, sector) {
       last = null
-      session.start(seed, sector)
+      session.start(seed, Math.min(FLIGHT.sectorCap, sector))   // și `?zbor=N` rămâne în plafon
       hud.show(true)
       hud.sync(session.f)
     },
@@ -76,6 +77,6 @@ export function createFlightMode(doc: Document, input: { drag: Drag; keys(): Inp
       if (over !== null) last = over
       return over
     },
-    sync: () => hud.sync(session.f),
+    sync: () => hud.sync(session.f, session.phase === 'playing'),   // rândul „ai cules” doar cât se zboară
   }
 }

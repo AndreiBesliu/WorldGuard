@@ -95,7 +95,7 @@ function categoryOf(p: Pad): Category {
 /**
  * Cercul pe care plata curge chiar acum, dintr-o categorie pe care purtarea o cumpără (nava vie în el, `dwell` la prag), dacă mai are ceva de plătit pentru nivelul
  * următor și stocul mai poate plăti măcar o unitate din ce a rămas; altfel null. Cercul de reparat nu e ținut niciodată.
- * Plata începută se termină: ținta nu se mută de sub ea (R7).
+ * Plata începută se termină: ținta nu se mută de sub ea.
  */
 function heldPad(s: GameState, buy: readonly Category[]): Pad | null {
   if (s.hero.dead) return null

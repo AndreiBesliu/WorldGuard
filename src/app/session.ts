@@ -27,6 +27,9 @@ export interface Session {
   resume(saved: GameState): void
   pause(): boolean
   unpause(): boolean
+  /** „Înapoi la start”, din pauză sau de la final: sesiunea trece pe start („ready”) fără să scrie ceva (pauza a salvat deja
+   *  partida, finalul a șters-o); false cât partida e în curs sau e deja pe start. */
+  leave(): boolean
   /** Alege oferta deschisă cu indexul dat; false fără partidă în curs, fără ofertă, cu un index greșit sau dacă simularea o refuză. */
   choose(index: number): boolean
   advance(steps: number, input: Input): OverInfo | null
@@ -78,6 +81,11 @@ export function createSession(deps: SessionDeps, seed: number): Session {
     unpause() {
       if (phase !== 'paused') return false
       phase = 'playing'
+      return true
+    },
+    leave() {
+      if (phase !== 'paused' && phase !== 'over') return false
+      phase = 'ready'
       return true
     },
     choose(index) {

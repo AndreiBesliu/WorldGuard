@@ -10,13 +10,7 @@ import { stepFlight } from '../flight/step'
 export const YIELD_SECTOR = 1
 export const YIELD_SEEDS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-/**
- * Mediana măsurată cu `flightYield(YIELD_SECTOR, YIELD_SEEDS)`, citată de `npm run balance` și de documente.
- * Testul țintelor de preț rulează măsurătoarea din nou și cere să iasă exact cifra asta.
- */
-export const MEASURED = { crystal: 99, metal: 32.5 } as const
-
-// Scriptul navei. Dacă se schimbă vreuna dintre cifrele de mai jos, se schimbă și cifra măsurată (`MEASURED`) și țintele de preț.
+// Scriptul navei. Dacă se schimbă vreuna dintre cifrele de mai jos, se schimbă și cifra măsurată, tipărită de `npm run balance`.
 const SWEEP = 7          // secunde pentru un drum dintr-o margine în cealaltă
 const CAP = 600          // secunde: un zbor care nu s-a încheiat până atunci se oprește aici
 const SAFE = 1e9         // clipirea navei, ținută sus
