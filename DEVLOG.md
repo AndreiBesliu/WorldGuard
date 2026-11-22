@@ -811,3 +811,14 @@ Recenzia de control a valului de mai sus l-a găsit în regulă și a lăsat tre
 
 - [x] de arătat lui Andrei, pe ecranele înalte: cu câmpul lipit de bandă, sub câmp rămâne cer, iar ce iese din câmp pe jos (focul dușman ratat, dușmanii trecuți, asteroizii) se mai vede acolo pe ultimele 20–50 de unități, până iese din joc (citit din `FLIGHT.*.gone`, nemăsurat pe ecran). — închisă de această intrare: fâșia de sub câmp e umplută cu culoarea paginii, deci nu se mai vede nimic acolo.
 - [ ] hotărârea lui Andrei asupra fâșiilor din afara câmpului umplute cu culoarea paginii (propunere).
+
+## 22.11.2026 — Andrei: „Totul pare ok.”; pull request-ul #15 se îmbină
+
+- Pe 21.11.2026 Andrei a primit pagina privată cu jocul de pe ramură (apărarea cu nava cu module, zborul, atelierul) și lista hotărârilor luate în construcție. Întrebat dacă se îmbină, a ales întâi să rămână neîmbinat până îl încearcă.
+- Pe 22.11.2026 a spus: „Totul pare ok.” Apoi a cerut îmbinarea pull request-ului #15 în `main` și, după ea, designul etapei următoare: dușmani de mai multe feluri, pentru amândouă modurile.
+- **Ce nu se știe:** ce anume a încercat și pe ce (nu a spus). Cifrele de la „Test de viteză” nu le-a dat. Întrebat dacă propunerile etapei trec ca acceptate, nu a răspuns la asta, deci **rămân propuneri**.
+- Îmbinarea publică pe GitHub Pages faza 3, nava cu module și „Explorează galaxia”. O partidă salvată de jocul publicat până azi nu se mai poate relua (salvarea veche e ștearsă fără eroare); recordul din telefon rămâne.
+- `CLAUDE.md` și `README.md` spun acum că etapele sunt publicate și ce a spus Andrei. Cod neatins.
+
+- [ ] designul etapei următoare, cu Andrei: dușmani de mai multe feluri, cu atacurile lor, pentru amândouă modurile;
+- [ ] de întrebat pe Andrei, când se ivește prilejul: ce a încercat pe telefon din fazele 2 și 3, nava cu module și zbor, și cele două cifre de la „Test de viteză”.
