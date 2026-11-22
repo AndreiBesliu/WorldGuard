@@ -3,6 +3,7 @@
 import { BALANCE } from '../data/balance'
 import { CORE, HOME, PAD_R } from '../data/layout'
 import { heroMaxHp } from '../sim/hero'
+import { heroPadView } from '../sim/mods'
 import { levelOf, nextCost } from '../sim/pads'
 import type { Fx, GameState, Input, Pad, Res } from '../sim/state'
 import { STR } from '../ui/strings'
@@ -46,13 +47,20 @@ function chipLine(ctx: CanvasRenderingContext2D, skin: Skin, parts: Part[], cx: 
 
 function drawPad(ctx: CanvasRenderingContext2D, s: GameState, p: Pad, skin: Skin): void {
   const C = palette()
-  const h = s.hero, cost = nextCost(s, p), repair = p.kind === 'repair', maxed = !repair && !cost
+  const h = s.hero, cost = nextCost(s, p), repair = p.kind === 'repair'
+  // Cercul navei: cât experiența nu ajunge n-are cost, dar nu e la nivelul maxim (trei stări în `heroPadView`)
+  const hv = p.kind === 'hero' ? heroPadView(s) : null
+  const maxed = hv ? hv.kind === 'max' : !repair && !cost
+  const lit = hv?.kind === 'ready'
   const on = !h.dead && Math.hypot(h.x - p.x, h.y - p.y) < PAD_R
   ctx.globalAlpha = maxed ? 0.4 : 1
   ctx.beginPath(); ctx.arc(p.x, p.y, PAD_R, 0, TAU)
-  ctx.fillStyle = alpha(C.ink, on ? 0.2 : 0.08); ctx.fill()
-  ctx.setLineDash([7, 6]); ctx.lineDashOffset = on ? -s.t * 28 : 0
-  ctx.lineWidth = 2; ctx.lineCap = 'butt'; ctx.strokeStyle = alpha(C.ink, 0.8); ctx.stroke(); ctx.setLineDash([])
+  ctx.fillStyle = lit ? alpha(C.hero, on ? 0.3 : 0.18) : alpha(C.ink, on ? 0.2 : 0.08); ctx.fill()
+  if (lit) { ctx.lineWidth = 3; ctx.strokeStyle = C.hero; ctx.stroke() }   // aprins: inel plin, în culoarea navei
+  else {
+    ctx.setLineDash([7, 6]); ctx.lineDashOffset = on ? -s.t * 28 : 0
+    ctx.lineWidth = 2; ctx.lineCap = 'butt'; ctx.strokeStyle = alpha(C.ink, 0.8); ctx.stroke(); ctx.setLineDash([])
+  }
   if (cost) {
     const paid = p.paid.crystal + p.paid.metal
     if (paid > 0) {
@@ -68,7 +76,8 @@ function drawPad(ctx: CanvasRenderingContext2D, s: GameState, p: Pad, skin: Skin
   const lvl = levelOf(s, p), name = STR.pad[p.kind]
   const title = repair ? name : maxed ? STR.padMax(name) : lvl === 0 ? name : STR.padLevel(name, lvl + 1)
   label(ctx, title, p.x, p.y + PAD_R + 14, 13.5, C.ink)
-  if (repair) chipLine(ctx, skin, [{ res: 'metal', text: STR.repairCost(BALANCE.repair.heal), ok: s.metal > 0, w: 0 }], p.x, p.y + PAD_R + 33)
+  if (hv?.kind === 'wait') label(ctx, STR.xpOf(hv.a, hv.b), p.x, p.y + PAD_R + 33, 13, C.inkSoft)
+  else if (repair) chipLine(ctx, skin, [{ res: 'metal', text: STR.repairCost(BALANCE.repair.heal), ok: s.metal > 0, w: 0 }], p.x, p.y + PAD_R + 33)
   else if (cost) {
     const parts: Part[] = []
     for (const res of ['crystal', 'metal'] as const) {
@@ -99,6 +108,7 @@ function drawFx(ctx: CanvasRenderingContext2D, s: GameState, v: Visible): void {
   for (const f of s.fx) {
     if (!seen(v, f.x, f.y)) continue
     const age = s.t - f.t0
+    if (f.kind === 'beam' || f.kind === 'blast' || f.kind === 'block') continue   // razele și exploziile, în stratul razelor; scutul, pe navă
     if (f.kind === 'puff') {
       ctx.globalAlpha = 1 - age / BALANCE.fx.puffLife
       ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.5 + age / BALANCE.fx.puffLife), 0, TAU)
@@ -116,7 +126,8 @@ function drawFx(ctx: CanvasRenderingContext2D, s: GameState, v: Visible): void {
 
 /**
  * Tot ce e în coordonate de lume, în straturi: cercurile; nucleul; resursele, clădirile și navele, sortate după y,
- * fiecare cu bara ei; inelul-scut, peste nave; apoi reapariția, razele și textele plutitoare.
+ * fiecare cu bara ei; inelul-scut, peste nave; apoi reapariția, razele (explozii, raza laserului, rachete și raze de turelă)
+ * și textele plutitoare.
  */
 export function drawWorld(ctx: CanvasRenderingContext2D, s: GameState, input: Input, v: Visible, skin: Skin): void {
   const C = palette()
@@ -150,6 +161,10 @@ export function drawWorld(ctx: CanvasRenderingContext2D, s: GameState, input: In
     ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.strokeStyle = C.hero; ctx.stroke()
     label(ctx, String(Math.ceil(h.respawnT)), HOME.x, HOME.y + 0.5, 15, C.hero)
   }
+  // Stratul razelor: exploziile, apoi raza laserului, apoi rachetele și razele turelelor (racheta și laserul țintesc
+  // adesea aceeași navă, iar racheta trebuie să se vadă peste rază).
+  for (const f of s.fx) if (f.kind === 'blast' && seen(v, f.x, f.y)) skin.blast(ctx, f, s.t - f.t0)
+  for (const f of s.fx) if (f.kind === 'beam' && (seen(v, f.x, f.y) || seen(v, f.tx, f.ty))) skin.beam(ctx, f, s.t - f.t0)
   for (const sh of s.shots) if (seen(v, sh.x, sh.y)) skin.shot(ctx, sh)
   drawFx(ctx, s, v)
 }

@@ -1,5 +1,6 @@
 // Desenul de pe fiecare cadru rămâne ieftin pe telefon: fără umbră estompată, iar gradientul și decupajul stau
-// doar la cer și la planetă (`orbit/scene.ts`). Testul citește sursele din `src/render/`; proba lui negativă e ultimul caz.
+// doar la cer și la planetă (`orbit/scene.ts`). Testul citește sursele din `src/render/`, cu zborul (`flight/`) cu tot;
+// proba lui negativă e ultimul caz.
 
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
@@ -35,11 +36,18 @@ describe('disciplina desenului', () => {
   it('fișierele desenului au fost găsite', () => {
     expect(Object.keys(files)).toEqual(expect.arrayContaining(['world.ts', 'orbit/scene.ts', 'orbit/things.ts']))
   })
+  it('și fișierele desenului zborului', () => {
+    expect(Object.keys(files)).toEqual(expect.arrayContaining(['flight/canvas.ts', 'flight/scene.ts', 'flight/things.ts']))
+  })
   it('nicio umbră estompată în desen', () => {
     expect(offenders(files, /shadowBlur/)).toEqual([])
   })
   it('gradient și decupaj doar la cer și la nucleu', () => {
     expect(offenders(files, COSTLY, ['orbit/scene.ts'])).toEqual([])
+  })
+  it('cerul se pictează într-un singur loc (desenatorul apărării), iar zborul îl împrumută de acolo', () => {
+    expect(offenders(files, /paintSky\(\)(?!\s*:)/, ['canvas.ts'])).toEqual([])   // chemarea, nu semnătura din `skin.ts` și `orbit/scene.ts`
+    expect(files['flight/canvas.ts']).not.toMatch(/paintSky/)
   })
   it('tiparul celor costisitoare prinde și gradientul conic și filtrul, dar nu metoda filter a listelor', () => {
     const probe = { 'a.ts': 'ctx.createConicGradient(0, 0, 0)', 'b.ts': "ctx.filter = 'blur(2px)'", 'c.ts': 'xs.filter((x) => x)' }

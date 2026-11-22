@@ -1,7 +1,7 @@
 // „Orbită”: cerul, planeta și inelul-scut. Singurul fișier al desenului cu gradient și decupaj:
 // cerul se pictează o dată, iar planeta e una singură.
-import { BALANCE } from '../../data/balance'
 import { CORE, LAYOUT_SEED, LOW_FRAC, WORLD } from '../../data/layout'
+import { coreMaxHp } from '../../sim/boost'
 import { createRng } from '../../sim/rng'
 import type { GameState } from '../../sim/state'
 import { shieldSpan } from '../derive'
@@ -108,11 +108,11 @@ export function shield(ctx: CanvasRenderingContext2D, s: GameState): void {
   const { x, y, r } = CORE, R = r + SHIELD_GAP
   ctx.beginPath(); ctx.arc(x, y, R, 0, TAU)
   ctx.strokeStyle = alpha(C.shield, 0.18); ctx.lineWidth = 3; ctx.stroke()
-  const span = shieldSpan(s.core.hp, BALANCE.core.hp)
+  const span = shieldSpan(s.core.hp, coreMaxHp(s))
   if (span <= 0) return
   ctx.beginPath(); ctx.arc(x, y, R, -Math.PI / 2, -Math.PI / 2 + span)
   ctx.lineWidth = 3.4; ctx.lineCap = 'round'
-  ctx.strokeStyle = s.core.hp / BALANCE.core.hp < LOW_FRAC ? C.foe : C.shield
+  ctx.strokeStyle = s.core.hp / coreMaxHp(s) < LOW_FRAC ? C.foe : C.shield
   const ga = ctx.globalAlpha
   ctx.globalAlpha = ga * (0.78 + 0.18 * Math.sin(s.t * 3)); ctx.stroke(); ctx.globalAlpha = ga
   if (s.t - s.core.hitT < HIT_FLASH) { ctx.strokeStyle = alpha(C.ink, 0.6); ctx.stroke() }

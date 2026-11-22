@@ -11,10 +11,13 @@
   --crystal: #4fe3c1; --crystal-lift: #a8f7e4; --crystal-shade: #22a58c; --crystal-base: #343062;
   --ore: #8d88b5; --ore-shade: #5f5a86; --ore-pit: #4d4973; --ore-fleck: #e9e6ff;
   --metal: #b3aee6;
+  --crystal-on-lit: #0b6b58; --metal-on-lit: #4a4590;   /* semnele cristalului și metalului pe fundal galben, în butonul de preț (propunere) */
   --hull: #dfe6f7; --hull-shade: #8a94b8; --hull-dark: #1a2147; --solar: #3f73d9; --solar-line: #9cc0ff;
   --bolt: #d8fbff;
   --ink: #f1f4ff; --ink-soft: #9fa9c9; --night: #060a1f;
   --panel: rgba(6, 10, 31, .86); --veil: rgba(6, 10, 31, .55);
+  --veil-blur: rgba(6, 10, 31, .5); --veil-deep: rgba(6, 10, 31, .78);   /* vălul panoului de alegere: peste încețoșare, și fără ea */
+  --card: rgba(241, 244, 255, .07);
   --track: rgba(241, 244, 255, .16); --line: rgba(241, 244, 255, .14);
   --font-display: "Exo 2", "Rubik", system-ui, sans-serif;
   --font-ui: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -86,6 +89,50 @@ body {
 .meter i { display: block; height: 100%; width: 100%; border-radius: 5px; background: var(--ink); transition: width .15s linear; }
 .meter.low i { background: var(--foe); }
 
+/* Rândul navei: nivelul într-un inel care se umple cu experiența, locurile (la fel ca în panoul de alegere) și textul din dreapta. */
+.ship { grid-column: 1 / -1; grid-row: 3; align-self: center; display: flex; align-items: center; gap: 8px; min-height: 30px; }
+.level { position: relative; flex: none; width: 30px; height: 30px; }
+.ring { display: block; width: 100%; height: 100%; }
+.ring circle { fill: none; stroke-width: 3.5; }
+.ring-track { stroke: var(--track); }
+.ring-fill { stroke: var(--ink); transform: rotate(-90deg); transform-origin: 18px 18px; stroke-dasharray: 0 100; }
+.level b { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 13px; line-height: 1; font-variant-numeric: tabular-nums; }
+.xp { margin-left: auto; min-width: 0; white-space: nowrap; font-size: 11.5px; font-weight: 500; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.ship.ready .ring-fill { stroke: var(--hero); }
+.ship.ready .xp { color: var(--hero); font-weight: 700; }
+
+/* Banda din zbor (propunere de așezare, după macheta 3): stocul zborului și viețile; drumul prin sector, care devine viața navei
+   de elită; modulele cu treptele lor și pauza. Are aceeași înălțime în zbor, în pauza lui și pe cartonașul lui de sfârșit:
+   butonul de pauză ascuns își păstrează locul, iar rândul „ai cules” stă sub bandă, în afara așezării. */
+.banner.fl { display: flex; flex-direction: column; align-items: stretch; gap: 9px; }
+.fl-row { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.fl-row .stock { align-self: baseline; }
+.fl-hits { margin-left: auto; display: flex; gap: 5px; }
+.fl-hits i { box-sizing: border-box; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--hero); }
+.fl-hits i.on { background: var(--hero); }
+.fl-way { gap: 10px; font-size: 10.5px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.fl-way span:first-child { min-width: 5.5em; white-space: nowrap; }
+.fl-way span:last-child { min-width: 3.2em; text-align: right; }
+.fl-track { flex: 1; height: 8px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.fl-track i { display: block; height: 100%; width: 0; border-radius: 99px; background: var(--ink); }
+.fl-way.elite { color: var(--foe); }
+.fl-way.elite .fl-track i { background: var(--foe); }
+.fl-ship { min-height: 32px; padding-bottom: 7px; }
+.fl-mods { display: flex; gap: 10px; }
+.fslot {
+  position: relative; box-sizing: border-box; width: 30px; height: 30px; border-radius: 9px; border: 1.5px solid currentColor;
+  display: grid; place-items: center;
+}
+.fslot svg { width: 17px; height: 17px; }
+.fdots { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); display: flex; gap: 2px; }
+.fdots i { width: 4px; height: 4px; border-radius: 50%; background: var(--track); }
+.fdots i.on { background: currentColor; }
+.fl .pause { margin: -7px -6px -7px auto; }
+.fl-toast {
+  position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); margin: 0; white-space: nowrap;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 5px 13px; font-weight: 500; font-size: 13px;
+}
+
 .hint {
   position: absolute; left: 0; right: 0; bottom: calc(20% + env(safe-area-inset-bottom, 0px)); margin: 0; text-align: center; pointer-events: none;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -109,9 +156,51 @@ body {
   display: flex; flex-direction: column; gap: 16px;
 }
 .card h1 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1.08; text-wrap: balance; }
-.rules { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 14.5px; line-height: 1.4; }
-.rules li { display: grid; grid-template-columns: 11px 1fr; gap: 11px; align-items: start; }
-.rules .chip { margin-top: 5px; }
+/* Cartonașul de start (propunere de așezare, după macheta 1): rezerva, apoi cele două moduri, fiecare cu rândul lui de explicație;
+   zborul are sub nume sectorul ales, cu − și +. */
+.eyebrow { font-size: 10.5px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--hero); }
+.card-head { display: flex; flex-direction: column; gap: 6px; }
+.card-head h1 { font-size: 26px; }   /* „Nava a fost doborâtă” pe un singur rând la 360 px, ca în macheta 4 */
+.reserve { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; background: var(--card); border-radius: 14px; padding: 10px 12px; }
+.res { display: inline-flex; align-items: baseline; gap: 6px; font-size: 10.5px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.res b { font-family: var(--font-display); font-weight: 800; font-size: 18px; line-height: 1; color: var(--ink); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.res .chip { width: 10px; height: 10px; }
+.pill {
+  margin-left: auto; font: inherit; font-weight: 500; font-size: 13px; color: var(--ink); background: transparent;
+  border: 1.5px solid var(--line); border-radius: 99px; padding: 5px 12px; cursor: pointer;
+}
+.mode { display: grid; gap: 3px; border-radius: 16px; padding: 13px 14px; text-align: left; }
+.mode strong { font-family: var(--font-display); font-weight: 800; font-size: 19px; line-height: 1.1; }
+.mode span { font-size: 12.5px; line-height: 1.35; }
+button.mode, .mode-go { font: inherit; border: 0; cursor: pointer; touch-action: manipulation; }
+.mode.main { background: var(--hero); color: var(--night); }
+/* Cu o partidă salvată, „Apără planeta” trece pe al doilea loc (principalul e „Continuă partida”), cu rândul care spune că salvarea se pierde. */
+.mode.alt { background: transparent; color: var(--hero); border: 1.5px solid var(--hero); padding: 11.5px 12.5px; }
+.mode.alt span { color: var(--ink-soft); }
+.mode.second { border: 1.5px solid var(--jet); color: var(--ink); padding: 0; gap: 0; }
+.mode-go { display: grid; gap: 3px; padding: 13px 14px 6px; text-align: left; color: inherit; background: transparent; border-radius: 15px 15px 0 0; }
+.mode.second span { color: var(--ink-soft); }
+.sector { display: flex; align-items: center; gap: 10px; padding: 4px 14px 12px; }
+.sector b { font-weight: 500; color: var(--jet); font-variant-numeric: tabular-nums; min-width: 6.5em; text-align: center; }
+/* − și +: țintă de 40 × 40 px, cercul desenat de 30; semnele sunt din CSS, nu text. */
+.step {
+  position: relative; box-sizing: border-box; width: 40px; height: 40px; margin: -5px; padding: 0; border: 0; background: transparent;
+  cursor: pointer; touch-action: manipulation;
+}
+.step::before, .step::after { content: ''; position: absolute; left: 50%; top: 50%; background: var(--ink); border-radius: 1px; }
+.step::before { width: 12px; height: 2px; transform: translate(-50%, -50%); }
+.step.more::after { width: 2px; height: 12px; transform: translate(-50%, -50%); }
+.step { --ring: inset 0 0 0 5px var(--night), inset 0 0 0 6.5px var(--line); box-shadow: var(--ring); border-radius: 50%; }
+.step.off { opacity: .35; cursor: default; }
+.haul-block { display: flex; flex-direction: column; gap: 8px; }
+.haul { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.haul div { background: var(--card); border-radius: 14px; padding: 11px 12px; display: grid; gap: 3px; }
+.haul span { font-size: 10.5px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.haul b { font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+.haul .cr b { color: var(--crystal); }
+.haul .me b { color: var(--metal); }
+.mode:focus-visible, .mode-go:focus-visible, .step:focus-visible, .pill:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.mode:active, .mode-go:active { transform: translateY(1px); }
 .result { display: flex; flex-direction: column; gap: 2px; }
 .result span, .facts dt { font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-soft); }
 .result b { font-family: var(--font-display); font-weight: 800; font-size: 52px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--hero); }
@@ -128,6 +217,90 @@ body {
 }
 /* Al doilea drum de pe un cartonaș („Partidă nouă”): la fel de mare, dar fără plin, ca să nu se ia drept cel principal. */
 .go.alt { color: var(--hero); background: transparent; border: 1px solid var(--hero); padding: 13px 17px; }
+/* Un drum liniștit, dar la fel de mare („Continuă partida”, „Înapoi la start”). */
+.go.line { color: var(--ink); background: transparent; border: 1.5px solid var(--line); padding: 12.5px 16.5px; font-size: 16px; }
 .go:active { transform: translateY(1px); }
 .go:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* Panoul de alegere de la un nivel nou: jocul stă, fundalul (canvasul și banda) se vede încețoșat și întunecat.
+   Încețoșarea e a paginii (backdrop-filter), nu a canvasului. Unde browserul nu o are, vălul e doar mai întunecat. */
+.icons { position: absolute; width: 0; height: 0; overflow: hidden; }
+.ico { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.veil.choice { background: var(--veil-blur); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .veil.choice { background: var(--veil-deep); }
+}
+.pick { padding: 18px 16px 16px; gap: 12px; border-radius: 22px; }
+.pick:focus { outline: none; }   /* focusul de la deschidere stă pe cartonaș ca să nu fie pe o ofertă; nu are nimic de arătat */
+.pick-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 12px; padding-inline: 4px; }
+.pick-title { display: flex; flex-direction: column; gap: 3px; }
+.pick-level { font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+.pick h1 { font-size: 21px; }
+.slots { display: flex; gap: 5px; padding-bottom: 2px; }
+.slot {
+  box-sizing: border-box; width: 20px; height: 20px; border-radius: 6px; border: 1px solid var(--line); background: var(--card);
+  display: grid; place-items: center; color: var(--ink-soft);
+}
+.slot svg { width: 14px; height: 14px; }   /* ocupat: pictograma modulului, în culoarea felului lui */
+.slot-weapon { color: var(--hero); } .slot-body { color: var(--shield); } .slot-utility { color: var(--metal); }
+.slot-free { background: transparent; border: 1px dashed var(--ink-soft); }
+.slot-locked { opacity: .7; }
+.slot-locked svg { width: 12px; height: 12px; }
+.offers { display: flex; flex-direction: column; gap: 10px; }
+.offer {
+  display: grid; grid-template-columns: 52px 1fr; gap: 12px; align-items: center; width: 100%; box-sizing: border-box;
+  padding: 11px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card);
+  font: inherit; color: var(--ink); text-align: left; cursor: pointer; touch-action: manipulation;
+}
+.offer:active { transform: translateY(1px); }
+.offer:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }   /* la Tab; mai subțire decât la cartonașe */
+.tone-weapon { --tone: var(--hero); } .tone-body { --tone: var(--shield); } .tone-utility { --tone: var(--metal); }
+.offer-icon { width: 52px; height: 52px; border-radius: 13px; background: var(--card); display: grid; place-items: center; color: var(--tone); }
+.offer-icon svg { width: 28px; height: 28px; }
+.offer-body {
+  min-width: 0; display: grid; grid-template-columns: 1fr auto; column-gap: 8px; row-gap: 3px; align-items: end;
+}
+.offer-head { grid-column: 1 / 3; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.offer-name { font-family: var(--font-display); font-weight: 800; font-size: 17px; line-height: 1.15; }
+.offer-tag { font-size: 9.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--tone); white-space: nowrap; }
+.offer-lines {
+  display: flex; flex-direction: column; font-size: 12.5px; line-height: 1.35; color: var(--ink-soft); min-width: 0;
+  min-height: 2.7em;                                   /* loc pentru două rânduri: cele trei oferte au aceeași înălțime */
+}
+.pips { display: flex; gap: 3px; padding-bottom: 3px; }
+.pip { width: 7px; height: 7px; border-radius: 50%; background: var(--track); }
+.pip.on { background: var(--tone); }
+.pick-note { margin: 0; text-align: center; font-size: 11.5px; color: var(--ink-soft); }
 @media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+
+/* Atelierul (propunere de așezare, după macheta 2): peste cartonașul de unde s-a deschis, care e ascuns cât panoul e pe ecran.
+   Cinci rânduri: numele cu treptele ca puncte, rândul „ce face” și butonul cu prețul treptei următoare; stins când rezerva nu ajunge. */
+.veil.shop { background: var(--veil-deep); }
+.shop-card { padding: 16px; gap: 10px; }
+.shop-card:focus { outline: none; }   /* focusul de la deschidere stă pe panou ca să nu fie pe un buton de cumpărat; nu are nimic de arătat */
+.shop-card .card-head { gap: 4px; }
+.shop-card h1 { font-size: 24px; }
+.shop-card .reserve { padding: 8px 12px; }
+.shop-card .go { padding-block: 11px; font-size: 16px; }
+.ups { display: flex; flex-direction: column; }
+.up { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.up:first-child { border-top: 0; padding-top: 2px; }
+.up-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.up-name { margin: 0; font-family: var(--font-ui); font-weight: 500; font-size: 15px; line-height: 1.2; }
+.up-dots { display: inline-flex; gap: 4px; }
+.up-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--track); }
+.up-dots i.on { background: var(--hero); }
+.up-text { grid-column: 1; font-size: 12px; line-height: 1.3; color: var(--ink-soft); }
+.buy {
+  grid-column: 2; grid-row: 1 / span 2; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  min-width: 96px; min-height: 40px; padding: 8px 10px; border: 1.5px solid transparent; border-radius: 12px; background: var(--hero); color: var(--night);
+  font: inherit; font-weight: 500; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; touch-action: manipulation;
+}
+.buy:active { transform: translateY(1px); }
+.buy:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.buy .chip { width: 9px; height: 9px; background: var(--crystal-on-lit); }
+.buy .chip-metal { background: var(--metal-on-lit); }
+.buy.poor { background: transparent; color: var(--ink-soft); border-color: var(--line); cursor: default; }
+.buy.poor .chip-crystal { background: var(--crystal); opacity: .6; }
+.buy.poor .chip-metal { background: var(--metal); opacity: .6; }
+.buy.max { background: transparent; color: var(--ink-soft); border: 1.5px dashed var(--line); cursor: default; }

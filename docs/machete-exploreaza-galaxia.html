@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"></head><body style="margin:0">
+<title>Machete Explorează galaxia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@800&family=Rubik:wght@400;500;600&display=swap">
+<style>
+/* Așezare: o coloană de citit, cu machetele de telefon puse una lângă alta pe ecran lat și una sub alta pe telefon. Un singur aspect, cel al jocului. */
+:root {
+  --sky: #0c1236; --sky-deep: #090c26; --edge: #05071a; --night: #060a1f;
+  --hero: #ffcf4a; --jet: #8fe9ff; --foe: #ff4d6d; --crystal: #4fe3c1; --metal: #b3aee6;
+  --ink: #f1f4ff; --ink-soft: #9fa9c9;
+  --panel: rgba(6, 10, 31, .86); --card: rgba(241, 244, 255, .07); --track: rgba(241, 244, 255, .16); --line: rgba(241, 244, 255, .14);
+  --font-display: "Exo 2", "Rubik", system-ui, sans-serif;
+  --font-ui: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  background: var(--edge); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.5;
+  padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.page { max-width: 1040px; margin: 0 auto; display: grid; gap: 34px; }
+.lead { display: grid; gap: 10px; max-width: 62ch; }
+.eyebrow { margin: 0; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--hero); font-weight: 600; }
+h1 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 6vw, 40px); line-height: 1.08; text-wrap: balance; }
+h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 20px; line-height: 1.15; }
+p { margin: 0; color: var(--ink-soft); }
+p b { color: var(--ink); font-weight: 500; }
+.shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px 26px; align-items: start; }
+figure { margin: 0; display: grid; gap: 12px; justify-items: center; min-width: 0; }
+figcaption { display: grid; gap: 6px; max-width: 340px; }
+figcaption p { font-size: 14px; }
+
+/* Telefonul */
+.phone {
+  width: 340px; max-width: 100%; border-radius: 30px; border: 1px solid var(--line); overflow: hidden; position: relative;
+  background: linear-gradient(var(--sky), var(--sky-deep)); min-height: 620px; display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; padding: 12px;
+}
+.phone.top { align-content: start; }
+.stars { position: absolute; inset: 0; opacity: .7; pointer-events: none;
+  background:
+    radial-gradient(1.2px 1.2px at 12% 18%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 70% 9%, #c9dcff 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 86% 34%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 30% 52%, #ffe9c9 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 58% 71%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 16% 86%, #c9dcff 50%, transparent 51%),
+    radial-gradient(1.3px 1.3px at 90% 90%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 44% 30%, #fff 50%, transparent 51%);
+}
+.cardm { position: relative; display: grid; gap: 12px; background: var(--night); border: 1px solid var(--line); border-radius: 22px; padding: 18px 16px 16px; }
+.cardm h3 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 26px; line-height: 1.08; }
+.cardm .eyebrow { font-size: 10px; }
+.small { font-size: 12.5px; color: var(--ink-soft); line-height: 1.35; }
+
+.reserve { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--card); border-radius: 14px; padding: 9px 12px; }
+.res { display: inline-flex; align-items: baseline; gap: 6px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.res b { font-family: var(--font-display); font-weight: 800; font-size: 18px; line-height: 1; color: var(--ink); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.gem, .hex { width: 9px; height: 9px; align-self: center; flex: none; display: inline-block; }
+.gem { background: var(--crystal); transform: rotate(45deg); border-radius: 2px; }
+.hex { background: var(--metal); clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); width: 11px; height: 10px; }
+.pill { margin-left: auto; border: 1.5px solid var(--line); border-radius: 99px; padding: 5px 12px; font-weight: 600; font-size: 13px; color: var(--ink); white-space: nowrap; }
+
+.mode { display: grid; gap: 3px; border-radius: 16px; padding: 13px 14px; }
+.mode strong { font-family: var(--font-display); font-weight: 800; font-size: 19px; line-height: 1.1; }
+.mode span { font-size: 12.5px; line-height: 1.35; }
+.mode.main { background: var(--hero); color: var(--night); }
+.mode.second { border: 1.5px solid var(--jet); color: var(--ink); }
+.mode.second span { color: var(--ink-soft); }
+.sector { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.sector b { font-weight: 600; color: var(--jet); font-variant-numeric: tabular-nums; }
+.step { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; font-weight: 600; color: var(--ink); }
+.step.off { opacity: .35; }
+.quiet { text-align: center; font-size: 13px; color: var(--ink-soft); padding: 4px; }
+.go2 { text-align: center; border: 1.5px solid var(--line); border-radius: 14px; padding: 11px; font-weight: 600; }
+
+/* Atelierul */
+.up { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.up:first-of-type { border-top: 0; padding-top: 2px; }
+.up h4 { margin: 0; font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.dots { display: inline-flex; gap: 4px; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--track); }
+.dots i.on { background: var(--hero); }
+.up .small { grid-column: 1; }
+.buy { grid-column: 2; grid-row: 1 / span 2; display: inline-flex; align-items: center; gap: 6px; border-radius: 12px; padding: 8px 10px; font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; background: var(--hero); color: var(--night); white-space: nowrap; }
+.buy .gem { background: #0b6b58; }
+.buy .hex { background: #4a4590; }
+.buy.poor { background: transparent; color: var(--ink-soft); border: 1.5px solid var(--line); }
+.buy.poor .gem { background: var(--crystal); opacity: .6; }
+.buy.poor .hex { background: var(--metal); opacity: .6; }
+.buy.max { background: transparent; color: var(--ink-soft); border: 1.5px dashed var(--line); }
+
+/* Sfârșitul zborului */
+.haul { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.haul div { background: var(--card); border-radius: 14px; padding: 11px 12px; display: grid; gap: 3px; }
+.haul span { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.haul b { font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+.haul .cr b { color: var(--crystal); }
+.haul .me b { color: var(--metal); }
+
+/* Banda din zbor */
+.band { position: relative; display: grid; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; }
+.row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pips { margin-left: auto; display: inline-flex; gap: 5px; }
+.pips i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--hero); }
+.pips i.on { background: var(--hero); }
+.bar { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); gap: 10px; }
+.track { flex: 1; height: 8px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.track i { display: block; height: 100%; width: 62%; border-radius: 99px; background: var(--ink); }
+.slot { width: 30px; height: 30px; border-radius: 9px; border: 1.5px solid var(--kind); display: grid; place-items: center; position: relative; color: var(--kind); }
+.slot svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.slot .dots { position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%); gap: 2px; }
+.slot .dots i { width: 4px; height: 4px; }
+.slot .dots i.on { background: var(--kind); }
+.w { --kind: var(--hero); } .b { --kind: var(--jet); } .u { --kind: var(--metal); }
+.pause { margin-left: auto; width: 34px; height: 34px; border-radius: 11px; border: 1.5px solid var(--line); display: grid; place-items: center; }
+.pause::before { content: ""; width: 10px; height: 12px; border-left: 3.5px solid var(--ink); border-right: 3.5px solid var(--ink); }
+.toast { justify-self: center; background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 5px 13px; font-weight: 600; font-size: 13px; position: relative; margin-top: 8px; }
+.ship { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-bottom: 30px solid var(--hero); }
+.pick { position: absolute; left: 62%; top: 250px; width: 28px; height: 28px; border-radius: 9px; border: 2px solid var(--hero); background: var(--night); display: grid; place-items: center; color: var(--hero); box-shadow: 0 0 0 6px rgba(255, 207, 74, .14); }
+.pick svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.shot { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #ffb347; border: 3.5px solid #ffb347; box-shadow: inset 0 0 0 3px #fff; }
+.note { border-left: 3px solid var(--hero); padding: 4px 0 4px 14px; max-width: 62ch; }
+</style>
+
+<div class="page">
+  <div class="lead">
+    <p class="eyebrow">World Guard · machete</p>
+    <h1>Explorează galaxia</h1>
+    <p>Patru ecrane noi sau schimbate. Zborul însuși e cel din prototip; aici sunt doar lucrurile din jurul lui. <b>Toate sunt propuneri</b>: spune ce ai muta, ce ai scoate și ce lipsește.</p>
+  </div>
+
+  <div class="shots">
+    <figure>
+      <div class="phone">
+        <div class="stars"></div>
+        <div class="cardm">
+          <h3>World Guard</h3>
+          <div class="reserve">
+            <span class="res"><i class="gem"></i><b>240</b> cristale</span>
+            <span class="res"><i class="hex"></i><b>55</b> metal</span>
+            <span class="pill">Atelier</span>
+          </div>
+          <div class="mode main"><strong>Apără planeta</strong><span>Strânge, construiește și rezistă cât poți. Record 5:12.</span></div>
+          <div class="mode second">
+            <strong>Explorează galaxia</strong><span>Zboară trei minute, ferește-te și adu resurse acasă.</span>
+            <div class="sector"><span class="step">−</span><b>Sectorul 3</b><span class="step off">+</span></div>
+          </div>
+          <div class="go2">Continuă partida · 2:41</div>
+          <div class="quiet">Test de viteză</div>
+        </div>
+      </div>
+      <figcaption>
+        <h2>1. Cartonașul de start</h2>
+        <p>Două moduri, unul sub altul. Rezerva și atelierul stau sus, fiindcă sunt ale amândurora. Cele patru rânduri de reguli de azi dispar: fiecare mod își spune rostul într-un rând, sub nume.</p>
+        <p>Cu − și + alegi sectorul: oricare deja explorat, sau următorul.</p>
+      </figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="stars"></div>
+        <div class="cardm">
+          <p class="eyebrow">Întăriri care rămân</p>
+          <h3>Atelier</h3>
+          <div class="reserve">
+            <span class="res"><i class="gem"></i><b>240</b> cristale</span>
+            <span class="res"><i class="hex"></i><b>55</b> metal</span>
+          </div>
+          <div>
+            <div class="up"><h4>Carenă <span class="dots"><i class="on"></i><i class="on"></i><i></i><i></i></span></h4><span class="buy"><i class="gem"></i>170 <i class="hex"></i>30</span><span class="small">Nava are mai multă viață.</span></div>
+            <div class="up"><h4>Armament <span class="dots"><i class="on"></i><i></i><i></i><i></i><i></i></span></h4><span class="buy"><i class="gem"></i>130 <i class="hex"></i>25</span><span class="small">Toate armele lovesc mai tare.</span></div>
+            <div class="up"><h4>Colectare <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span></h4><span class="buy max">La plafon</span><span class="small">Strângi resurse de mai departe.</span></div>
+            <div class="up"><h4>Planetă <span class="dots"><i></i><i></i><i></i><i></i></span></h4><span class="buy"><i class="gem"></i>70 <i class="hex"></i>20</span><span class="small">Planeta are mai multă viață.</span></div>
+            <div class="up"><h4>Arsenal de pornire <span class="dots"><i class="on"></i><i></i><i></i></span></h4><span class="buy poor"><i class="gem"></i>240 <i class="hex"></i>60</span><span class="small">Zborul pornește și cu Rachetele.</span></div>
+          </div>
+          <div class="go2">Înapoi</div>
+        </div>
+      </div>
+      <figcaption>
+        <h2>2. Atelierul</h2>
+        <p>Un rând pe întărire: numele, treptele ca puncte, ce face, și butonul cu prețul treptei următoare. Butonul galben se poate apăsa; cel stins înseamnă că rezerva nu ajunge; „La plafon” înseamnă că nu mai are trepte.</p>
+        <p>O apăsare cumpără o treaptă și nu se poate da înapoi. Prețurile de aici sunt doar de formă.</p>
+      </figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone top">
+        <div class="stars"></div>
+        <div class="band">
+          <div class="row">
+            <span class="res"><i class="gem"></i><b>73</b> cristale</span>
+            <span class="res"><i class="hex"></i><b>29</b> metal</span>
+            <span class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>
+          </div>
+          <div class="row bar"><span>Sectorul 3</span><span class="track"><i></i></span><span>62%</span></div>
+          <div class="row" style="padding-bottom:8px">
+            <span class="slot w"><svg viewBox="0 0 16 16"><path d="M3 12V7M8 12V3M13 12V7"/></svg><span class="dots"><i class="on"></i><i class="on"></i><i></i></span></span>
+            <span class="slot w"><svg viewBox="0 0 16 16"><path d="M3 13l8-8"/><circle cx="12.5" cy="3.5" r="1.6" fill="currentColor" stroke="none"/></svg><span class="dots"><i class="on"></i><i></i><i></i></span></span>
+            <span class="slot w"><svg viewBox="0 0 16 16"><path d="M8 2l3 8H5zM8 11v3"/></svg><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span></span>
+            <span class="slot b"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/></svg><span class="dots"><i class="on"></i><i></i><i></i></span></span>
+            <span class="slot u"><svg viewBox="0 0 16 16"><path d="M4 3v5a4 4 0 008 0V3"/></svg><span class="dots"><i class="on"></i><i></i><i></i></span></span>
+            <span class="pause"></span>
+          </div>
+        </div>
+        <div class="toast">Scut · nou</div>
+        <span class="shot" style="left:24%;top:300px"></span><span class="shot" style="left:48%;top:360px"></span><span class="shot" style="left:74%;top:420px"></span>
+        <span class="pick"><svg viewBox="0 0 16 16"><path d="M8 2l3 8H5zM8 11v3"/></svg></span>
+        <span class="ship"></span>
+      </div>
+      <figcaption>
+        <h2>3. Banda din zbor</h2>
+        <p>Sus: ce ai strâns în zborul ăsta și viețile navei. Dedesubt, drumul prin sector, care la capăt devine viața navei de elită. Apoi modulele navei, ca pictograme cu treptele sub ele, și pauza.</p>
+        <p>Un modul de cules e un pătrat cu chenar, în culoarea felului lui. Focul dușman e mereu rotund și portocaliu, ca să nu le încurci.</p>
+      </figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="stars"></div>
+        <div class="cardm">
+          <p class="eyebrow">Ai adus acasă</p>
+          <h3>Sectorul 3 explorat</h3>
+          <div class="haul">
+            <div class="cr"><span>Cristale</span><b>+132</b></div>
+            <div class="me"><span>Metal</span><b>+28</b></div>
+          </div>
+          <div class="reserve">
+            <span class="res">Rezerva</span>
+            <span class="res"><i class="gem"></i><b>372</b></span>
+            <span class="res"><i class="hex"></i><b>83</b></span>
+            <span class="pill">Atelier</span>
+          </div>
+          <p class="small">Nave doborâte 61 · Timp 3:07 · Module: Tun 2, Laser 1, Rachete 3, Scut 1</p>
+          <div class="mode main" style="text-align:center"><strong>Sectorul 4</strong></div>
+          <div class="go2">Înapoi la start</div>
+        </div>
+      </div>
+      <figcaption>
+        <h2>4. Sfârșitul zborului</h2>
+        <p>Ce ai adus, cât are acum rezerva, și trei drumuri: sectorul următor, atelierul sau înapoi. Dacă nava a fost doborâtă, titlul e „Nava a fost doborâtă”, iar butonul mare spune „Încă un zbor”.</p>
+      </figcaption>
+    </figure>
+  </div>
+
+  <p class="note">Ce nu e aici: zborul însuși (îl ai în prototip) și apărarea planetei, care rămâne cum e.</p>
+</div>
+</body></html>

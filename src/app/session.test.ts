@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { BALANCE } from '../data/balance'
+import { BALANCE, STRESS_SHIP } from '../data/balance'
+import { MAX_UPS, NO_UPS, type Ups } from '../data/workshop'
+import { heroMaxHp } from '../sim/hero'
+import { slotsAt } from '../sim/mods'
 import { createGame, type GameState } from '../sim/state'
 import { step } from '../sim/step'
 import { STRESS_FOES, createSession } from './session'
 
 const still = { x: 0, y: 0 }
-const deps = () => {
+const deps = (ups: Ups = NO_UPS) => {
   const calls: string[] = []; const saved: GameState[] = []
   return { calls, saved, d: {
     saveGame: (s: GameState) => { calls.push('save'); saved.push(s) },
     clearGame: () => { calls.push('clear') },
     saveIfRecord: (secs: number) => { calls.push('record ' + secs); return { record: secs, isNew: true } },
+    ups: () => ups,
   } }
 }
 
@@ -66,5 +70,115 @@ it('o partidă reluată continuă de unde era și nu e niciodată test de vitez�
   x.resume(saved)
   expect([x.phase, x.stress, x.s === saved]).toEqual(['playing', false, true])
   x.advance(60, still); expect(x.s.tick).toBe(360)
+})
+it('cu o ofertă deschisă, advance nu mișcă partida: alegerea o face jucătorul', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, false); x.advance(60, still)
+  x.s.offer = [{ id: 'laser', tier: 1 }, { id: 'wave', tier: 2 }]
+  const t = x.s.t
+  expect(x.advance(30, still)).toBeNull()
+  expect([x.s.t, x.s.tick, x.s.offer?.length]).toEqual([t, 60, 2])
+})
+it('choose: false fără ofertă, fără partidă în curs sau cu un index greșit', () => {
+  const { d } = deps(); const x = createSession(d, 5)
+  x.s.offer = [{ id: 'laser', tier: 1 }]
+  expect(x.choose(0)).toBe(false)                 // încă pe cartonașul de start
+  x.start(7, false)
+  expect(x.choose(0)).toBe(false)                 // nicio ofertă deschisă
+  x.s.offer = [{ id: 'laser', tier: 1 }, { id: 'wave', tier: 2 }]
+  expect([x.choose(2), x.choose(-1), x.choose(0.5)]).toEqual([false, false, false])
+  x.pause()
+  expect(x.choose(0)).toBe(false)                 // pe pauză panoul nu e pe ecran
+  expect(x.s.offer?.length).toBe(2)
+})
+it('choose cu o ofertă deschisă o închide, pune modulul și advance merge mai departe', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, false); x.advance(60, still)
+  x.s.offer = [{ id: 'laser', tier: 1 }, { id: 'wave', tier: 2 }]
+  expect(x.choose(1)).toBe(true)
+  expect([x.s.offer, x.s.hero.mods.map((m) => [m.id, m.tier])]).toEqual([null, [['wave', 2]]])
+  x.advance(30, still); expect(x.s.tick).toBe(90)
+})
+it('choose întoarce false când simularea refuză oferta, iar oferta rămâne deschisă', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, false)
+  x.s.offer = [{ id: 'wave', tier: 1 }]           // Unda e deja pe navă
+  expect(x.choose(0)).toBe(false)
+  expect(x.s.offer).toEqual([{ id: 'wave', tier: 1 }])
+})
+it('pauza cu oferta deschisă salvează o stare cu oferta în ea', () => {
+  const { d, saved } = deps(); const x = createSession(d, 5); x.start(7, false); x.advance(60, still)
+  x.s.offer = [{ id: 'laser', tier: 1 }, { id: 'wave', tier: 2 }]
+  expect(x.pause()).toBe(true)
+  expect(JSON.parse(JSON.stringify(saved[0])).offer).toEqual([{ id: 'laser', tier: 1 }, { id: 'wave', tier: 2 }])
+})
+it('testul de viteză: experiența rămâne 0 după 200 de dușmani doborâți și nicio ofertă nu se deschide', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, true)
+  for (let i = 0; i < 3; i++) {                   // de fiecare dată toți cei 150 cad în pasul următor
+    for (const f of x.s.foes) f.hp = 0
+    x.advance(1, still)
+  }
+  expect(x.s.kills).toBeGreaterThanOrEqual(200)
+  expect([x.s.hero.xp, x.s.hero.lvl, x.s.offer]).toEqual([0, STRESS_SHIP.lvl, null])
+})
+it('testul de viteză: nava pornește cu cele trei arme la treapta 3, în locurile nivelului ei, cu viața plină', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, true)
+  const h = x.s.hero
+  expect(h.mods.map((m) => [m.id, m.tier])).toEqual([['wave', 3], ['laser', 3], ['missile', 3]])
+  expect(h.mods.length).toBeLessThanOrEqual(slotsAt(h.lvl))
+  expect([h.lvl, h.xp, h.hp]).toEqual([3, 0, heroMaxHp(x.s)])
+})
+it('testul de viteză: armele chiar trag, experiența rămâne 0, numărul de dușmani nu se schimbă', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, true)
+  let beams = 0, missiles = 0
+  for (let i = 0; i < 600; i++) {
+    x.advance(1, still)
+    if (x.s.fx.some((f) => f.kind === 'beam')) beams++
+    if (x.s.shots.some((q) => q.kind === 'missile')) missiles++
+    expect(x.s.foes.length).toBe(STRESS_FOES)
+  }
+  expect(beams).toBeGreaterThan(0)
+  expect(missiles).toBeGreaterThan(0)
+  expect([x.s.hero.xp, x.s.hero.lvl, x.s.offer, x.s.mode]).toEqual([0, 3, null, 'playing'])
+})
+it('o partidă obișnuită pornește cu întăririle din deps.ups(); testul de viteză, fără ele', () => {
+  const { d } = deps(MAX_UPS); const x = createSession(d, 5)
+  x.start(7, false)
+  expect([x.s.ups, x.s.core.hp, x.s.hero.hp]).toEqual([MAX_UPS, 480, 84])
+  x.start(7, true)
+  expect(x.s.ups).toEqual(NO_UPS)
+  x.advance(60, still)
+  expect(x.s.core.hp).toBe(BALANCE.core.hp)
+})
+it('o partidă obișnuită pornește ca înainte: nivelul 1, doar Unda la treapta 1', () => {
+  const { d } = deps(); const x = createSession(d, 5); x.start(7, false)
+  expect(x.s.hero).toEqual(createGame(7).hero)
+  expect([x.s.hero.lvl, x.s.hero.mods.map((m) => [m.id, m.tier])]).toEqual([1, [['wave', 1]]])
+})
+it('„Înapoi la start” din pauză: sesiunea nu mai e în pauză, salvarea de la pauză rămâne singura scriere, iar partida nu mai merge', () => {
+  const { d, calls, saved } = deps(); const x = createSession(d, 5); x.start(7, false); x.advance(60, still)
+  x.pause()
+  expect(x.leave()).toBe(true)
+  expect([x.phase, calls]).toEqual(['ready', ['clear', 'save']])
+  expect(saved[0]!.tick).toBe(60)
+  expect(x.unpause()).toBe(false)
+  expect(x.advance(60, still)).toBeNull(); expect(x.s.tick).toBe(60)
+  expect(x.leave()).toBe(false)
+})
+it('„Înapoi la start” de la sfârșit: sesiunea trece pe start fără să mai scrie ceva', () => {
+  const { d, calls } = deps(); const x = createSession(d, 5); x.start(7, false)
+  x.s.core.hp = 0
+  expect(x.advance(1, still)).not.toBeNull()
+  const before = [...calls]
+  expect(x.leave()).toBe(true)
+  expect([x.phase, calls]).toEqual(['ready', before])
+})
+it('„Înapoi la start” nu face nimic cât partida e în curs sau pe start', () => {
+  const { d } = deps(); const x = createSession(d, 5)
+  expect(x.leave()).toBe(false)
+  x.start(7, false)
+  expect([x.leave(), x.phase]).toEqual([false, 'playing'])
+})
+it('testul de viteză pus pe pauză și lăsat: nicio salvare', () => {
+  const { d, calls } = deps(); const x = createSession(d, 5); x.start(7, true); x.advance(10, still)
+  x.pause()
+  expect([x.leave(), x.phase, calls]).toEqual([true, 'ready', []])
 })
 })

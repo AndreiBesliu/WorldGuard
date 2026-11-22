@@ -1,5 +1,5 @@
 // Interfața unui aspect: ce se desenează altfel de la o temă la alta. `world.ts` hotărăște ordinea, aspectul doar formele.
-import type { Foe, GameState, Input, Pad, PadKind, Res, ResNode, Shot } from '../sim/state'
+import type { Foe, Fx, GameState, Input, Pad, PadKind, Res, ResNode, Shot } from '../sim/state'
 
 /**
  * Un aspect al jocului: formele de pe canvas care se desenează altfel de la o temă la alta. Citește starea, nu o scrie.
@@ -16,8 +16,14 @@ export interface Skin {
   node(ctx: CanvasRenderingContext2D, s: GameState, n: ResNode): void
   building(ctx: CanvasRenderingContext2D, s: GameState, p: Pad): void
   foe(ctx: CanvasRenderingContext2D, s: GameState, f: Foe): void
+  /** Nava ta, cu formele modulelor de pe ea (treapta se vede în mărime sau în numărul de linii) și cu inelul Scutului. */
   hero(ctx: CanvasRenderingContext2D, s: GameState, input: Input): void
+  /** O rază de turelă sau o rachetă a navei, după `sh.kind`. */
   shot(ctx: CanvasRenderingContext2D, sh: Shot): void
+  /** Raza laserului, de la navă la țintă; `age` e vârsta efectului, în secunde. */
+  beam(ctx: CanvasRenderingContext2D, fx: Extract<Fx, { kind: 'beam' }>, age: number): void
+  /** Explozia unei rachete, care crește până la zona ei; `age` e vârsta efectului, în secunde. */
+  blast(ctx: CanvasRenderingContext2D, fx: Extract<Fx, { kind: 'blast' }>, age: number): void
   /** Semnul din mijlocul unui cerc de investit. */
   glyph(ctx: CanvasRenderingContext2D, kind: PadKind, x: number, y: number): void
   /** Jetonul unei resurse, cu mijlocul laturii stângi în (x, y): cam 11 px lățime (de la x − 0,5 la x + 10,5) și până la 13 px

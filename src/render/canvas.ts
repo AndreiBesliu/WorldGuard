@@ -13,6 +13,8 @@ export function createRenderer(canvas: HTMLCanvasElement): {
   resize(hudBottom: number): void
   frame(s: GameState, input: Input, stick: Stick | null, frameDt: number): void
   refresh(): void
+  /** Cerul pictat (o singură dată, până la `refresh`), împrumutat și de desenatorul zborului. */
+  sky(): HTMLCanvasElement
 } {
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('canvas 2D indisponibil')
@@ -23,9 +25,11 @@ export function createRenderer(canvas: HTMLCanvasElement): {
   // Cerul pictat se aruncă și se pictează din nou la cadrul următor: telefonul poate pierde ce era pe canvas cât pagina a stat ascunsă.
   const refresh = (): void => { sky = null }
   canvas.addEventListener('contextrestored', refresh)
+  const paint = (): HTMLCanvasElement => (sky ??= skin.paintSky())
 
   return {
     refresh,
+    sky: paint,
     resize(hudBottom) {
       const r = canvas.getBoundingClientRect()
       view.w = r.width; view.h = r.height
@@ -40,13 +44,13 @@ export function createRenderer(canvas: HTMLCanvasElement): {
       const { w, h, scale: sc } = view
       if (!w || !h) return
       const C = palette()
-      sky ??= skin.paintSky()
+      const back = paint()
       ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0)
       ctx.globalAlpha = 1
       ctx.fillStyle = C.edge; ctx.fillRect(0, 0, w, h)
       const left = cam.x - w / sc / 2, top = cam.y - h / sc / 2
       ctx.save(); ctx.scale(sc, sc); ctx.translate(-left, -top)
-      ctx.drawImage(sky, 0, 0)
+      ctx.drawImage(back, 0, 0)
       drawWorld(ctx, s, input, { l: left, t: top, r: left + w / sc, b: top + h / sc }, skin)
       ctx.restore()
       drawOverlay(ctx, s, cam, view, stick, skin)

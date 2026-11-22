@@ -1,5 +1,6 @@
 // Recordul (secunde) și partida întreruptă în localStorage. Orice lipsă sau eroare de stocare înseamnă „fără record”
 // și „fără reluare”, nu o oprire a jocului.
+import { emptyProfile, packProfile, unpackProfile, type Profile } from './profile'
 import { packSave, unpackSave } from './save'
 import type { GameState } from '../sim/state'
 
@@ -55,4 +56,42 @@ export function loadGame(store?: Store | null): GameState | null {
 /** Scoate partida salvată (recordul rămâne). */
 export function clearGame(store?: Store | null): void {
   try { (store === undefined ? pageStore() : store)?.removeItem(SAVE_KEY) } catch { /* nimic de scos sau stocare blocată */ }
+}
+
+export const PROFILE_KEY = 'wg.v1.profile'
+
+const copyProfile = (p: Profile): Profile => ({ ...p, ups: { ...p.ups } })
+
+/**
+ * Ultimul profil scris, ținut și în memorie cât e pagina deschisă, cu stocarea în care s-a scris și dacă a ajuns acolo (`ahead`:
+ * nu a ajuns, deci memoria e mai nouă decât stocarea). Cu stocarea refuzată, bucla zbor → rezervă → atelier merge așa măcar o ședință.
+ */
+let kept: { store: Store | null; p: Profile; ahead: boolean } | null = null
+
+/** Doar pentru teste: uită profilul ținut în memorie, ca fiecare test să pornească de la aceeași stare. Jocul nu-l cheamă. */
+export function forgetProfileForTests(): void { kept = null }
+
+/**
+ * Profilul jucătorului (rezerva și atelierul). Stocarea e adevărul când se poate citi și ultima scriere a ajuns în ea (așa se vede
+ * și ce a scris altă filă); altfel, ultimul profil scris, din memorie. Lipsă sau stricat dau profil gol; unul stricat nu se șterge:
+ * următoarea salvare îl înlocuiește.
+ */
+export function loadProfile(store?: Store | null): Profile {
+  const s = store === undefined ? pageStore() : store
+  const mine = kept !== null && kept.store === s ? kept : null
+  if (mine !== null && (mine.ahead || s === null)) return copyProfile(mine.p)
+  try {
+    if (s === null) return emptyProfile()
+    const r = unpackProfile(s.getItem(PROFILE_KEY))
+    return r.ok ? r.value : emptyProfile()
+  } catch { return mine !== null ? copyProfile(mine.p) : emptyProfile() }
+}
+
+export function saveProfile(p: Profile, store?: Store | null): void {
+  const s = store === undefined ? pageStore() : store
+  let ahead = true
+  try {
+    if (s !== null) { s.setItem(PROFILE_KEY, packProfile(p)); ahead = false }
+  } catch { /* fără păstrare în stocare: rămâne în memorie, iar jocul merge */ }
+  kept = { store: s, p: copyProfile(p), ahead }
 }

@@ -10,11 +10,12 @@
     "test": "vitest run",
     "bundle": "vite build && node scripts/build-sw.mjs",
     "build": "tsc --noEmit && npm run bundle",
-    "check": "npm run typecheck && npm run test && npm run bundle",
+    "check": "npm run typecheck && npm run test && npm run bundle && npm run single",
     "preview": "vite preview",
     "smoke": "npm run bundle && node scripts/smoke.cjs",
     "single": "vite build --config vite.single.config.ts && node scripts/single-file.mjs",
-    "icons": "node scripts/make-icons.cjs"
+    "icons": "node scripts/make-icons.cjs",
+    "balance": "vite build --config vite.balance.config.ts && node dist-balance/table.js"
   },
   "devDependencies": {
     "@fontsource/exo-2": "^5.3.0",

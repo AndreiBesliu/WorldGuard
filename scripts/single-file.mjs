@@ -35,7 +35,10 @@ const body = /<body[^>]*>([\s\S]*?)<\/body>/.exec(html)?.[1]
 if (!title || body === undefined) fail('index.html nu are <title> sau <body>')
 const markup = body.replace(scripts[0][0], '').trim()
 
+// Primul rând e codificarea: fără el, fișierul deschis de mână (nu prin pagina care îl îmbracă) își strică diacriticele.
+const CHARSET = '<meta charset="utf-8">'
 const out = [
+  CHARSET,
   `<title>${title}</title>`,
   '<meta name="claude:viewport-fit-sides" content="cover">',
   `<style>${css}</style>`,
@@ -43,10 +46,11 @@ const out = [
   `<script type="module">${js}</script>`,
 ].join('\n') + '\n'
 
-// Nicio referință spre un fișier: `data:` e în regulă, orice altceva nu
+// Nicio referință spre un fișier: `data:` e în regulă, la fel o trimitere în aceeași pagină (`#…`, cum au pictogramele
+// modulelor spre `<symbol>`-urile lor); orice altceva nu
 const leftovers = []
 for (const m of out.matchAll(/\b(?:src|href)\s*=\s*["']?([^"'\s>]+)/g)) {
-  if (!m[1].startsWith('data:')) leftovers.push(m[0])
+  if (!m[1].startsWith('data:') && !m[1].startsWith('#')) leftovers.push(m[0])
 }
 for (const m of css.matchAll(/url\(\s*["']?([^"')]+)/g)) {
   if (!m[1].startsWith('data:')) leftovers.push(`url(${m[1].slice(0, 60)})`)
@@ -57,6 +61,8 @@ if (leftovers.length > 0) fail(`au rămas referințe spre fișiere: ${leftovers.
 // stau în <head>, din care fragmentul ia doar <title>, deci rămân pe dinafară; aici se verifică asta, la fel și `sw.js`.
 const install = ['manifest.webmanifest', 'icons/icon', 'theme-color', 'sw.js'].filter((s) => out.includes(s))
 if (install.length > 0) fail(`au rămas în fragment urme ale instalării: ${install.join(', ')}`)
+
+if (!out.startsWith(`${CHARSET}\n`)) fail(`fragmentul trebuie să înceapă cu ${CHARSET}`)
 
 const target = join(dir, 'world-guard.html')
 writeFileSync(target, out)
